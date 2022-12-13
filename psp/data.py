@@ -8,16 +8,24 @@ import pandas as pd
 
 
 class C:
-    LAT = "latitude_rounded"
-    LON = "longitude_rounded"
-    DATE = "timestamp"
-    POWER = "generation_wh"
-    ID = "ss_id"
-    CAP = "capacity"
-    EFF = "efficiency"
+    lat = "latitude"
+    lon = "longitude"
+    date = "timestamp"
+    power = "generation_wh"
+    id = "ss_id"
+    cap = "capacity"
+    eff = "efficiency"
 
 
-def filter_rows(pv, mask, text=None):
+# Backward compatibility: add C.LAT, C.LON, etc.
+# Should not be needed when we migrate C.LAT to C.lat
+for key in dir(C):
+    if not key.startswith("_"):
+        setattr(C, key.upper(), getattr(C, key))
+
+
+def filter_rows(pv: pd.DataFrame, mask: pd.Series, text: str | None = None):
+    """Convenience method to filter a dataframe and print how much was removed."""
     n1 = len(pv)
     pv = pv[mask]
     n2 = len(pv)
@@ -73,13 +81,47 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
     return pv.loc[mask]
 
 
-def join_effectiveness(pv: pd.DataFrame) -> pd.DataFrame:
-    """Compute some capacity for each site and normalize the power with date"""
-    capacities = (
-        pv[[C.ID, C.POWER]].groupby(C.ID).max().rename(columns={C.POWER: C.CAP})
+def get_max_power_for_time_of_day(
+    df: pd.DataFrame, *, radius: int = 7, min_records: int = 0
+) -> pd.DataFrame:
+    """
+    For each data point, find the max in a timewindow, at the same time of day.
+
+    Arguments:
+        df: index: [ss_id, timestamp], columns: [power]
+        radius: how many days before and after to look.
+
+    Returns:
+        A dataframe with the same index but the max power for the value, keeping the same column
+        name.
+        Note that this dataframe will be sorted by index.
+
+    See the test case for an example.
+    """
+    df = df.reset_index(1).copy()
+    df["time"] = df[C.date].dt.time
+    df = df.set_index(["time", C.date], append=True, drop=False)
+    # Now index is: ss_id, time, datetime
+
+    df = df.sort_index()
+
+    # This is where the magic happens: group by ss_id and time_of_day, then do a rolling max on the
+    # days.
+    df = (
+        df.groupby(
+            [pd.Grouper(level=0), pd.Grouper(level=1)],
+        )
+        .rolling(
+            f"{1 + radius * 2}D",
+            on=C.date,
+            center=True,
+            min_periods=min_records,
+            closed="both",
+        )
+        .max()
     )
-    pv = pv.join(capacities, on=C.ID)
 
-    pv[C.EFF] = pv[C.POWER] / pv[C.CAP]
+    # Reshape and sort by index.
+    df = df.reset_index(level=[1, 2, 3], drop=True).sort_index()
 
-    return pv
+    return df
