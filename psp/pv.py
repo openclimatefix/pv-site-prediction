@@ -1,17 +1,21 @@
-from typing import Tuple
-
 import pandas as pd
 from pvlib import irradiance, location
 
 
 def get_irradiance(
-    lat_lon: Tuple[float, float],
-    timestamps: pd.DatetimeIndex,
+    *,
+    lat: float,
+    lon: float,
+    timestamps: pd.DatetimeIndex | list[pd.Timestamp],
     tilt: float,
     orientation: float,
 ):
     """Compute the clearsky and irradiance values."""
-    loc = location.Location(*lat_lon)
+    # For some reason `pvlib` likes `DatetimeIndex`.
+    if not isinstance(timestamps, pd.DatetimeIndex):
+        timestamps = pd.DatetimeIndex(timestamps)
+
+    loc = location.Location(lat, lon)
     # Generate clearsky data using the Ineichen model, which is the default
     # The get_clearsky method returns a dataframe with values for GHI, DNI,
     # and DHI

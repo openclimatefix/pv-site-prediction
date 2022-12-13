@@ -30,15 +30,15 @@ def parse_args():
     return parser.parse_args()
 
 
-def _infer_params(df, ss_id, lat, lon):
+def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict | None:
     """Find the best maching parameters (tilt, orientation, capacity) for a given PV system."""
     try:
         df = df.loc[(ss_id, slice(None)), :]
     except KeyError:
-        return
+        return None
 
     if len(df) == 0:
-        return
+        return None
 
     # Get the capacity.
     capacity = df[C.power].quantile(0.99)
@@ -69,7 +69,7 @@ def _infer_params(df, ss_id, lat, lon):
     # Select N dates with data, uniformly.
     num_dates = 20
     if len(date_counts) < 20:
-        return
+        return None
     indices = np.round(np.linspace(0, len(date_counts) - 1, num_dates)).astype(int)
     date_counts = date_counts.iloc[indices]
 
@@ -86,15 +86,23 @@ def _infer_params(df, ss_id, lat, lon):
     data = data / data.max()
 
     # Now define our objective function that we want to minimze.
-    def cost(params):
+    def cost(params, lat: float, lon: float, times: pd.DatetimeIndex):
         tilt, orientation = params
-        irr = get_irradiance((lat, lon), times, tilt=tilt, orientation=orientation)
+        irr = get_irradiance(
+            lat=lat,
+            lon=lon,
+            timestamps=times,
+            tilt=tilt,
+            orientation=orientation,
+        )
         ref = irr["poa_global"]
         ref = ref / ref.max()
 
         return ((data - ref) ** 2).mean()
 
-    result = scipy.optimize.minimize(cost, [45, 180], bounds=[(0, 90), (0, 360)])
+    result = scipy.optimize.minimize(
+        cost, [45, 180], bounds=[(0, 90), (0, 360)], args=(lat, lon, times)
+    )
 
     tilt, orientation = result.x
 
