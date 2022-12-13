@@ -1,4 +1,4 @@
-from math import radians, sqrt, cos
+from math import cos, radians, sqrt
 from typing import Sequence
 
 # Radius of the earth in meters.

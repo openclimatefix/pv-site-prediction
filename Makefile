@@ -6,7 +6,7 @@ notebook:
 
 .PHONY: test
 test:
-	poetry run pytest psp/tests
+	poetry run pytest psp/tests $(ARGS)
 
 
 .PHONY: format
@@ -18,4 +18,4 @@ format:
 .PHONY: lint
 lint:
 	poetry run flake8 $(SRC)
-	# TODO run mypy
+	poetry run mypy psp

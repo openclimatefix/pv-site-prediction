@@ -40,11 +40,11 @@ def filter_rows(pv: pd.DataFrame, mask: pd.Series, text: str | None = None):
 
 def trim_pv(pv: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     # Remove all the zero "power" values: there are quite a lot of those.
-    pv = filter_rows(pv, pv[C.POWER] > 0.1, "power > 0.1")
+    pv = filter_rows(pv, pv[C.power] > 0.1, "power > 0.1")
 
-    ss_ids = meta[C.ID].unique()
+    ss_ids = meta[C.id].unique()
 
-    pv = filter_rows(pv, pv[C.ID].isin(ss_ids), "unknown ss_id")
+    pv = filter_rows(pv, pv[C.id].isin(ss_ids), "unknown ss_id")
 
     return pv
 
@@ -56,7 +56,7 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
     """
 
     lat_lon_map = {
-        row[C.ID]: (row[C.LAT], row[C.LON]) for _, row in metadata.iterrows()
+        row[C.id]: (row[C.lat], row[C.lon]) for _, row in metadata.iterrows()
     }
 
     pv = pv.iloc[:1_000_000].copy()
@@ -122,6 +122,6 @@ def get_max_power_for_time_of_day(
     )
 
     # Reshape and sort by index.
-    df = df.reset_index(level=[1, 2, 3], drop=True).sort_index()
+    df = df.reset_index(level=(1, 2, 3), drop=True).sort_index()
 
     return df
