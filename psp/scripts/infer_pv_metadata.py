@@ -43,11 +43,12 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
     # Get the capacity.
     capacity = df[C.power].quantile(0.99)
 
-    # Convert the units from Wh/5min to kW, assuming we have data every 5 minutes.
+    # Convert the units from Wh/5min to kW.
     capacity = capacity * 12 / 1000
 
     max_power = get_max_power_for_time_of_day(df[[C.power]], radius=9, min_records=10)
 
+    # We do a little bit of something on our max power data.
     smooth = (
         max_power.reset_index()
         .groupby(C.id)
@@ -61,23 +62,22 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
 
     smooth = smooth[~smooth[C.power].isnull()]
 
-    # Sample some dates
+    # We'll only consider few dates.
     smooth["date"] = smooth[C.date].dt.date
+    # We want those dates to have some data.
     date_counts = smooth.groupby("date")[[C.power]].count()
     date_counts = date_counts[date_counts[C.power] > 50]
-
-    # Select N dates with data, uniformly.
+    # Select N dates evenly.
     num_dates = 20
     if len(date_counts) < 20:
         return None
     indices = np.round(np.linspace(0, len(date_counts) - 1, num_dates)).astype(int)
     date_counts = date_counts.iloc[indices]
-
     dates = date_counts.index
 
     # Keep only the data for those dates.
     data = smooth[smooth["date"].isin(dates)]
-    times = data.index.get_level_values(1)
+    timestamps = data.index.get_level_values(1)
 
     # Only consider the "power" column.
     data = data[C.power]
@@ -86,12 +86,12 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
     data = data / data.max()
 
     # Now define our objective function that we want to minimze.
-    def cost(params, lat: float, lon: float, times: pd.DatetimeIndex):
+    def cost(params, lat: float, lon: float, timestamps: pd.DatetimeIndex):
         tilt, orientation = params
         irr = get_irradiance(
             lat=lat,
             lon=lon,
-            timestamps=times,
+            timestamps=timestamps,
             tilt=tilt,
             orientation=orientation,
         )
@@ -101,7 +101,10 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
         return ((data - ref) ** 2).mean()
 
     result = scipy.optimize.minimize(
-        cost, [45, 180], bounds=[(0, 90), (0, 360)], args=(lat, lon, times)
+        cost,
+        [45, 180],
+        bounds=[(0, 90), (0, 360)],
+        args=(lat, lon, timestamps),
     )
 
     tilt, orientation = result.x

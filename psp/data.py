@@ -89,12 +89,11 @@ def get_max_power_for_time_of_day(
 
     Arguments:
         df: index: [ss_id, timestamp], columns: [power]
-        radius: how many days before and after to look.
+        radius: How many days before and after to look at.
 
     Returns:
-        A dataframe with the same index but the max power for the value, keeping the same column
+        A dataframe with the same index (but sorted!) and the max power, keeping the same column
         name.
-        Note that this dataframe will be sorted by index.
 
     See the test case for an example.
     """
