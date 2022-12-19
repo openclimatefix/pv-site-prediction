@@ -30,7 +30,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict | None:
+def _infer_params(
+    df: pd.DataFrame,
+    ss_id: int,
+    lat: float,
+    lon: float,
+    learn_normalisation: bool = True,
+) -> dict | None:
     """Find the best maching parameters (tilt, orientation, capacity) for a given PV system."""
     try:
         df = df.loc[(ss_id, slice(None)), :]
@@ -83,11 +89,12 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
     data = data[C.power]
 
     # Normalize the data.
-    data = data / data.max()
+    if not learn_normalisation:
+        data = data / data.max()
 
     # Now define our objective function that we want to minimze.
     def cost(params, lat: float, lon: float, timestamps: pd.DatetimeIndex):
-        tilt, orientation = params
+        tilt, orientation, factor = params
         irr = get_irradiance(
             lat=lat,
             lon=lon,
@@ -96,20 +103,30 @@ def _infer_params(df: pd.DataFrame, ss_id: int, lat: float, lon: float) -> dict 
             orientation=orientation,
         )
         ref = irr["poa_global"]
-        ref = ref / ref.max()
 
-        return ((data - ref) ** 2).mean()
+        if not learn_normalisation:
+            ref = ref / ref.max()
+
+        return ((data - ref * factor) ** 2).mean()
 
     result = scipy.optimize.minimize(
         cost,
-        [45, 180],
-        bounds=[(0, 90), (0, 360)],
+        # TODO 0.1 is a heuristic that probably needs revisiting.
+        [30, 180, capacity * 0.1 if learn_normalisation else 1],
+        bounds=[(0, 90), (0, 360), (0, None) if learn_normalisation else (1, 1)],
         args=(lat, lon, timestamps),
     )
 
-    tilt, orientation = result.x
+    tilt, orientation, factor = result.x
+    fit_err = result.fun
 
-    return dict(tilt=tilt, orientation=orientation, capacity=capacity)
+    return dict(
+        tilt=tilt,
+        orientation=orientation,
+        factor=factor,
+        capacity=capacity,
+        fit_err=fit_err,
+    )
 
 
 def main():
@@ -129,7 +146,9 @@ def main():
         meta_row = meta.loc[ss_id]
         lat = meta_row[C.lat]
         lon = meta_row[C.lon]
-        new_meta = _infer_params(df, ss_id=ss_id, lat=lat, lon=lon)
+        new_meta = _infer_params(
+            df, ss_id=ss_id, lat=lat, lon=lon, learn_normalisation=True
+        )
         if new_meta is not None:
             new_data.append({"ss_id": ss_id, **new_meta})
 
