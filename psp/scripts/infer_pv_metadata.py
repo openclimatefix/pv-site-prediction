@@ -8,7 +8,7 @@ import pandas as pd
 import scipy
 import tqdm
 
-from psp.data import C, get_max_power_for_time_of_day
+from psp.data.uk_pv import C, get_max_power_for_time_of_day
 from psp.pv import get_irradiance
 
 

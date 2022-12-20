@@ -9,7 +9,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-from psp.data import C, filter_rows, trim_pv
+from psp.data.uk_pv import C, filter_rows, trim_pv
 
 
 def parse_args():

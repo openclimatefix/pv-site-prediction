@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from psp.data import C, get_max_power_for_time_of_day, remove_nights
+from psp.data.uk_pv import C, get_max_power_for_time_of_day, remove_nights
 
 
 def test_remove_nights():
