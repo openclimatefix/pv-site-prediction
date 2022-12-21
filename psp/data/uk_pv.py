@@ -2,9 +2,13 @@
 Data loading, cleaning, augmenting, etc. of the `uk_pv` dataset.
 """
 
+import logging
+
 import astral
 import astral.sun
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class C:
@@ -33,7 +37,7 @@ def filter_rows(pv: pd.DataFrame, mask: pd.Series, text: str | None = None):
     s = f"Removed {n1 - n2} ({(n1 - n2) / n1 * 100:.1f}%) rows."
     if text:
         s += f" [{text}]"
-    print(s)
+    logger.info(s)
 
     return pv
 
