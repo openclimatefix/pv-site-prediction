@@ -9,7 +9,7 @@ from torchdata.datapipes.iter import IterDataPipe
 from psp.data.data_sources.pv import PvDataSource
 from psp.ml.dataset import PvXDataPipe, get_y_from_x
 from psp.ml.models.base import FeaturesType, PvSiteModel
-from psp.ml.types import FutureIntervals, PvId, Timestamp, X, Y
+from psp.ml.typings import FutureIntervals, PvId, Timestamp, X, Y
 
 
 # This is the kind of object that goes through the pipeline!

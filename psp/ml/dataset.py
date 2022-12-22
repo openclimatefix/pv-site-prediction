@@ -7,7 +7,7 @@ from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
 from psp.data.uk_pv import C
-from psp.ml.types import FutureIntervals, PvId, Timestamp, X, Y
+from psp.ml.typings import FutureIntervals, PvId, Timestamp, X, Y
 
 
 # TODO Do a random version for training - or make this one optionally random?

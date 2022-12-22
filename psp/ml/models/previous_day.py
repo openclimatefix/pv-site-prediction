@@ -7,7 +7,7 @@ import xarray as xr
 from psp.data.data_sources.pv import PvDataSource
 from psp.data.uk_pv import C
 from psp.ml.models.base import PvSiteModel
-from psp.ml.types import FutureIntervals, Timestamp, X, Y
+from psp.ml.typings import FutureIntervals, Timestamp, X, Y
 
 BUFFER = timedelta(minutes=30)
 

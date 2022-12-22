@@ -3,7 +3,7 @@
 import abc
 from typing import Any, Generic, Mapping, TypeVar
 
-from psp.ml.types import FutureIntervals, X, Y
+from psp.ml.typings import FutureIntervals, X, Y
 
 FeaturesType = Mapping[str, Any]
 

@@ -3,7 +3,7 @@ import pathlib
 import xarray as xr
 
 from psp.data.uk_pv import C
-from psp.ml.types import PvId, Timestamp
+from psp.ml.typings import PvId, Timestamp
 
 
 class PvDataSource:
