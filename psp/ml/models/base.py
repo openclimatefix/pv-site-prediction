@@ -1,40 +1,67 @@
 """Base classes for the PV site ml."""
 
 import abc
-from typing import Any, Generic, Mapping, TypeVar
+import dataclasses
+from typing import Any, Iterator
 
-from psp.ml.typings import FutureIntervals, X, Y
-
-FeaturesType = Mapping[str, Any]
-
-F = TypeVar("F", bound=FeaturesType)
+from psp.ml.typings import Batch, Features, FutureIntervals, X, Y
 
 
-class PvSiteModel(abc.ABC, Generic[F]):
-    def __init__(self, future_intervals: FutureIntervals):
-        self._future_intervals = future_intervals
+@dataclasses.dataclass
+class PvSiteModelConfig:
+    """Model meta data that all models must define."""
+
+    future_intervals: FutureIntervals
+    # Blackout in minutes.
+    # This is a window of time before the timestamp at which we don't have access to data.
+    # This is to simulate a delay in the availability of the data, which can happen in production.
+    blackout: int
+
+
+class PvSiteModel(abc.ABC):
+    """Abstract interface for our models."""
+
+    def __init__(self, config: PvSiteModelConfig, setup_config: Any):
+        self._config = config
 
     @abc.abstractmethod
-    def _predict_from_features(self, x: X, features: F) -> Y:
+    def predict_from_features(self, features: Features) -> Y:
+        """Predict the output from the features.
+
+        Useful if the features were already computed, or to leverage
+        computing features in parallel separately.
+        """
         pass
 
-    def predict(self, x: X, features: F | None) -> Y:
-        """Predict the input, given an input.
+    def predict(self, x: X) -> Y:
+        """Predict the output from the input.
 
-        Arguments
-            x: The input.
-            features: Optional. If features are provided, we will simply skip the step where we
-                compute them. This is useful if we want to compute features in parallel during
-                training and evaluation.
+        This is what should be called in production.
         """
-        if features is None:
-            features = self.get_features(x)
-        return self._predict_from_features(x, features)
+        features = self.get_features(x)
+        return self.predict_from_features(features)
 
     @abc.abstractmethod
-    def get_features(self, x: X) -> F:
+    def get_features(self, x: X) -> Features:
+        """Compute features for the model.
+
+        This step will be run in parallel by our data pipelines.
+        """
         pass
 
     @property
-    def future_intervals(self):
-        return self._future_intervals
+    def config(self):
+        return self._config
+
+    def train(
+        self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
+    ) -> None:
+        """Train the model."""
+        pass
+
+    def setup(self, setup_config: Any):
+        """Set up the model after initialization or deserialization.
+
+        For instance defining data sources.
+        """
+        pass

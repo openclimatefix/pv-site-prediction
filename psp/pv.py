@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 from pvlib import irradiance, location
 
@@ -6,7 +8,7 @@ def get_irradiance(
     *,
     lat: float,
     lon: float,
-    timestamps: pd.DatetimeIndex | list[pd.Timestamp],
+    timestamps: pd.DatetimeIndex | list[pd.Timestamp] | list[datetime.datetime],
     tilt: float,
     orientation: float,
 ):

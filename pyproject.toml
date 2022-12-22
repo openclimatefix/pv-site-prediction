@@ -14,6 +14,13 @@ numpy = "^1.23.5"
 torch = "^1.13.1"
 torchdata = "^0.5.0"
 xarray = "^2022.12.0"
+click = "^8.1.3"
+google-cloud-storage = "^2.7.0"
+zarr = "^2.13.3"
+fsspec = "^2022.11.0"
+gcsfs = "^2022.11.0"
+dask = "^2022.12.1"
+h5netcdf = "^1.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -31,6 +38,10 @@ tqdm = "^4.64.1"
 pandas-stubs = "^1.5.2.221213"
 types-tqdm = "^4.64.7.9"
 mypy = "^0.991"
+pyarrow = "^10.0.1"
+types-pyyaml = "^6.0.12.2"
+pylint = "^2.15.9"
+pydocstyle = "^6.2.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -39,27 +50,15 @@ build-backend = "poetry.core.masonry.api"
 [tool.isort]
 profile = "black"
 
-[[tool.mypy.overrides]]
-module = 'pvlib.*'
+[tool.mypy]
+check_untyped_defs = true
+# Too many packages have missing stubs.
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = 'astral.*'
 ignore_errors = true
 
-[[tool.mypy.overrides]]
-module = 'scipy.*'
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = 'pyarrow.*'
-ignore_missing_imports = true
-
-# This one is sad because torchdata is all typed!
-[[tool.mypy.overrides]]
-module = 'torchdata.*'
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = 'altair.*'
-ignore_missing_imports = true
+[tool.pydocstyle]
+# In particular ignore all the "missing docstring" errors.
+ignore = 'D10,D203,D205,D212,D213,D400,D413,D415,D417'

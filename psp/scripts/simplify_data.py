@@ -47,8 +47,8 @@ def main():
     dfs["all"] = df
 
     # Make a couple of sampled datasets.
-    dfs["1M"] = df.sample(1_000_000, random_state=rnd_state)
-    dfs["10k"] = dfs["1M"].sample(10_000, random_state=rnd_state)
+    dfs["1M"] = df.sample(1_000_000, random_state=rnd_state)  # type:ignore
+    dfs["10k"] = dfs["1M"].sample(10_000, random_state=rnd_state)  # type:ignore
 
     n = 100
 
@@ -57,22 +57,24 @@ def main():
 
     dfs[f"{n}"] = df.loc[ss_n]
 
-    dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state)
-    dfs[f"{n}_10k"] = dfs[f"{n}_1M"].sample(10_000, random_state=rnd_state)
+    dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state)  # type: ignore
+    dfs[f"{n}_10k"] = dfs[f"{n}_1M"].sample(10_000, random_state=rnd_state)  # type: ignore
 
     # Glasgow region.
     LON_RANGE = [-4.537402, -3.940503]
     LAT_RANGE = [55.722169, 56.000524]
 
     m = meta.copy()
-    for col, (low, high) in zip([C.LAT, C.LON], [LAT_RANGE, LON_RANGE]):
+    for col, (low, high) in zip([C.lat, C.lon], [LAT_RANGE, LON_RANGE]):
         m = filter_rows(m, (m[col] < high) & (m[col] > low), "filter on " + col)
-    ss_glas = m[C.ID].unique().tolist()
+    ss_glas = m[C.id].unique().tolist()
 
     dfs["glasgow"] = filter_rows(
-        df, df.index.get_level_values(0).isin(ss_glas), "glasgow"
+        df,
+        df.index.get_level_values(0).isin(ss_glas),  # type: ignore
+        "glasgow",
     )
-    dfs["glasgow_10k"] = dfs["glasgow"].sample(10_000, random_state=rnd_state)
+    dfs["glasgow_10k"] = dfs["glasgow"].sample(10_000, random_state=rnd_state)  # type: ignore
 
     for key, df in dfs.items():
         df.to_parquet(args.output / f"5min_{key}.parquet")

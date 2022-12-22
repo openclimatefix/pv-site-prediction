@@ -1,6 +1,4 @@
-"""
-Data loading, cleaning, augmenting, etc. of the `uk_pv` dataset.
-"""
+"""Data loading, cleaning, augmenting, etc. of the `uk_pv` dataset."""
 
 import logging
 
@@ -17,19 +15,13 @@ class C:
     date = "timestamp"
     power = "generation_wh"
     id = "ss_id"
-    cap = "capacity"
-    eff = "efficiency"
-
-
-# Backward compatibility: add C.LAT, C.LON, etc.
-# Should not be needed when we migrate C.LAT to C.lat
-for key in dir(C):
-    if not key.startswith("_"):
-        setattr(C, key.upper(), getattr(C, key))
+    orientation = "orientation"
+    tilt = "tilt"
+    factor = "factor"
 
 
 def filter_rows(pv: pd.DataFrame, mask: pd.Series, text: str | None = None):
-    """Convenience method to filter a dataframe and print how much was removed."""
+    """Filter a dataframe and print how much was removed."""
     n1 = len(pv)
     pv = pv[mask]
     n2 = len(pv)
@@ -58,7 +50,6 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
 
     FIXME This takes just too long to run.
     """
-
     lat_lon_map = {
         row[C.id]: (row[C.lat], row[C.lon]) for _, row in metadata.iterrows()
     }
@@ -66,12 +57,12 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
     pv = pv.iloc[:1_000_000].copy()
 
     def func(row):
-        ss_id = row[C.ID]
+        ss_id = row[C.id]
         try:
             lat, lon = lat_lon_map[ss_id]
         except KeyError:
             return False
-        date = row[C.DATE].to_pydatetime()
+        date = row[C.date].to_pydatetime()
 
         obs = astral.Observer(latitude=lat, longitude=lon)
         sun_info = astral.sun.sun(obs, date)
@@ -88,14 +79,15 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
 def get_max_power_for_time_of_day(
     df: pd.DataFrame, *, radius: int = 7, min_records: int = 0
 ) -> pd.DataFrame:
-    """
-    For each data point, find the max in a timewindow, at the same time of day.
+    """For each data point, find the max in a timewindow, at the same time of day.
 
     Arguments:
+    ---------
         df: index: [ss_id, timestamp], columns: [power]
         radius: How many days before and after to look at.
 
-    Returns:
+    Return:
+    ------
         A dataframe with the same index (but sorted!) and the max power, keeping the same column
         name.
 

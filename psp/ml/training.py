@@ -1,62 +1,32 @@
-import os
-from operator import itemgetter
-from typing import TypedDict
+import functools
+from typing import Callable
 
 import numpy as np
 from torch.utils.data import DataLoader
+from torchdata.dataloader2 import DataLoader2, MultiProcessingReadingService
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.dataset import PvXDataPipe, get_y_from_x
-from psp.ml.models.base import FeaturesType, PvSiteModel
-from psp.ml.typings import FutureIntervals, PvId, Timestamp, X, Y
+from psp.ml.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
+from psp.ml.typings import (
+    Batch,
+    BatchedFeatures,
+    BatchedX,
+    BatchedY,
+    Features,
+    FutureIntervals,
+    Sample,
+    X,
+)
 
 
-# This is the kind of object that goes through the pipeline!
-class Sample(TypedDict):
-    x: X
-    y: Y
-    features: FeaturesType
-
-
-# Using classes for function factories to make pickle happy.
-class _to_dict:
-    def __init__(self, key):
-        self.key = key
-
-    def __call__(self, value):
-        return {self.key: value}
-
-
-class _add_y:
-    def __init__(self, future_intervals, data_source):
-        self.future_intervals = future_intervals
-        self.data_source = data_source
-
-    def __call__(self, sample: Sample):
-        y = get_y_from_x(
-            sample["x"],
-            future_intervals=self.future_intervals,
-            data_source=self.data_source,
-        )
-        return sample | {"y": y}
-
-
-class _add_features:
-    def __init__(self, model: PvSiteModel):
-        self.model = model
-
-    def __call__(self, sample):
-        features = self.model.get_features(sample["x"])
-        return sample | {"features": features}
-
-
-def _y_is_not_none(sample: Sample):
-    return sample["y"] is not None and not np.isnan(sample["y"].powers).all()
+def _is_not_none(x):
+    return x is not None
 
 
 class _RandomSkip(IterDataPipe):
     """Randomly skip samples."""
+
     def __init__(
         self,
         datapipe: IterDataPipe,
@@ -73,57 +43,129 @@ class _RandomSkip(IterDataPipe):
                 yield x
 
 
+class _Limit(IterDataPipe):
+    def __init__(self, datapipe: IterDataPipe, limit: int):
+        self._dp = datapipe
+        self._limit = limit
+
+    def __iter__(self):
+        for i, x in enumerate(self._dp):
+            if i >= self._limit:
+                return
+            yield x
+
+
+def _batch(samples: list[Sample]) -> Batch:
+    assert len(samples) > 0
+    x = BatchedX(
+        pv_id=[s.x.pv_id for s in samples],
+        ts=[s.x.ts for s in samples],
+    )
+    y = BatchedY(powers=np.stack([s.y.powers for s in samples]))
+    features: BatchedFeatures = {
+        key: np.stack([sample.features[key] for sample in samples])
+        for key in samples[0].features
+    }
+    return Batch(x=x, y=y, features=features)
+
+
+def _build_sample(
+    x: X,
+    *,
+    future_intervals: FutureIntervals,
+    data_source: PvDataSource,
+    get_features: Callable[[X], Features],
+) -> Sample | None:
+    y = get_y_from_x(x, future_intervals=future_intervals, data_source=data_source)
+
+    # Skip the heavy computation if the target doesn't make sense.
+    if y is None:
+        return None
+
+    features = get_features(x)
+
+    return Sample(x=x, y=y, features=features)
+
+
 def make_data_loader(
     *,
     data_source: PvDataSource,
-    pv_ids: list[PvId],
     future_intervals: FutureIntervals,
-    min_ts: Timestamp,
-    max_ts: Timestamp,
+    split: DatasetSplit,
+    get_features: Callable[[X], Features],
     prob_keep_sample: float = 1.0,
-    random_state: np.random.RandomState | None,
-    model: PvSiteModel,
-    # Defaults to `os.cpu_count() // 2`
-    num_workers: int | None = None
+    random_state: np.random.RandomState | None = None,
+    batch_size: int | None = None,
+    num_workers: int = 0,
+    shuffle: bool = False,
+    step: int = 1,
+    limit: int | None = None,
 ) -> DataLoader[Sample]:
+    """
+    Arguments:
+    --------
+        step: Step in minutes for the timestamps.
+        limit: return only this number of samples.
+    """
+    if prob_keep_sample < 1 and random_state is None:
+        raise ValueError("You must provide a random state when sampling")
 
-    if num_workers is None:
-        num_workers = (os.cpu_count() or 0) // 2
-
-    datapipe = PvXDataPipe(
-        data_source=data_source,
-        future_intervals=future_intervals,
-        pv_ids=pv_ids,
-        min_ts=min_ts,
-        max_ts=max_ts,
-    )
+    pvx_datapipe: PvXDataPipe
+    if shuffle:
+        assert random_state is not None
+        pvx_datapipe = RandomPvXDataPipe(
+            data_source=data_source,
+            future_intervals=future_intervals,
+            random_state=random_state,
+            pv_ids=split.pv_ids,
+            start_ts=split.start_ts,
+            end_ts=split.end_ts,
+            step=step,
+        )
+    else:
+        pvx_datapipe = PvXDataPipe(
+            data_source=data_source,
+            future_intervals=future_intervals,
+            pv_ids=split.pv_ids,
+            start_ts=split.start_ts,
+            end_ts=split.end_ts,
+            step=step,
+        )
 
     if prob_keep_sample < 1:
         assert random_state is not None
-        datapipe = _RandomSkip(
-            datapipe=datapipe,
+        pvx_datapipe = _RandomSkip(
+            datapipe=pvx_datapipe,
             prob_keep=prob_keep_sample,
             random_state=random_state,
         )
 
     # This has to be as early as possible to be efficient!
-    datapipe = datapipe.sharding_filter()
+    pvx_datapipe = pvx_datapipe.sharding_filter()
 
-    # Put in a dictionary.
-    datapipe = datapipe.map(_to_dict("x"))
+    # This is the expensive part, where we compute our model-specific feature extraction.
+    datapipe = pvx_datapipe.map(
+        functools.partial(
+            _build_sample,
+            future_intervals=future_intervals,
+            data_source=data_source,
+            get_features=get_features,
+        )
+    )
 
-    # Add 'y'.
-    datapipe = datapipe.map(_add_y(future_intervals, data_source))
-    datapipe = datapipe.filter(_y_is_not_none)
+    # `_build_sample` will return `None` when the sample is not useful (for instance when all the
+    # targets have no data).
+    datapipe = datapipe.filter(_is_not_none)
 
-    # Add the features defined by the model.
-    datapipe = datapipe.map(_add_features(model))
+    # We add the ability to stop the pipeline after a `limit` number of samples.
+    if limit is not None:
+        datapipe = _Limit(datapipe, limit)
 
-    data_loader: DataLoader[Sample] = DataLoader(
-        datapipe,
-        num_workers=num_workers,
-        # TODO Actually support batches.
-        collate_fn=itemgetter(0),
+    if batch_size is not None:
+        datapipe = datapipe.batch(batch_size, wrapper_class=_batch)
+
+    data_loader: DataLoader2[Sample] = DataLoader2(
+        datapipe, reading_service=MultiProcessingReadingService(num_workers=num_workers)
     )
 
     return data_loader
