@@ -30,8 +30,14 @@ METRICS: dict[str, Metric] = {
 @exp_name_opt
 @exp_config_opt
 @num_workers_opt
-@click.option("-s", "--sample", type=float, default=1, help="Sample the test samples.")
-def main(exp_root, exp_name, sample, exp_config_name, num_workers):
+@click.option(
+    "-l",
+    "--limit",
+    type=int,
+    default=1000,
+    help="Maximum number of samples to consider.",
+)
+def main(exp_root, exp_name, exp_config_name, num_workers, limit):
 
     exp_config_module = importlib.import_module(
         "." + exp_config_name, "psp.ml.exp_configs"
@@ -65,21 +71,22 @@ def main(exp_root, exp_name, sample, exp_config_name, num_workers):
         split=test_split,
         batch_size=None,
         random_state=random_state,
-        prob_keep_sample=sample,
+        prob_keep_sample=1.0,
         get_features=model.get_features,
         num_workers=num_workers,
         shuffle=True,
         step=15,
+        limit=limit,
     )
 
     # Gather all errors for every samples. We'll make a DataFrame with it.
     error_rows = []
 
     with continue_on_interupt(prompt=False):
-        for i, batch in tqdm.tqdm(enumerate(data_loader)):
-            x = batch.x
-            y_true = batch.y
-            y_pred = model.predict_from_features(features=batch.features)
+        for i, sample in tqdm.tqdm(enumerate(data_loader), total=limit):
+            x = sample.x
+            y_true = sample.y
+            y_pred = model.predict_from_features(features=sample.features)
             for metric_name, metric in METRICS.items():
                 error = metric(y_true, y_pred)
                 # Error is a vector

@@ -104,6 +104,7 @@ def make_data_loader(
     """
     Arguments:
     --------
+        batch_size: Batch size. None means no batching.
         step: Step in minutes for the timestamps.
         limit: return only this number of samples.
     """
@@ -159,7 +160,9 @@ def make_data_loader(
 
     # We add the ability to stop the pipeline after a `limit` number of samples.
     if limit is not None:
-        datapipe = _Limit(datapipe, limit)
+        datapipe = _Limit(
+            datapipe, limit if num_workers == 0 else np.ceil(limit / num_workers)
+        )
 
     if batch_size is not None:
         datapipe = datapipe.batch(batch_size, wrapper_class=_batch)
