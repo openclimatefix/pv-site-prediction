@@ -1,5 +1,4 @@
 import dataclasses
-from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Iterator, Tuple
 
@@ -24,9 +23,6 @@ def minutes_since_start_of_day(ts: datetime) -> float:
     return (ts - midnight).total_seconds() / 60.0
 
 
-AGGS = ["nanmean", "nanmedian", "nanstd", "nanmin", "nanmax"]
-
-
 @dataclasses.dataclass
 class SetupConfig:
     data_source: PvDataSource
@@ -46,7 +42,8 @@ class RecentHistoryModel(PvSiteModel):
 
     def predict_from_features(self, features: Features) -> Y:
         pred = self._regressor.predict(features)
-        y = Y(powers=pred * features["factor"] * features["irradiance"])
+        powers = pred * features["factor"] * features["irradiance"]
+        y = Y(powers=powers)
         return y
 
     def _get_time_of_day_stats(
@@ -58,54 +55,21 @@ class RecentHistoryModel(PvSiteModel):
     ):
 
         start, end = future_interval
-        mean_interval = (start + end) / 2
-        radius = (end - start) / 2
 
-        ts_pred = x.ts + timedelta(minutes=mean_interval)
-        pred_time_of_day = minutes_since_start_of_day(ts_pred)
+        pred_start = x.ts + timedelta(minutes=start)
+        pred_start_minutes = minutes_since_start_of_day(pred_start)
 
-        num_days = 10
+        t0 = yesterday_midnight + timedelta(minutes=pred_start_minutes)
+        t1 = t0 + timedelta(minutes=(end - start))
 
-        previous_days_ts = [
-            (
-                # TODO clean that ugly radius calculation
-                yesterday_midnight
-                - timedelta(days=i)
-                + timedelta(minutes=pred_time_of_day - radius),
-                yesterday_midnight
-                - timedelta(days=i)
-                + timedelta(minutes=pred_time_of_day + radius),
-            )
-            for i in range(num_days)
-        ]
+        # By default xarray ignores `nan` and returns `nan` for an empty list, which is
+        # what we want.
+        mean_power = data.sel(ts=slice(t0, t1)).mean().values
 
-        # TODO vectorize this query?
-        # TODO check how to do those groupby - our use-case isn't supported
-        # data.groupby_bins('timestamp', previous_days_ts)
-        powers = [
-            # TODO what about the boundaries (we don't want the end often)
-            # TODO
-            # Or we could just get proxy object in here, like do something like
-            # sample_data =
-            # self.data_source.get(pv_ids=x.pv_id, start_ts=ts - 2weeks, ts=ts).compute()
-            # and then refer to that. We should do it and compare the speed
-            # TODO Also check for the time difference when using a machine in the cluster, not sure
-            # how reading from
-            # Google Storage is slower than reading from my laptop.
-            # TODO maybe don't do a mean per day, maybe do it later.
-            data.sel(ts=slice(start, end)).mean()
-            for start, end in previous_days_ts
-        ]
-
-        # TODO normalize the power, etc.
-
-        is_all_nan = np.all(np.isnan(powers))
-        if is_all_nan:
-            aggs = {name: 0.0 for name in AGGS}
+        if np.isnan(mean_power):
+            return 0.0
         else:
-            aggs = {name: getattr(np, name)(powers) for name in AGGS}
-
-        return aggs
+            return mean_power
 
     def get_features(self, x: X) -> Features:
         features = dict()
@@ -152,16 +116,16 @@ class RecentHistoryModel(PvSiteModel):
 
         # Get values at the same time of day as the prediction.
 
-        # TODO Maybe everything can be vectorized.
-        time_of_day_feats = defaultdict(list)
+        yesterday_means = []
         for i, interval in enumerate(self._config.future_intervals):
-            aggs = self._get_time_of_day_stats(x, yesterday_midnight, interval, data)
-            for agg_name, value in aggs.items():
-                time_of_day_feats["lastweek_" + agg_name].append(value)
+            yesterday_mean = self._get_time_of_day_stats(
+                x, yesterday_midnight, interval, data
+            )
+            yesterday_means.append(yesterday_mean)
 
-        time_of_day_feats_arr: dict[str, np.ndarray] = dict()
-        for key, value in time_of_day_feats.items():
-            time_of_day_feats_arr[key] = safe_div(value, irradiance * factor)
+        time_of_day_feats_arr: dict[str, np.ndarray] = {
+            "yesterday_mean": safe_div(np.array(yesterday_means), irradiance * factor)
+        }
 
         # Concatenate all the per-future features in a matrix of dimensions (future, features)
         per_future = np.stack(list(time_of_day_feats_arr.values()), axis=-1)
