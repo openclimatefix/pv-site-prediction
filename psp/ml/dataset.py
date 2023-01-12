@@ -278,6 +278,8 @@ SKIP_SS_IDS = set(
         15967,
         7890,
         16215,
+        # This one has funny night values.
+        7830,
     ]
 )
 
