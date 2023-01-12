@@ -23,8 +23,9 @@ class ExpConfig(ExpConfigBase):
     @functools.cache
     def _get_model_config(self):
         interval_size = 15
-        interval_starts = [0.0, 30, 120, 24 * 60, 48 * 60]
-        future_intervals = [(s, s + interval_size) for s in interval_starts]
+        # Start of the inverval in hours.
+        interval_starts = [0.0, 0.5, 2, 6, 24, 48]
+        future_intervals = [(s * 60, s * 60 + interval_size) for s in interval_starts]
         return PvSiteModelConfig(future_intervals=future_intervals, blackout=0)
 
     @functools.cache

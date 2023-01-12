@@ -27,7 +27,10 @@ class ForestRegressor(Regressor):
         """
         # Using absolute error alleviates some outlier problems.
         # Squared loss (the default) makes the big outlier losses more important.
-        self._tree = HistGradientBoostingRegressor(loss="absolute_error")
+        self._tree = HistGradientBoostingRegressor(
+            loss="absolute_error",
+            random_state=1234,
+        )
         self._num_train_samples = num_train_samples
 
     def _prepare_features(self, per_future: np.ndarray, common: np.ndarray):
