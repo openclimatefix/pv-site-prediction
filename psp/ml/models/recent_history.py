@@ -5,7 +5,8 @@ from typing import Iterator, Tuple
 import numpy as np
 import xarray as xr
 
-from psp.ml.dataset import PvDataSource
+from psp.data.data_sources.nwp import NwpDataSource
+from psp.data.data_sources.pv import PvDataSource
 from psp.ml.models.base import PvSiteModel, PvSiteModelConfig
 from psp.ml.models.regressors.base import Regressor
 from psp.ml.typings import Batch, Features, X, Y
@@ -25,7 +26,8 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 
 @dataclasses.dataclass
 class SetupConfig:
-    data_source: PvDataSource
+    pv_data_source: PvDataSource
+    nwp_data_source: NwpDataSource | None
 
 
 class RecentHistoryModel(PvSiteModel):
@@ -34,10 +36,18 @@ class RecentHistoryModel(PvSiteModel):
         config: PvSiteModelConfig,
         setup_config: SetupConfig,
         regressor: Regressor,
+        use_nwp: bool = True,
     ):
-        self._data_source: PvDataSource
-        self.setup(setup_config)
+        self._pv_data_source: PvDataSource
+        self._nwp_data_source: NwpDataSource | None
         self._regressor = regressor
+        self._use_nwp = use_nwp
+
+        self.setup(setup_config)
+
+        if use_nwp:
+            assert self._nwp_data_source is not None
+
         super().__init__(config, setup_config)
 
     def predict_from_features(self, features: Features) -> Y:
@@ -73,16 +83,15 @@ class RecentHistoryModel(PvSiteModel):
 
     def get_features(self, x: X) -> Features:
         features = dict()
-        data_source = self._data_source.without_future(
+        data_source = self._pv_data_source.without_future(
             x.ts, blackout=self.config.blackout
         )
 
-        # TODO Compare with and without the `load()`.
         data = data_source.get(
             pv_ids=x.pv_id,
             start_ts=x.ts - timedelta(days=30),
             end_ts=x.ts,
-        )["power"].load()
+        )["power"]
 
         coords = data.coords
         future_ts = [
@@ -90,10 +99,13 @@ class RecentHistoryModel(PvSiteModel):
             for f0, f1 in self.config.future_intervals
         ]
 
+        lat = coords["latitude"].values
+        lon = coords["longitude"].values
+
         # TODO `get_irradiance` returns a pandas dataframe. Maybe we could change that.
         irr = get_irradiance(
-            lat=coords["latitude"].values,
-            lon=coords["longitude"].values,
+            lat=lat,
+            lon=lon,
             # We add a timestamps for 15 minutes ago, because we'll do some stats on the last 30
             # minutes.
             timestamps=future_ts + [x.ts - timedelta(minutes=15)],
@@ -127,6 +139,20 @@ class RecentHistoryModel(PvSiteModel):
             "yesterday_mean": safe_div(np.array(yesterday_means), irradiance * factor)
         }
 
+        # Consider the NWP data in a small region around around our PV.
+        if self._use_nwp:
+            assert self._nwp_data_source is not None
+            nwp_data = self._nwp_data_source.at(
+                x.ts,
+                nearest_lat=lat,
+                nearest_lon=lon,
+                load=True,
+            )
+            nwp_data_per_future = nwp_data.get(future_ts)
+            for variable in self._nwp_data_source.list_variables():
+                var_per_future = nwp_data_per_future.sel(variable=variable).values
+                time_of_day_feats_arr[variable] = var_per_future
+
         # Concatenate all the per-future features in a matrix of dimensions (future, features)
         per_future = np.stack(list(time_of_day_feats_arr.values()), axis=-1)
 
@@ -151,4 +177,5 @@ class RecentHistoryModel(PvSiteModel):
         self._regressor.train(train_iter, valid_iter, batch_size)
 
     def setup(self, setup_config: SetupConfig):
-        self._data_source = setup_config.data_source
+        self._pv_data_source = setup_config.pv_data_source
+        self._nwp_data_source = setup_config.nwp_data_source

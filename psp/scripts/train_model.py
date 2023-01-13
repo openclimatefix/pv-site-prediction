@@ -4,6 +4,7 @@ import pickle
 
 import click
 import numpy as np
+import torch
 
 from psp.ml.dataset import split_train_test
 from psp.ml.training import make_data_loader
@@ -15,6 +16,8 @@ from psp.scripts._options import (
 )
 from psp.utils.interupting import continue_on_interupt
 
+_log = logging.getLogger(__name__)
+
 
 @click.command()
 @exp_root_opt
@@ -23,6 +26,11 @@ from psp.utils.interupting import continue_on_interupt
 @num_workers_opt
 @click.option("-b", "--batch-size", default=32)
 def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
+
+    # This fixes problems when loading files in parallel on GCP.
+    # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
+    # https://github.com/fsspec/gcsfs/issues/379
+    torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module(
         "." + exp_config_name, "psp.ml.exp_configs"
@@ -38,6 +46,8 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
 
     # Dataset
     splits = split_train_test(pv_data_source)
+
+    _log.info(f"Training on split: {splits.train}")
 
     data_loader = make_data_loader(
         data_source=pv_data_source,
@@ -55,6 +65,8 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
     # Ensure that way we always have the same valid set, no matter the batch size (for this we need
     # to have only whole batches).
     assert limit % batch_size == 0
+
+    _log.info(f"Validating on split: {splits.valid}")
 
     valid_data_loader = make_data_loader(
         data_source=pv_data_source,

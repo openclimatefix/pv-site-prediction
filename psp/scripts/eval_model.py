@@ -1,10 +1,12 @@
 import datetime
 import importlib
+import logging
 import pickle
 
 import click
 import numpy as np
 import pandas as pd
+import torch
 import tqdm
 
 from psp.ml.dataset import split_train_test
@@ -24,6 +26,8 @@ METRICS: dict[str, Metric] = {
     "mae": mean_absolute_error,
 }
 
+_log = logging.getLogger(__name__)
+
 
 @click.command()
 @exp_root_opt
@@ -38,6 +42,11 @@ METRICS: dict[str, Metric] = {
     help="Maximum number of samples to consider.",
 )
 def main(exp_root, exp_name, exp_config_name, num_workers, limit):
+
+    # This fixes problems when loading files in parallel on GCP.
+    # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
+    # https://github.com/fsspec/gcsfs/issues/379
+    torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module(
         "." + exp_config_name, "psp.ml.exp_configs"
@@ -61,6 +70,8 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     # save in the model details about the training and check them here.
     splits = split_train_test(pv_data_source)
     test_split = splits.test
+
+    _log.info(f"Testing on split: {test_split}")
 
     random_state = np.random.RandomState(1234)
 

@@ -154,6 +154,12 @@ class DatasetSplit:
     end_ts: datetime
     pv_ids: list[PvId]
 
+    def __repr__(self) -> str:
+        return (
+            f"<DataSplit pv_ids=<len={len(self.pv_ids)} start_ts={self.start_ts}"
+            f" end_ts={self.end_ts}>"
+        )
+
 
 # A list of SS_ID that don't contain enough data.
 # I just didn't want to calculate them everytime.
@@ -296,7 +302,11 @@ def split_train_test(
 ) -> Splits:
     # Note: Currently we hard-code a bunch of stuff in here, at some point we might want to make
     # some customizable.
-    train_start = datetime(2018, 1, 1)
+
+    # Starting in 2020 because we only have NWP data from 2020.
+    # TODO Get the NWP data for 2018 and 2019.
+    # train_start = datetime(2018, 1, 1)
+    train_start = datetime(2020, 1, 1)
     # Leaving a couple of days at the end to be safe.
     train_end = datetime(2020, 12, 29)
 
@@ -312,8 +322,9 @@ def split_train_test(
     test_pv_ids = set(pv_id for pv_id in pv_ids if pv_id % 10 == 0)
 
     # We use the same time range for train and valid.
-    # 10% of the train set will be the valid set.
-    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if pv_id % 100 == 0)
+    # But we take some of the pv_ids.
+    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if pv_id % 13 == 1)
+
     # Remove those from the train set.
     train_pv_ids = train_pv_ids.difference(valid_pv_ids)
 

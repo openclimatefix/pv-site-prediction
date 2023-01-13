@@ -3,12 +3,11 @@ import datetime
 import pathlib
 from typing import TypeVar, overload
 
-import numpy as np
-import pandas as pd
 import xarray as xr
 
 from psp.data.uk_pv import C
 from psp.ml.typings import PvId, Timestamp
+from psp.utils.dates import to_pydatetime
 
 # https://peps.python.org/pep-0673/
 _Self = TypeVar("_Self", bound="PvDataSource")
@@ -76,11 +75,6 @@ def _min(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
             return min(a, b)
 
 
-# https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64
-def _to_py_datetime(x: np.datetime64) -> datetime.datetime:
-    return pd.Timestamp(x).to_pydatetime()
-
-
 class NetcdfPvDataSource(PvDataSource):
     # This constructor is used when copying.
     @overload
@@ -132,11 +126,11 @@ class NetcdfPvDataSource(PvDataSource):
         return list(self._data.coords["id"].values)
 
     def min_ts(self):
-        ts = _to_py_datetime(self._data.coords["ts"].min().values)  # type:ignore
+        ts = to_pydatetime(self._data.coords["ts"].min().values)  # type:ignore
         return _min(ts, self._max_ts)
 
     def max_ts(self):
-        ts = _to_py_datetime(self._data.coords["ts"].max().values)  # type:ignore
+        ts = to_pydatetime(self._data.coords["ts"].max().values)  # type:ignore
         return _min(ts, self._max_ts)
 
     def without_future(self, ts: Timestamp, *, blackout: int = 0):

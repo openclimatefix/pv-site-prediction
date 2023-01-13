@@ -1,9 +1,9 @@
 import functools
+from operator import itemgetter
 from typing import Callable
 
 import numpy as np
 from torch.utils.data import DataLoader
-from torchdata.dataloader2 import DataLoader2, MultiProcessingReadingService
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
@@ -167,8 +167,12 @@ def make_data_loader(
     if batch_size is not None:
         datapipe = datapipe.batch(batch_size, wrapper_class=_batch)
 
-    data_loader: DataLoader2[Sample] = DataLoader2(
-        datapipe, reading_service=MultiProcessingReadingService(num_workers=num_workers)
+    data_loader: DataLoader[Sample] = DataLoader(
+        datapipe,
+        num_workers=num_workers,
+        # We deal with the batches ourselves.
+        batch_size=1,
+        collate_fn=itemgetter(0),
     )
 
     return data_loader

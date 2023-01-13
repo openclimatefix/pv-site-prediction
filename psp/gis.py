@@ -1,5 +1,7 @@
 from math import cos, radians, sqrt
-from typing import Sequence
+from typing import Sequence, Tuple
+
+import numpy as np
 
 # Radius of the earth in meters.
 EARTH_RADIUS = 6371_000
@@ -22,3 +24,57 @@ def approx_distance(lat_lon1: Sequence[float], lat_lon2: Sequence[float]) -> flo
     dx = EARTH_RADIUS * (lon2 - lon1) * cos(lat)
 
     return sqrt(dx**2 + dy**2)
+
+
+def _parse_list_of_points(x: np.ndarray | list[float]) -> Tuple[bool, np.ndarray]:
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    # Make sure we have an (n, 2)-shaped array.
+    if len(x.shape) == 1:
+        was_1d = True
+        x = np.atleast_2d(x)
+    else:
+        was_1d = False
+
+    # Make mypy happy.
+    assert isinstance(x, np.ndarray)
+
+    assert len(x.shape) == 2
+    assert x.shape[1] == 2
+
+    return was_1d, x
+
+
+def approx_add_meters_to_lat_lon(
+    lat_lon: np.ndarray | list[float],
+    delta_meters: np.ndarray | list[float],
+) -> np.ndarray:
+    """Approximately add [y, x] meters to a matrix of [lat, lon].
+
+    We assume that earth is a perfect sphere and that displacements are small enough as for the
+    earth to feel flat.
+    This should be fine for small values of `meters`.
+    """
+    was_1d_1, lat_lon = _parse_list_of_points(lat_lon)
+    was_1d_2, delta_meters = _parse_list_of_points(delta_meters)
+
+    assert isinstance(lat_lon, np.ndarray)
+
+    lat_rad = np.radians(lat_lon[:, 1]).reshape(-1, 1)
+
+    cos_lat = np.cos(lat_rad)
+
+    delta_x_rad = delta_meters[:, 1].reshape(-1, 1) / EARTH_RADIUS / cos_lat
+    delta_y_rad = delta_meters[:, 0].reshape(-1, 1) / EARTH_RADIUS
+
+    delta_x = np.degrees(delta_x_rad)
+    delta_y = np.degrees(delta_y_rad) * np.ones_like(delta_x)
+
+    delta = np.hstack([delta_y, delta_x])
+
+    out = lat_lon + delta
+
+    if was_1d_1 and was_1d_2:
+        out = out[0]
+
+    return out
