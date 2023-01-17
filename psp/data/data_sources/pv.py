@@ -5,7 +5,6 @@ from typing import TypeVar, overload
 
 import xarray as xr
 
-from psp.data.uk_pv import C
 from psp.ml.typings import PvId, Timestamp
 from psp.utils.dates import to_pydatetime
 
@@ -103,7 +102,7 @@ class NetcdfPvDataSource(PvDataSource):
 
     def _open(self):
         self._data = xr.open_dataset(self._path).rename(
-            {C.power: "power", C.date: "ts", C.id: "id"}
+            {"generation_wh": "power", "timestamp": "ts", "ss_id": "id"}
         )
 
     def get(
