@@ -111,15 +111,8 @@ class NetcdfPvDataSource(PvDataSource):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
-        pv_ids_list: list[PvId]
-        if isinstance(pv_ids, PvId):
-            pv_ids_list = [pv_ids]
-        else:
-            pv_ids_list = pv_ids
-
         end_ts = _min(self._max_ts, end_ts)
-
-        return self._data.sel(id=pv_ids_list, ts=slice(start_ts, end_ts))
+        return self._data.sel(id=pv_ids, ts=slice(start_ts, end_ts))
 
     def list_pv_ids(self):
         return list(self._data.coords["id"].values)
