@@ -65,3 +65,17 @@ class PvSiteModel(abc.ABC):
         For instance defining data sources.
         """
         pass
+
+    def get_state(self):
+        """Return the necessary fields of the class for serialization.
+
+        This is used by `psp.ml.serialization` to load and save the model.
+
+        We need a different hook than `__getstate__` because sometimes we want to customize the
+        model serialization and the default pickling in different ways. An example of this is that
+        we want pytorch's `DataLoader` to pickle our model alongside its data sources, but when we
+        serialize a model, we don't want them.
+
+        This is meant to be overridden in children classes if a custom behaviour is needed.
+        """
+        return self.__dict__.copy()

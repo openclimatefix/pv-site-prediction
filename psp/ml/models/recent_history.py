@@ -184,10 +184,12 @@ class RecentHistoryModel(PvSiteModel):
         self._pv_data_source = setup_config.pv_data_source
         self._nwp_data_source = setup_config.nwp_data_source
 
-    def __getstate__(self):
-        d = self.__dict__.copy()
+    def get_state(self):
+        state = self.__dict__.copy()
         # Do not save the data sources. Those should be set when loading the model using the `setup`
         # function.
-        del d["_pv_data_source"]
-        del d["_nwp_data_source"]
-        return d
+        # We can't put that in __getstate__ directly because we need it when the model is pickled
+        # for multiprocessing.
+        del state["_pv_data_source"]
+        del state["_nwp_data_source"]
+        return state

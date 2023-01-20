@@ -1,12 +1,12 @@
 import importlib
 import logging
-import pickle
 
 import click
 import numpy as np
 import torch
 
 from psp.ml.dataset import split_train_test
+from psp.ml.serialization import save_model
 from psp.ml.training import make_data_loader
 from psp.scripts._options import (
     exp_config_opt,
@@ -86,8 +86,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
 
     output_dir = exp_root / exp_name
     output_dir.mkdir(exist_ok=True)
-    with open(output_dir / "model.pkl", "wb") as f:
-        pickle.dump(model, f)
+    save_model(model, output_dir / "model.pkl")
 
 
 if __name__ == "__main__":

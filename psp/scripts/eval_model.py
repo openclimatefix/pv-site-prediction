@@ -1,7 +1,6 @@
 import datetime
 import importlib
 import logging
-import pickle
 
 import click
 import numpy as np
@@ -11,7 +10,7 @@ import tqdm
 
 from psp.ml.dataset import split_train_test
 from psp.ml.metrics import Metric, mean_absolute_error
-from psp.ml.models.base import PvSiteModel
+from psp.ml.serialization import load_model
 from psp.ml.training import make_data_loader
 from psp.scripts._options import (
     exp_config_opt,
@@ -58,8 +57,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
 
     # Load the saved model.
     model_path = exp_root / exp_name / "model.pkl"
-    with open(model_path, "rb") as f:
-        model: PvSiteModel = pickle.load(f)
+    model = load_model(model_path)
 
     # Model-specifi setup.
     model.setup(setup_config)
