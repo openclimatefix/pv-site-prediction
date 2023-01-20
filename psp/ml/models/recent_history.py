@@ -37,11 +37,13 @@ class RecentHistoryModel(PvSiteModel):
         setup_config: SetupConfig,
         regressor: Regressor,
         use_nwp: bool = True,
+        nwp_variables: list[str] | None = None,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
         self._regressor = regressor
         self._use_nwp = use_nwp
+        self._nwp_variables = nwp_variables
 
         self.setup(setup_config)
 
@@ -149,7 +151,9 @@ class RecentHistoryModel(PvSiteModel):
                 load=True,
             )
             nwp_data_per_future = nwp_data.get(future_ts)
-            for variable in self._nwp_data_source.list_variables():
+            for variable in (
+                self._nwp_variables or self._nwp_data_source.list_variables()
+            ):
                 var_per_future = nwp_data_per_future.sel(variable=variable).values
                 time_of_day_feats_arr[variable] = var_per_future
 
