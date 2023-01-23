@@ -56,7 +56,7 @@ class PvDataSource(abc.ABC):
         pass
 
 
-def _min(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
+def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
     """Util function to calculate the minimum between two timestamps that supports `None`.
 
     `None` values are assumed to be greater always.
@@ -111,7 +111,7 @@ class NetcdfPvDataSource(PvDataSource):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
-        end_ts = _min(self._max_ts, end_ts)
+        end_ts = min_timestamp(self._max_ts, end_ts)
         return self._data.sel(id=pv_ids, ts=slice(start_ts, end_ts))
 
     def list_pv_ids(self):
@@ -119,15 +119,17 @@ class NetcdfPvDataSource(PvDataSource):
 
     def min_ts(self):
         ts = to_pydatetime(self._data.coords["ts"].min().values)  # type:ignore
-        return _min(ts, self._max_ts)
+        return min_timestamp(ts, self._max_ts)
 
     def max_ts(self):
         ts = to_pydatetime(self._data.coords["ts"].max().values)  # type:ignore
-        return _min(ts, self._max_ts)
+        return min_timestamp(ts, self._max_ts)
 
     def without_future(self, ts: Timestamp, *, blackout: int = 0):
         now = ts - datetime.timedelta(minutes=blackout) - datetime.timedelta(seconds=1)
-        return NetcdfPvDataSource(self._path, self._data, _min(self._max_ts, now))
+        return NetcdfPvDataSource(
+            self._path, self._data, min_timestamp(self._max_ts, now)
+        )
 
     def __getstate__(self):
         d = self.__dict__.copy()
