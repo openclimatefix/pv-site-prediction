@@ -2,11 +2,9 @@
 
 import logging
 
-import astral
-import astral.sun
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class C:
@@ -29,7 +27,7 @@ def filter_rows(pv: pd.DataFrame, mask: pd.Series, text: str | None = None):
     s = f"Removed {n1 - n2} ({(n1 - n2) / n1 * 100:.1f}%) rows."
     if text:
         s += f" [{text}]"
-    logger.info(s)
+    _log.info(s)
 
     return pv
 
@@ -50,6 +48,13 @@ def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
 
     FIXME This takes just too long to run.
     """
+    try:
+        import astral
+        import astral.sun
+    except ImportError:
+        _log.error("You need to install `astral` to use `remove_nights`.")
+        raise
+
     lat_lon_map = {
         row[C.id]: (row[C.lat], row[C.lon]) for _, row in metadata.iterrows()
     }
