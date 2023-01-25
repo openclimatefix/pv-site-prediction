@@ -5,6 +5,8 @@ description = "Photovoltaic per site modeling"
 authors = ["Simon Lemieux <1105380+simlmx@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
+include = ["psp/py.typed"]
+
 
 [tool.poetry.dependencies]
 python = "^3.10,<3.12"
