@@ -1,6 +1,8 @@
 import pathlib
 import pickle
 
+import fsspec
+
 from psp.ml.models.base import PvSiteModel
 
 
@@ -18,7 +20,8 @@ def save_model(model: PvSiteModel, filepath: pathlib.Path | str):
 
 
 def load_model(filepath: pathlib.Path | str) -> PvSiteModel:
-    with open(filepath, "rb") as f:
+    # Use fsspec to support loading models from the cloud, using paths like "s3://..".
+    with fsspec.open(str(filepath), "rb") as f:
         (cls, attrs) = pickle.load(f)
 
     obj = cls.__new__(cls)
