@@ -4,8 +4,7 @@ from typing import Any, Mapping, Tuple
 
 import numpy as np
 
-# TODO those should probably be strings in general.
-PvId = int
+PvId = str
 
 Timestamp = datetime.datetime
 

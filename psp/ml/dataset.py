@@ -317,13 +317,13 @@ def split_train_test(
     pv_ids = pv_ids.difference(SKIP_SS_IDS)
 
     # Train on 90%.
-    train_pv_ids = set(pv_id for pv_id in pv_ids if pv_id % 10 > 0)
+    train_pv_ids = set(pv_id for pv_id in pv_ids if hash(pv_id) % 10 > 0)
     # Train on the remaining 10%.
-    test_pv_ids = set(pv_id for pv_id in pv_ids if pv_id % 10 == 0)
+    test_pv_ids = set(pv_id for pv_id in pv_ids if hash(pv_id) % 10 == 0)
 
     # We use the same time range for train and valid.
     # But we take some of the pv_ids.
-    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if pv_id % 13 == 1)
+    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if hash(pv_id) % 13 == 1)
 
     # Remove those from the train set.
     train_pv_ids = train_pv_ids.difference(valid_pv_ids)
