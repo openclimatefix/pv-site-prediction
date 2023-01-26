@@ -31,6 +31,8 @@ def test_remove_nights():
         }
     )
 
+    df[C.id] = df[C.id].astype(str)
+
     meta = pd.DataFrame(
         {
             C.id: [0, 1, 2, 3, 4, 5],
@@ -38,6 +40,8 @@ def test_remove_nights():
             C.lon: [0, 4, 1, 2, 3, 4],
         }
     )
+
+    meta[C.id] = meta[C.id].astype(str)
 
     df2 = remove_nights(df, meta)
 
@@ -50,6 +54,9 @@ def _ts(d, h):
 
 
 def _from_records(rec):
+    # Make sure the ids are strings.
+    rec = [[str(x[0])] + x[1:] for x in rec]
+
     return pd.DataFrame.from_records(rec, columns=[C.id, C.date, C.power]).set_index(
         [C.id, C.date]
     )
