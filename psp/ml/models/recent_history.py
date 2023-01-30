@@ -89,9 +89,13 @@ class RecentHistoryModel(PvSiteModel):
             x.ts, blackout=self.config.blackout
         )
 
+        yesterday = x.ts - timedelta(days=1)
+        yesterday_midnight = to_midnight(yesterday)
+
+        # Slice as much as we can right away.
         data = data_source.get(
             pv_ids=x.pv_id,
-            start_ts=x.ts - timedelta(days=30),
+            start_ts=yesterday_midnight,
             end_ts=x.ts,
         )["power"]
 
@@ -124,9 +128,6 @@ class RecentHistoryModel(PvSiteModel):
         factor = coords["factor"].values
         features["irradiance"] = irradiance
         features["factor"] = factor
-
-        yesterday = x.ts - timedelta(days=1)
-        yesterday_midnight = to_midnight(yesterday)
 
         # Get values at the same time of day as the prediction.
 
