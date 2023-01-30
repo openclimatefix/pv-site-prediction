@@ -105,6 +105,9 @@ class NetcdfPvDataSource(PvDataSource):
             {"generation_wh": "power", "timestamp": "ts", "ss_id": "id"}
         )
 
+        # We use `str` types for ids throughout.
+        self._data.coords["id"] = self._data.coords["id"].astype(str)
+
     def get(
         self,
         pv_ids: list[PvId] | PvId,
@@ -115,7 +118,12 @@ class NetcdfPvDataSource(PvDataSource):
         return self._data.sel(id=pv_ids, ts=slice(start_ts, end_ts))
 
     def list_pv_ids(self):
-        return list(self._data.coords["id"].values)
+        out = list(self._data.coords["id"].values)
+
+        if len(out) > 0:
+            assert isinstance(out[0], PvId)
+
+        return out
 
     def min_ts(self):
         ts = to_pydatetime(self._data.coords["ts"].min().values)  # type:ignore
