@@ -29,10 +29,8 @@ class ExpConfig(ExpConfigBase):
 
     @functools.cache
     def _get_model_config(self):
-        interval_size = 15
-        # Start of the inverval in hours.
-        interval_starts = [0.0, 0.5, 2, 4, 6, 8, 12, 18, 24, 30, 36, 42, 48]
-        future_intervals = [(s * 60, s * 60 + interval_size) for s in interval_starts]
+        delta = 15.0
+        future_intervals = [(i * delta, (i + 1) * delta) for i in range(48 * 4)]
         return PvSiteModelConfig(future_intervals=future_intervals, blackout=0)
 
     @functools.cache
@@ -42,4 +40,18 @@ class ExpConfig(ExpConfigBase):
             self.get_model_setup_config(),
             regressor=ForestRegressor(num_train_samples=4096),
             use_nwp=True,
+            # Those are the variables available in our prod environment.
+            nwp_variables=[
+                "si10",
+                "vis",
+                # "r2",
+                "t",
+                "prate",
+                # "sd",
+                "dlwrf",
+                "dswrf",
+                "hcc",
+                "mcc",
+                "lcc",
+            ],
         )
