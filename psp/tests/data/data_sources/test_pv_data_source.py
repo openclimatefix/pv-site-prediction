@@ -40,10 +40,10 @@ def test_pv_data_source_ignore_future(pv_data_source):
     # Without `ignore_future`.
     assert pv_data_source.min_ts() == datetime(2023, 1, 1)
     assert pv_data_source.max_ts() == datetime(2023, 1, 4)
-    assert pv_data_source.list_pv_ids() == [1, 2, 3]
+    assert pv_data_source.list_pv_ids() == "1 2 3".split()
     assert (
         pv_data_source.get(
-            pv_ids=1, start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
+            pv_ids="1", start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
         )["power"].size
         == 2
     )
@@ -54,7 +54,7 @@ def test_pv_data_source_ignore_future(pv_data_source):
     assert new_data_source.max_ts() == datetime(2023, 1, 2, 23, 59, 59)
     assert (
         new_data_source.get(
-            pv_ids=1, start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
+            pv_ids="1", start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
         )["power"].size
         == 1
     )
@@ -62,7 +62,7 @@ def test_pv_data_source_ignore_future(pv_data_source):
     # After the decorator we are back to normal.
     assert (
         pv_data_source.get(
-            pv_ids=1, start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
+            pv_ids="1", start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3)
         )["power"].size
         == 2
     )
