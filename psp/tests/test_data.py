@@ -2,51 +2,7 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from psp.data.uk_pv import C, get_max_power_for_time_of_day, remove_nights
-
-
-def test_remove_nights():
-
-    night1 = pd.Timestamp("2022-1-1 1:00", tz="utc")
-    night2 = pd.Timestamp("2022-1-1 2:00", tz="utc")
-    day1 = pd.Timestamp("2022-1-1 8:00", tz="utc")
-    day2 = pd.Timestamp("2022-1-1 12:00", tz="utc")
-    day3 = pd.Timestamp("2022-1-1 15:00", tz="utc")
-    night3 = pd.Timestamp("2022-1-1 21:00", tz="utc")
-
-    df = pd.DataFrame(
-        {
-            C.power: [0, 0, 1, 2, 3, 4, 4, 5],
-            C.date: [
-                night1,
-                night1,
-                night2,
-                day1,
-                day1,
-                day2,
-                day3,
-                night3,
-            ],
-            C.id: [0, 1, 0, 0, 1, 0, 0, 0],
-        }
-    )
-
-    df[C.id] = df[C.id].astype(str)
-
-    meta = pd.DataFrame(
-        {
-            C.id: [0, 1, 2, 3, 4, 5],
-            C.lat: [0, 1, 1, 2, 3, 4],
-            C.lon: [0, 4, 1, 2, 3, 4],
-        }
-    )
-
-    meta[C.id] = meta[C.id].astype(str)
-
-    df2 = remove_nights(df, meta)
-
-    assert len(df2) == 4
-    assert df2[C.date].tolist() == [day1, day1, day2, day3]
+from psp.data.uk_pv import C, get_max_power_for_time_of_day
 
 
 def _ts(d, h):

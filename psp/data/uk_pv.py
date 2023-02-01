@@ -43,44 +43,6 @@ def trim_pv(pv: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     return pv
 
 
-def remove_nights(pv: pd.DataFrame, metadata: pd.DataFrame) -> pd.DataFrame:
-    """Remove nighttimes.
-
-    FIXME This takes just too long to run.
-    """
-    try:
-        import astral
-        import astral.sun
-    except ImportError:
-        _log.error("You need to install `astral` to use `remove_nights`.")
-        raise
-
-    lat_lon_map = {
-        row[C.id]: (row[C.lat], row[C.lon]) for _, row in metadata.iterrows()
-    }
-
-    pv = pv.iloc[:1_000_000].copy()
-
-    def func(row):
-        ss_id = row[C.id]
-        try:
-            lat, lon = lat_lon_map[ss_id]
-        except KeyError:
-            return False
-        date = row[C.date].to_pydatetime()
-
-        obs = astral.Observer(latitude=lat, longitude=lon)
-        sun_info = astral.sun.sun(obs, date)
-        dawn = sun_info["dawn"]
-        dusk = sun_info["dusk"]
-
-        return dawn <= date <= dusk
-
-    mask = pv.apply(func, axis=1)
-
-    return pv.loc[mask]
-
-
 def get_max_power_for_time_of_day(
     df: pd.DataFrame, *, radius: int = 7, min_records: int = 0
 ) -> pd.DataFrame:
