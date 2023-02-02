@@ -1,0 +1,11 @@
+on:
+  pull_request:
+jobs:
+  lint_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: snok/install-poetry@v1
+      - run: make init
+      - run: make lint
+      - run: make test
