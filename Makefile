@@ -19,6 +19,13 @@ format:
 	poetry run isort $(SRC)
 
 
+# Same as `format` but without editing the files. Useful for CI.
+.PHONY: check-format
+check-format:
+	poetry run black --check $(SRC)
+	poetry run isort --check $(SRC)
+
+
 .PHONY: lint
 lint:
 	poetry run flake8 $(SRC)

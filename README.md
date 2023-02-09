@@ -42,8 +42,11 @@ Unit tests.
     # Installation of the dependencies.
     make init
 
-    # Formatting and linting.
+    # Formatting
     make format
+
+    # Linting
+    make check-format
     make lint
 
     # Running the tests.

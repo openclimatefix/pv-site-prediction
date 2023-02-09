@@ -8,4 +8,5 @@ jobs:
       - uses: snok/install-poetry@v1
       - run: make init
       - run: make lint
+      - run: make check-format
       - run: make test
