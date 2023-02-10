@@ -25,7 +25,12 @@ _log = logging.getLogger(__name__)
 @exp_config_opt
 @num_workers_opt
 @click.option("-b", "--batch-size", default=32)
-def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
+@click.option(
+    "--log-level", type=str, help="Debug level", default="info", show_default=True
+)
+def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level: str):
+
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
@@ -90,5 +95,4 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     main()
