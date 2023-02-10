@@ -64,6 +64,7 @@ profile = "black"
 check_untyped_defs = true
 # Too many packages have missing stubs.
 ignore_missing_imports = true
+warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = 'astral.*'
