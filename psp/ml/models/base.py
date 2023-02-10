@@ -69,7 +69,7 @@ class PvSiteModel(abc.ABC):
     def get_state(self):
         """Return the necessary fields of the class for serialization.
 
-        This is used by `psp.ml.serialization` to load and save the model.
+        This is used by `psp.ml.serialization` to save the model.
 
         We need a different hook than `__getstate__` because sometimes we want to customize the
         model serialization and the default pickling in different ways. An example of this is that
@@ -79,3 +79,12 @@ class PvSiteModel(abc.ABC):
         This is meant to be overridden in children classes if a custom behaviour is needed.
         """
         return self.__dict__.copy()
+
+    def set_state(self, state: dict[str, Any]):
+        """Set the state of `self` using fields from `state`.
+
+        This is used by `psp.ml.serialization` to load the model.
+
+        This can be overriden in children classes.
+        """
+        self.__dict__.update(state)

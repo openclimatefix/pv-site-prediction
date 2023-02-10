@@ -24,7 +24,7 @@ def load_model(filepath: pathlib.Path | str) -> PvSiteModel:
     with fsspec.open(str(filepath), "rb") as f:
         (cls, attrs) = pickle.load(f)
 
-    obj = cls.__new__(cls)
-    obj.__dict__.update(attrs)
+    model = cls.__new__(cls)
+    model.set_state(attrs)
 
-    return obj
+    return model

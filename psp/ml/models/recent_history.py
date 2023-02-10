@@ -50,6 +50,10 @@ class RecentHistoryModel(PvSiteModel):
         if use_nwp:
             assert self._nwp_data_source is not None
 
+        # We bump this when we make backward-incompatible changes in the code, to support old
+        # serialized models.
+        self._version = 1
+
         super().__init__(config, setup_config)
 
     def predict_from_features(self, features: Features) -> Y:
@@ -194,3 +198,10 @@ class RecentHistoryModel(PvSiteModel):
         del state["_pv_data_source"]
         del state["_nwp_data_source"]
         return state
+
+    def set_state(self, state):
+        if "_version" not in state:
+            raise RuntimeError(
+                "You are trying to load an older model with more recent code"
+            )
+        super().set_state(state)
