@@ -37,12 +37,16 @@ def _slice_on_lat_lon(
         assert max_lat is not None
         assert max_lon is not None
 
+        assert max_lat >= min_lat
+        assert max_lon >= min_lon
+
         point1, point2 = _to_osgb([(min_lat, min_lon), (max_lat, max_lon)])
         min_x, min_y = point1
         max_x, max_y = point2
 
         # Type ignore because this is still simpler than addin some `@overload`.
-        return data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))  # type: ignore
+        # Note the reversed min_y and max_y. This is because in NWP data, the Y is reversed.
+        return data.sel(x=slice(min_x, max_x), y=slice(max_y, min_y))  # type: ignore
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = _to_osgb([(nearest_lat, nearest_lon)])

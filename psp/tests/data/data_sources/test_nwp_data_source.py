@@ -32,6 +32,9 @@ def nwp_data_source(tmp_path):
 
     xs, ys = list(zip(*_to_osgb_transformer.itransform(zip(lats, lons))))
 
+    # In NWP data, the Y coordinates are reversed.
+    ys = list(reversed(ys))
+
     init_times = [T0, T1, T2]
 
     # Predictions for the next 2 hours (including one for right now).

@@ -1,6 +1,6 @@
 """Neural net regressor.
 
-*** Warning: work in progress ***
+*** Warning: work in progress and not well maintained ***
 
 Initially used in the `RecentHistoryModel`
 but swapped for decision trees which were simpler to optimize.
@@ -14,7 +14,7 @@ import tqdm
 from torch import nn
 
 from psp.ml.models.regressors.base import Regressor
-from psp.ml.typings import Batch, BatchedFeatures, FutureIntervals
+from psp.ml.typings import Batch, BatchedFeatures, Features, FutureIntervals
 from psp.utils.maths import MeanAggregator, safe_div
 
 
@@ -134,7 +134,7 @@ class NNRegressor(Regressor):
 
             train_loss_agg.add(loss.item())
 
-    def predict(self, features: BatchedFeatures):
+    def predict(self, features: Features):
         per_future = torch.tensor(features["per_future"], dtype=torch.float32)
         per_future = per_future.unsqueeze(0)
         common = torch.tensor(features["common"], dtype=torch.float32).unsqueeze(0)

@@ -5,7 +5,7 @@ from typing import Iterator
 
 import numpy as np
 
-from psp.ml.typings import Batch, BatchedFeatures
+from psp.ml.typings import Batch, Features
 
 
 class Regressor(abc.ABC):
@@ -16,5 +16,8 @@ class Regressor(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def predict(self, features: BatchedFeatures) -> np.ndarray:
+    def predict(self, features: Features) -> np.ndarray:
         pass
+
+    def explain(self, features: Features, feature_names: dict[str, list[str]]):
+        raise NotImplementedError

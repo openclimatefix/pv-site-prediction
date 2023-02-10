@@ -1,6 +1,9 @@
-from typing import overload
+from typing import TypeVar, overload
 
 import numpy as np
+import xarray as xr
+
+T = TypeVar("T", bound=np.ndarray | xr.DataArray)
 
 
 @overload
@@ -9,12 +12,12 @@ def safe_div(num: float, den: float) -> float:
 
 
 @overload
-def safe_div(num: np.ndarray, den: np.ndarray | float) -> np.ndarray:
+def safe_div(num: T, den: T | float) -> T:
     ...
 
 
 @overload
-def safe_div(num: np.ndarray | float, den: np.ndarray) -> np.ndarray:
+def safe_div(num: T | float, den: T) -> T:
     ...
 
 

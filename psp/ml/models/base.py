@@ -2,7 +2,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Iterator
+from typing import Any, Iterator, Tuple
 
 from psp.ml.typings import Batch, Features, FutureIntervals, X, Y
 
@@ -48,6 +48,20 @@ class PvSiteModel(abc.ABC):
         This step will be run in parallel by our data pipelines.
         """
         pass
+
+    def get_features_with_names(self, x: X) -> Tuple[Features, dict[str, list[str]]]:
+        """Like `get_features` but also return data representing the names of the features.
+
+        This is useful when debugging the model.
+        """
+        # The default implementation doesn't return any names, but you can customize this in
+        # subclasses.
+        return self.get_features(x), {}
+
+    # TODO Define the output type when we better understand what we need here.
+    def explain(self, x: X):
+        """Return some explanation of what the model does on input `x`."""
+        raise NotImplementedError
 
     @property
     def config(self):

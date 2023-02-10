@@ -25,6 +25,7 @@ class YesterdayPvSiteModel(PvSiteModel):
 
     def predict_from_features(self, features: Features) -> Y:
         powers = features["yesterday_means"]
+        assert isinstance(powers, np.ndarray)
         return Y(powers=powers)
 
     def get_features(self, x: X) -> Features:

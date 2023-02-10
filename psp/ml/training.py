@@ -8,16 +8,8 @@ from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
 from psp.ml.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
-from psp.ml.typings import (
-    Batch,
-    BatchedFeatures,
-    BatchedX,
-    BatchedY,
-    Features,
-    FutureIntervals,
-    Sample,
-    X,
-)
+from psp.ml.typings import Features, FutureIntervals, Sample, X
+from psp.utils.batches import batch_samples
 
 
 def _is_not_none(x):
@@ -53,20 +45,6 @@ class _Limit(IterDataPipe):
             if i >= self._limit:
                 return
             yield x
-
-
-def _batch(samples: list[Sample]) -> Batch:
-    assert len(samples) > 0
-    x = BatchedX(
-        pv_id=[s.x.pv_id for s in samples],
-        ts=[s.x.ts for s in samples],
-    )
-    y = BatchedY(powers=np.stack([s.y.powers for s in samples]))
-    features: BatchedFeatures = {
-        key: np.stack([sample.features[key] for sample in samples])
-        for key in samples[0].features
-    }
-    return Batch(x=x, y=y, features=features)
 
 
 def _build_sample(
@@ -165,7 +143,7 @@ def make_data_loader(
         )
 
     if batch_size is not None:
-        datapipe = datapipe.batch(batch_size, wrapper_class=_batch)
+        datapipe = datapipe.batch(batch_size, wrapper_class=batch_samples)
 
     data_loader: DataLoader[Sample] = DataLoader(
         datapipe,

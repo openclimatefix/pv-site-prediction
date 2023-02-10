@@ -58,7 +58,7 @@ class RecentHistoryModel(PvSiteModel):
 
     def predict_from_features(self, features: Features) -> Y:
         pred = self._regressor.predict(features)
-        powers = pred * features["factor"] * features["irradiance"]
+        powers = pred * features["factor"] * features["poa_global"]
         y = Y(powers=powers)
         return y
 
@@ -68,7 +68,7 @@ class RecentHistoryModel(PvSiteModel):
         yesterday_midnight: datetime,
         future_interval: Tuple[float, float],
         data: xr.DataArray,
-    ):
+    ) -> float:
 
         start, end = future_interval
 
@@ -80,15 +80,24 @@ class RecentHistoryModel(PvSiteModel):
 
         # By default xarray ignores `nan` and returns `nan` for an empty list, which is
         # what we want.
-        mean_power = data.sel(ts=slice(t0, t1)).mean().values
+        mean_power = float(data.sel(ts=slice(t0, t1)).mean().values)
 
-        if np.isnan(mean_power):
-            return 0.0
-        else:
-            return mean_power
+        return mean_power
+
+    def get_features_with_names(self, x: X) -> Tuple[Features, dict[str, list[str]]]:
+        features_with_names = self._get_features(x, with_names=True)
+        assert isinstance(features_with_names, tuple)
+        return features_with_names
 
     def get_features(self, x: X) -> Features:
-        features = dict()
+        features = self._get_features(x, with_names=False)
+        assert not isinstance(features, tuple)
+        return features
+
+    def _get_features(
+        self, x: X, with_names: bool
+    ) -> Features | Tuple[Features, dict[str, list[str]]]:
+        features: Features = dict()
         data_source = self._pv_data_source.without_future(
             x.ts, blackout=self.config.blackout
         )
@@ -124,26 +133,32 @@ class RecentHistoryModel(PvSiteModel):
         )
 
         # TODO Should we use the other values from `get_irradiance` other than poa_global?
-        irradiance = irr.loc[:, "poa_global"].to_numpy()
+        poa_global: np.ndarray = irr.loc[:, "poa_global"].to_numpy()
 
-        irr_now = irradiance[-1]
-        irradiance = irradiance[:-1]
+        irr_now = poa_global[-1]
+        poa_global = poa_global[:-1]
 
         factor = coords["factor"].values
-        features["irradiance"] = irradiance
+        features["poa_global"] = poa_global
         features["factor"] = factor
 
         # Get values at the same time of day as the prediction.
 
         yesterday_means = []
+        yesterday_means_is_nan = []
         for i, interval in enumerate(self._config.future_intervals):
             yesterday_mean = self._get_time_of_day_stats(
                 x, yesterday_midnight, interval, data
             )
-            yesterday_means.append(yesterday_mean)
+            is_nan = np.isnan(yesterday_mean)
+            yesterday_means_is_nan.append(is_nan)
+
+            yesterday_means.append(0.0 if is_nan else yesterday_mean)
 
         time_of_day_feats_arr: dict[str, np.ndarray] = {
-            "yesterday_mean": safe_div(np.array(yesterday_means), irradiance * factor)
+            "yesterday_mean": safe_div(np.array(yesterday_means), poa_global * factor),
+            "yesterday_mean_is_nan": np.array(yesterday_means_is_nan, dtype=float),
+            "poa_global": poa_global,
         }
 
         # Consider the NWP data in a small region around around our PV.
@@ -156,9 +171,10 @@ class RecentHistoryModel(PvSiteModel):
                 load=True,
             )
             nwp_data_per_future = nwp_data.get(future_ts)
-            for variable in (
+            nwp_variables = (
                 self._nwp_variables or self._nwp_data_source.list_variables()
-            ):
+            )
+            for variable in nwp_variables:
                 var_per_future = nwp_data_per_future.sel(variable=variable).values
                 time_of_day_feats_arr[variable] = var_per_future
 
@@ -177,13 +193,27 @@ class RecentHistoryModel(PvSiteModel):
 
         features["per_future"] = per_future
         features["common"] = np.array([recent_power, is_nan])
-
-        return features
+        if with_names:
+            return (
+                features,
+                {
+                    "per_future": list(time_of_day_feats_arr.keys()),
+                    "common": ["recent_power", "is_nan"],
+                },
+            )
+        else:
+            return features
 
     def train(
         self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
     ):
         self._regressor.train(train_iter, valid_iter, batch_size)
+
+    def explain(self, x: X):
+        """Return the internal regressor's explain."""
+        features, feature_names = self.get_features_with_names(x)
+        explanation = self._regressor.explain(features, feature_names)
+        return explanation
 
     def setup(self, setup_config: SetupConfig):
         self._pv_data_source = setup_config.pv_data_source

@@ -1,6 +1,6 @@
 import dataclasses
 import datetime
-from typing import Any, Mapping, Tuple
+from typing import Mapping, Tuple
 
 import numpy as np
 
@@ -31,7 +31,7 @@ class Y:
     powers: np.ndarray
 
 
-Features = Mapping[str, Any]
+Features = dict[str, np.ndarray | float | int]
 
 
 @dataclasses.dataclass
