@@ -8,7 +8,7 @@ from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
 from psp.ml.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
-from psp.ml.typings import Features, FutureIntervals, Sample, X
+from psp.ml.typings import Features, Horizons, Sample, X
 from psp.utils.batches import batch_samples
 
 
@@ -50,11 +50,11 @@ class _Limit(IterDataPipe):
 def _build_sample(
     x: X,
     *,
-    future_intervals: FutureIntervals,
+    horizons: Horizons,
     data_source: PvDataSource,
     get_features: Callable[[X], Features],
 ) -> Sample | None:
-    y = get_y_from_x(x, future_intervals=future_intervals, data_source=data_source)
+    y = get_y_from_x(x, horizons=horizons, data_source=data_source)
 
     # Skip the heavy computation if the target doesn't make sense.
     if y is None:
@@ -68,7 +68,7 @@ def _build_sample(
 def make_data_loader(
     *,
     data_source: PvDataSource,
-    future_intervals: FutureIntervals,
+    horizons: Horizons,
     split: DatasetSplit,
     get_features: Callable[[X], Features],
     prob_keep_sample: float = 1.0,
@@ -94,7 +94,7 @@ def make_data_loader(
         assert random_state is not None
         pvx_datapipe = RandomPvXDataPipe(
             data_source=data_source,
-            future_intervals=future_intervals,
+            horizons=horizons,
             random_state=random_state,
             pv_ids=split.pv_ids,
             start_ts=split.start_ts,
@@ -104,7 +104,7 @@ def make_data_loader(
     else:
         pvx_datapipe = PvXDataPipe(
             data_source=data_source,
-            future_intervals=future_intervals,
+            horizons=horizons,
             pv_ids=split.pv_ids,
             start_ts=split.start_ts,
             end_ts=split.end_ts,
@@ -126,7 +126,7 @@ def make_data_loader(
     datapipe = pvx_datapipe.map(
         functools.partial(
             _build_sample,
-            future_intervals=future_intervals,
+            horizons=horizons,
             data_source=data_source,
             get_features=get_features,
         )

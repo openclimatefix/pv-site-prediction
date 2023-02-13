@@ -54,37 +54,37 @@ class ForestRegressor(Regressor):
             A numpy array (rows=sample, columns=features) and the name of the columns as a list of
             string.
         """
-        per_future = features["per_future"]
+        per_horizon = features["per_horizon"]
         common = features["common"]
 
-        batch, fut, feat = per_future.shape
+        n_batch, n_horizon, n_features = per_horizon.shape
 
-        # future * (batch, features)
-        per_future_ = np.split(features["per_future"], per_future.shape[1], axis=1)
+        # horizon * (batch, features)
+        per_horizon_ = np.split(features["per_horizon"], per_horizon.shape[1], axis=1)
 
         if feature_names:
-            col_names = feature_names["per_future"]
+            col_names = feature_names["per_horizon"]
 
-        per_future_ = [x.squeeze(1) for x in per_future_]
+        per_horizon_ = [x.squeeze(1) for x in per_horizon_]
 
-        # future * (batch, features + 1)
-        per_future_ = [
+        # horizon * (batch, features + 1)
+        per_horizon_ = [
             np.concatenate([x, np.broadcast_to(i, (x.shape[0], 1))], axis=1)
-            for i, x in enumerate(per_future_)
+            for i, x in enumerate(per_horizon_)
         ]
 
         if feature_names:
             col_names.append("horizon_idx")
 
-        # future * (batch, features + 1 + 2)
-        per_future_ = [np.concatenate([x, common], axis=1) for x in per_future_]
+        # horizon * (batch, features + 1 + 2)
+        per_horizon_ = [np.concatenate([x, common], axis=1) for x in per_horizon_]
 
         if feature_names:
             col_names.extend(["recent_power", "recent_power_is_nan"])
 
-        # (future * batch, features + 1)
-        new_features = np.concatenate(per_future_, axis=0)
-        assert new_features.shape == (fut * batch, feat + 1 + 2)
+        # (horizon * batch, features + 1)
+        new_features = np.concatenate(per_horizon_, axis=0)
+        assert new_features.shape == (n_horizon * n_batch, n_features + 1 + 2)
 
         if feature_names:
             return new_features, col_names
@@ -112,7 +112,7 @@ class ForestRegressor(Regressor):
         # Make it into a (sample, features)-shaped matrix.
         xs = self._prepare_features(batch.features)
 
-        # (batch, future)
+        # (batch, horizon)
         poa = batch.features["poa_global"]
         assert len(poa.shape) == 2
 
@@ -120,7 +120,7 @@ class ForestRegressor(Regressor):
         factor = np.array(batch.features["factor"]).reshape(-1, 1)
         assert factor.shape[0] == poa.shape[0]
 
-        # (batch, future)
+        # (batch, horizon)
         ys = batch.y.powers
 
         # We can ignore the division by zeros, we treat the nan/inf later.
@@ -132,10 +132,10 @@ class ForestRegressor(Regressor):
             # practice ignoring those points seems to help a lot.
             ys = ys / (poa * factor)
 
-        # future * (batch)
+        # horizon * (batch)
         ys_ = np.split(ys, ys.shape[1], axis=1)
         ys_ = [x.squeeze(1) for x in ys_]
-        # (batch * future)
+        # (batch * horizon)
         ys = np.concatenate(ys_, axis=0)
 
         # Remove `nan`, `inf`, etc. from ys.

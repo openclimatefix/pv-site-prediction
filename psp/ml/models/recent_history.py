@@ -66,11 +66,11 @@ class RecentHistoryModel(PvSiteModel):
         self,
         x: X,
         yesterday_midnight: datetime,
-        future_interval: Tuple[float, float],
+        horizon: Tuple[float, float],
         data: xr.DataArray,
     ) -> float:
 
-        start, end = future_interval
+        start, end = horizon
 
         pred_start = x.ts + timedelta(minutes=start)
         pred_start_minutes = minutes_since_start_of_day(pred_start)
@@ -114,8 +114,7 @@ class RecentHistoryModel(PvSiteModel):
 
         coords = data.coords
         future_ts = [
-            x.ts + timedelta(minutes=(f0 + f1) / 2)
-            for f0, f1 in self.config.future_intervals
+            x.ts + timedelta(minutes=(f0 + f1) / 2) for f0, f1 in self.config.horizons
         ]
 
         lat = coords["latitude"].values
@@ -146,7 +145,7 @@ class RecentHistoryModel(PvSiteModel):
 
         yesterday_means = []
         yesterday_means_is_nan = []
-        for i, interval in enumerate(self._config.future_intervals):
+        for i, interval in enumerate(self._config.horizons):
             yesterday_mean = self._get_time_of_day_stats(
                 x, yesterday_midnight, interval, data
             )
@@ -170,16 +169,16 @@ class RecentHistoryModel(PvSiteModel):
                 nearest_lon=lon,
                 load=True,
             )
-            nwp_data_per_future = nwp_data.get(future_ts)
+            nwp_data_per_horizon = nwp_data.get(future_ts)
             nwp_variables = (
                 self._nwp_variables or self._nwp_data_source.list_variables()
             )
             for variable in nwp_variables:
-                var_per_future = nwp_data_per_future.sel(variable=variable).values
-                time_of_day_feats_arr[variable] = var_per_future
+                var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
+                time_of_day_feats_arr[variable] = var_per_horizon
 
-        # Concatenate all the per-future features in a matrix of dimensions (future, features)
-        per_future = np.stack(list(time_of_day_feats_arr.values()), axis=-1)
+        # Concatenate all the per-horizon features in a matrix of dimensions (horizon, features)
+        per_horizon = np.stack(list(time_of_day_feats_arr.values()), axis=-1)
 
         # Get the recent power
         recent_power = float(
@@ -191,13 +190,13 @@ class RecentHistoryModel(PvSiteModel):
 
         recent_power = safe_div(recent_power, irr_now * factor)
 
-        features["per_future"] = per_future
+        features["per_horizon"] = per_horizon
         features["common"] = np.array([recent_power, is_nan])
         if with_names:
             return (
                 features,
                 {
-                    "per_future": list(time_of_day_feats_arr.keys()),
+                    "per_horizon": list(time_of_day_feats_arr.keys()),
                     "common": ["recent_power", "is_nan"],
                 },
             )

@@ -30,8 +30,8 @@ class ExpConfig(ExpConfigBase):
     @functools.cache
     def _get_model_config(self):
         delta = 15.0
-        future_intervals = [(i * delta, (i + 1) * delta) for i in range(48 * 4)]
-        return PvSiteModelConfig(future_intervals=future_intervals, blackout=0)
+        horizons = [(i * delta, (i + 1) * delta) for i in range(48 * 4)]
+        return PvSiteModelConfig(horizons=horizons, blackout=0)
 
     @functools.cache
     def get_model(self) -> PvSiteModel:

@@ -21,7 +21,7 @@ class X:
 # Definition of the times at which we make the predictions.
 # `[[0, 15], [15, 30]]` would mean 2 predictions, one for the next 15 minutes, and one for the
 # following 15 minutes.
-FutureIntervals = list[Tuple[float, float]]
+Horizons = list[Tuple[float, float]]
 
 
 @dataclasses.dataclass

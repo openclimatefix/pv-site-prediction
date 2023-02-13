@@ -76,7 +76,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     # Use a torch DataLoader to create samples efficiently.
     data_loader = make_data_loader(
         data_source=pv_data_source,
-        future_intervals=model.config.future_intervals,
+        horizons=model.config.horizons,
         split=test_split,
         batch_size=None,
         random_state=random_state,
@@ -102,14 +102,14 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
                 for i, (err_value, y, pred) in enumerate(
                     zip(error, y_true.powers, y_pred.powers)
                 ):
-                    future = model.config.future_intervals[i][0]
+                    horizon = model.config.horizons[i][0]
                     error_rows.append(
                         {
                             "pv_id": x.pv_id,
                             "ts": x.ts,
                             "metric": metric_name,
                             "error": err_value,
-                            "future": future,
+                            "horizon": horizon,
                             "y": y,
                             "pred": pred,
                         }

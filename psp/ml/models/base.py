@@ -4,14 +4,14 @@ import abc
 import dataclasses
 from typing import Any, Iterator, Tuple
 
-from psp.ml.typings import Batch, Features, FutureIntervals, X, Y
+from psp.ml.typings import Batch, Features, Horizons, X, Y
 
 
 @dataclasses.dataclass
 class PvSiteModelConfig:
     """Model meta data that all models must define."""
 
-    future_intervals: FutureIntervals
+    horizons: Horizons
     # Blackout in minutes.
     # This is a window of time before the timestamp at which we don't have access to data.
     # This is to simulate a delay in the availability of the data, which can happen in production.

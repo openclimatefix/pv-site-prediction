@@ -14,14 +14,14 @@ import tqdm
 from torch import nn
 
 from psp.ml.models.regressors.base import Regressor
-from psp.ml.typings import Batch, BatchedFeatures, Features, FutureIntervals
+from psp.ml.typings import Batch, BatchedFeatures, Features, Horizons
 from psp.utils.maths import MeanAggregator, safe_div
 
 
 class NN(nn.Module):
-    def __init__(self, num_features: int, num_future: int):
+    def __init__(self, num_features: int, num_horizon: int):
         super().__init__()
-        self._num_future = num_future
+        self._num_horizon = num_horizon
 
         self.stack = nn.Sequential(
             nn.Linear(num_features, 4),
@@ -31,24 +31,24 @@ class NN(nn.Module):
             nn.Linear(2, 1),
         )
 
-    def forward(self, per_future, common):
-        # per_future: (batch, future, f1)
+    def forward(self, per_horizon, common):
+        # per_horizon: (batch, horizon, f1)
         # common: (batch, f2)
 
-        # (batch, future, f2)
+        # (batch, horizon, f2)
         # TODO I know that `Tensor.expand` doesn't allocated new memory. Is it really what we want
         # here? I'm afraid it could be slower than simply copying the data using `Tensor.cat`
-        common = common.unsqueeze(1).expand(-1, self._num_future, -1)
+        common = common.unsqueeze(1).expand(-1, self._num_horizon, -1)
 
-        # (batch, future, f1 + f2)
-        features = torch.cat([per_future, common], 2)
+        # (batch, horizon, f1 + f2)
+        features = torch.cat([per_horizon, common], 2)
 
         return self.stack(features).squeeze(-1)
 
 
 class NNRegressor(Regressor):
-    def __init__(self, num_features: int, future_intervals: FutureIntervals):
-        self._nn = NN(num_features, num_future=len(future_intervals))
+    def __init__(self, num_features: int, horizons: Horizons):
+        self._nn = NN(num_features, num_horizon=len(horizons))
 
     def _batch_to_tensors(self, features: BatchedFeatures, y: np.ndarray, device: str):
         # Start by normalizing the `y` with irradiance and factor.
@@ -72,15 +72,15 @@ class NNRegressor(Regressor):
         self, features: dict[str, np.ndarray], device: str
     ) -> torch.Tensor:
 
-        # (batch, future, features)
-        per_future = torch.tensor(
-            features["per_future"], dtype=torch.float32, device=device
+        # (batch, horizon, features)
+        per_horizon = torch.tensor(
+            features["per_horizon"], dtype=torch.float32, device=device
         )
 
         # (batch, features2)
         common = torch.tensor(features["common"], dtype=torch.float32, device=device)
 
-        return self._nn(per_future, common)
+        return self._nn(per_horizon, common)
 
     # TODO We should probably extract some of this code that could be share with future models.
     # TODO Inject some of the dependencies (optimizer, loss function, etc.)
@@ -135,9 +135,9 @@ class NNRegressor(Regressor):
             train_loss_agg.add(loss.item())
 
     def predict(self, features: Features):
-        per_future = torch.tensor(features["per_future"], dtype=torch.float32)
-        per_future = per_future.unsqueeze(0)
+        per_horizon = torch.tensor(features["per_horizon"], dtype=torch.float32)
+        per_horizon = per_horizon.unsqueeze(0)
         common = torch.tensor(features["common"], dtype=torch.float32).unsqueeze(0)
         self._nn.eval()
-        pred = self._nn(per_future, common).squeeze(0)
+        pred = self._nn(per_horizon, common).squeeze(0)
         return pred.detach().numpy()

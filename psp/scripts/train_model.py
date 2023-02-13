@@ -56,7 +56,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
 
     data_loader = make_data_loader(
         data_source=pv_data_source,
-        future_intervals=model.config.future_intervals,
+        horizons=model.config.horizons,
         split=splits.train,
         batch_size=batch_size,
         get_features=model.get_features,
@@ -75,7 +75,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
 
     valid_data_loader = make_data_loader(
         data_source=pv_data_source,
-        future_intervals=model.config.future_intervals,
+        horizons=model.config.horizons,
         split=splits.valid,
         batch_size=batch_size,
         get_features=model.get_features,

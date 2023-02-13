@@ -7,7 +7,7 @@ import pandas as pd
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.typings import FutureIntervals, PvId, Timestamp, X, Y
+from psp.ml.typings import Horizons, PvId, Timestamp, X, Y
 
 
 class PvXDataPipe(IterDataPipe[X]):
@@ -16,7 +16,7 @@ class PvXDataPipe(IterDataPipe[X]):
     def __init__(
         self,
         data_source: PvDataSource,
-        future_intervals: FutureIntervals,
+        horizons: Horizons,
         pv_ids: list[PvId] | None = None,
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
@@ -31,7 +31,7 @@ class PvXDataPipe(IterDataPipe[X]):
             step: Step used to make samples in time (in minutes).
         """
         self._data_source = data_source
-        self._future_intervals = future_intervals
+        self._horizons = horizons
         self._pv_ids = pv_ids or self._data_source.list_pv_ids()
         self._start_ts = start_ts or self._data_source.min_ts()
         self._end_ts = end_ts or self._data_source.max_ts()
@@ -67,7 +67,7 @@ class RandomPvXDataPipe(PvXDataPipe):
     def __init__(
         self,
         data_source: PvDataSource,
-        future_intervals: FutureIntervals,
+        horizons: Horizons,
         random_state: np.random.RandomState,
         pv_ids: list[PvId] | None = None,
         start_ts: Timestamp | None = None,
@@ -79,7 +79,7 @@ class RandomPvXDataPipe(PvXDataPipe):
             step: Round the timestamp to this many minutes (with 0 seconds and 0 microseconds).
         """
         self._random_state = random_state
-        super().__init__(data_source, future_intervals, pv_ids, start_ts, end_ts, step)
+        super().__init__(data_source, horizons, pv_ids, start_ts, end_ts, step)
 
     def __iter__(self) -> Iterator[X]:
 
@@ -105,19 +105,17 @@ class RandomPvXDataPipe(PvXDataPipe):
             yield X(pv_id=pv_id, ts=ts)
 
 
-def get_y_from_x(
-    x: X, *, future_intervals: FutureIntervals, data_source: PvDataSource
-) -> Y | None:
+def get_y_from_x(x: X, *, horizons: Horizons, data_source: PvDataSource) -> Y | None:
     """Given an input, compute the output.
 
     Return `None` if there is not output - it's simpler to filter those later.
     """
-    min_future = min(i[0] for i in future_intervals)
-    max_future = max(i[1] for i in future_intervals)
+    min_horizon = min(i[0] for i in horizons)
+    max_horizon = max(i[1] for i in horizons)
     data = data_source.get(
         x.pv_id,
-        x.ts + timedelta(minutes=min_future),
-        x.ts + timedelta(minutes=max_future),
+        x.ts + timedelta(minutes=min_horizon),
+        x.ts + timedelta(minutes=max_horizon),
     )["power"]
 
     if data.size == 0:
@@ -126,7 +124,7 @@ def get_y_from_x(
     # Find the targets for that pv/ts.
     # TODO Find a way to vectorize this.
     powers = []
-    for start, end in future_intervals:
+    for start, end in horizons:
         ts0 = pd.Timestamp(x.ts + timedelta(minutes=start))
         ts1 = pd.Timestamp(x.ts + timedelta(minutes=end)) - timedelta(seconds=1)
 

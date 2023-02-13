@@ -15,7 +15,7 @@ from psp.gis import approx_add_meters_to_lat_lon
 from psp.ml.dataset import get_y_from_x
 from psp.ml.metrics import Metric, mean_absolute_error
 from psp.ml.models.base import PvSiteModel
-from psp.ml.typings import FutureIntervals, Timestamp, X, Y
+from psp.ml.typings import Horizons, Timestamp, X, Y
 
 
 def _make_feature_chart(
@@ -98,7 +98,7 @@ def _make_pv_timeseries_chart(
     x: X,
     y: Y,
     pred_ts: Timestamp,
-    horizons: FutureIntervals,
+    horizons: Horizons,
     horizon_idx: int,
     pv_data_source: PvDataSource,
     padding_hours: float = 12,
@@ -161,13 +161,13 @@ def _make_pv_timeseries_chart(
     )
 
 
-def find_horizon_index(horizon: float, future_intervals: FutureIntervals) -> int:
+def find_horizon_index(horizon: float, horizons: Horizons) -> int:
     """
     Given a `horizon` in minutes, find the index of which interval it corresponds to,
-    in a `FutureIntervals` object.
+    in a `Horizons` object.
     """
     horizon_idx = 0
-    for h0, h1 in future_intervals:
+    for h0, h1 in horizons:
         if h0 <= horizon < h1:
             break
         horizon_idx += 1
@@ -276,7 +276,7 @@ def plot_sample(
     y = model.predict(x)
 
     y_true = get_y_from_x(
-        x=x, future_intervals=model.config.future_intervals, data_source=pv_data_source
+        x=x, horizons=model.config.horizons, data_source=pv_data_source
     )
 
     if y_true is None:
@@ -286,7 +286,7 @@ def plot_sample(
 
     pv_id = x.pv_id
     ts = x.ts
-    horizon = model.config.future_intervals[horizon_idx]
+    horizon = model.config.horizons[horizon_idx]
 
     pred_ts = ts + dt.timedelta(minutes=horizon[0] + (horizon[1] - horizon[0]) / 2)
     meta_row = meta.loc[pv_id]
@@ -314,7 +314,7 @@ def plot_sample(
             x=x,
             y=y,
             pred_ts=pred_ts,
-            horizons=model.config.future_intervals,
+            horizons=model.config.horizons,
             horizon_idx=horizon_idx,
             pv_data_source=pv_data_source,
             padding_hours=7 * 12,
@@ -327,14 +327,14 @@ def plot_sample(
             x=x,
             y=y,
             pred_ts=pred_ts,
-            horizons=model.config.future_intervals,
+            horizons=model.config.horizons,
             horizon_idx=horizon_idx,
             pv_data_source=pv_data_source,
             padding_hours=12,
         )
     )
 
-    num_horizons = len(model.config.future_intervals)
+    num_horizons = len(model.config.horizons)
 
     if do_nwp:
         print("*** NWP ***")
