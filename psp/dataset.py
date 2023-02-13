@@ -7,7 +7,7 @@ import pandas as pd
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.typings import Horizons, PvId, Timestamp, X, Y
+from psp.typings import Horizons, PvId, Timestamp, X, Y
 
 
 class PvXDataPipe(IterDataPipe[X]):

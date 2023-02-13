@@ -2,9 +2,9 @@ import functools
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource
-from psp.ml.models.base import PvSiteModel, PvSiteModelConfig
-from psp.ml.models.recent_history import RecentHistoryModel, SetupConfig
-from psp.ml.models.regressors.decision_trees import ForestRegressor
+from psp.models.base import PvSiteModel, PvSiteModelConfig
+from psp.models.recent_history import RecentHistoryModel, SetupConfig
+from psp.models.regressors.decision_trees import ForestRegressor
 
 PV_DATA_PATH = "data/5min.netcdf"
 NWP_DATA_PATH = (

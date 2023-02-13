@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
-from psp.ml.typings import Features, Horizons, Sample, X
+from psp.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
+from psp.typings import Features, Horizons, Sample, X
 from psp.utils.batches import batch_samples
 
 

@@ -13,8 +13,8 @@ import torch
 import tqdm
 from torch import nn
 
-from psp.ml.models.regressors.base import Regressor
-from psp.ml.typings import Batch, BatchedFeatures, Features, Horizons
+from psp.models.regressors.base import Regressor
+from psp.typings import Batch, BatchedFeatures, Features, Horizons
 from psp.utils.maths import MeanAggregator, safe_div
 
 

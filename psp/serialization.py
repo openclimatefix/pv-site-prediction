@@ -3,7 +3,7 @@ import pickle
 
 import fsspec
 
-from psp.ml.models.base import PvSiteModel
+from psp.models.base import PvSiteModel
 
 
 def save_model(model: PvSiteModel, filepath: pathlib.Path | str):

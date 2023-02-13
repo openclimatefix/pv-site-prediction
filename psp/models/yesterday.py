@@ -5,8 +5,8 @@ import numpy as np
 import xarray as xr
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.models.base import PvSiteModel, PvSiteModelConfig
-from psp.ml.typings import Features, Timestamp, X, Y
+from psp.models.base import PvSiteModel, PvSiteModelConfig
+from psp.typings import Features, Timestamp, X, Y
 
 BUFFER = timedelta(minutes=30)
 

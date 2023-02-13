@@ -1,8 +1,8 @@
 import functools
 
 from psp.data.data_sources.pv import NetcdfPvDataSource
-from psp.ml.models.base import PvSiteModel, PvSiteModelConfig
-from psp.ml.models.yesterday import SetupConfig, YesterdayPvSiteModel
+from psp.models.base import PvSiteModel, PvSiteModelConfig
+from psp.models.yesterday import SetupConfig, YesterdayPvSiteModel
 
 PV_DATA_PATH = "data/5min_2.netcdf"
 

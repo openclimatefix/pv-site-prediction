@@ -4,7 +4,7 @@ import abc
 import dataclasses
 from typing import Any, Iterator, Tuple
 
-from psp.ml.typings import Batch, Features, Horizons, X, Y
+from psp.typings import Batch, Features, Horizons, X, Y
 
 
 @dataclasses.dataclass
@@ -83,7 +83,7 @@ class PvSiteModel(abc.ABC):
     def get_state(self):
         """Return the necessary fields of the class for serialization.
 
-        This is used by `psp.ml.serialization` to save the model.
+        This is used by `psp.serialization` to save the model.
 
         We need a different hook than `__getstate__` because sometimes we want to customize the
         model serialization and the default pickling in different ways. An example of this is that
@@ -97,7 +97,7 @@ class PvSiteModel(abc.ABC):
     def set_state(self, state: dict[str, Any]):
         """Set the state of `self` using fields from `state`.
 
-        This is used by `psp.ml.serialization` to load the model.
+        This is used by `psp.serialization` to load the model.
 
         This can be overriden in children classes.
         """

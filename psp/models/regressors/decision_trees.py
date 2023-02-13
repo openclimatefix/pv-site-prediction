@@ -6,8 +6,8 @@ import numpy as np
 import tqdm
 from sklearn.ensemble import HistGradientBoostingRegressor
 
-from psp.ml.models.regressors.base import Regressor
-from psp.ml.typings import Batch, BatchedFeatures, Features
+from psp.models.regressors.base import Regressor
+from psp.typings import Batch, BatchedFeatures, Features
 from psp.utils.batches import batch_features, concat_batches
 
 _log = logging.getLogger(__name__)

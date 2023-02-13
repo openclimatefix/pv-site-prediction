@@ -8,16 +8,16 @@ import pandas as pd
 import torch
 import tqdm
 
-from psp.ml.dataset import split_train_test
-from psp.ml.metrics import Metric, mean_absolute_error
-from psp.ml.serialization import load_model
-from psp.ml.training import make_data_loader
+from psp.dataset import split_train_test
+from psp.metrics import Metric, mean_absolute_error
 from psp.scripts._options import (
     exp_config_opt,
     exp_name_opt,
     exp_root_opt,
     num_workers_opt,
 )
+from psp.serialization import load_model
+from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
 
 METRICS: dict[str, Metric] = {
@@ -48,7 +48,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module(
-        "." + exp_config_name, "psp.ml.exp_configs"
+        "." + exp_config_name, "psp.exp_configs"
     )
     exp_config = exp_config_module.ExpConfig()
 

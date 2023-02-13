@@ -7,10 +7,10 @@ import xarray as xr
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import PvDataSource
-from psp.ml.models.base import PvSiteModel, PvSiteModelConfig
-from psp.ml.models.regressors.base import Regressor
-from psp.ml.typings import Batch, Features, X, Y
+from psp.models.base import PvSiteModel, PvSiteModelConfig
+from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
+from psp.typings import Batch, Features, X, Y
 from psp.utils.maths import safe_div
 
 

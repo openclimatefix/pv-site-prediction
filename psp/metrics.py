@@ -2,7 +2,7 @@ from typing import Callable
 
 import numpy as np
 
-from psp.ml.typings import Y
+from psp.typings import Y
 
 # Base type of a metric.
 # The output is an array because we predict for different timestamps in the future.

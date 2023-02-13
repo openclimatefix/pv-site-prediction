@@ -5,7 +5,7 @@ from typing import TypeVar, overload
 
 import xarray as xr
 
-from psp.ml.typings import PvId, Timestamp
+from psp.typings import PvId, Timestamp
 from psp.utils.dates import to_pydatetime
 
 # https://peps.python.org/pep-0673/

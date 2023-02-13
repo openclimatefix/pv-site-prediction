@@ -5,15 +5,15 @@ import click
 import numpy as np
 import torch
 
-from psp.ml.dataset import split_train_test
-from psp.ml.serialization import save_model
-from psp.ml.training import make_data_loader
+from psp.dataset import split_train_test
 from psp.scripts._options import (
     exp_config_opt,
     exp_name_opt,
     exp_root_opt,
     num_workers_opt,
 )
+from psp.serialization import save_model
+from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
 
 _log = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
     torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module(
-        "." + exp_config_name, "psp.ml.exp_configs"
+        "." + exp_config_name, "psp.exp_configs"
     )
     exp_config = exp_config_module.ExpConfig()
 

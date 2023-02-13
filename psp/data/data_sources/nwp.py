@@ -5,7 +5,7 @@ import ocf_blosc2  # noqa
 import pyproj
 import xarray as xr
 
-from psp.ml.typings import Timestamp
+from psp.typings import Timestamp
 from psp.utils.dates import to_pydatetime
 
 _transformer = pyproj.Transformer.from_crs(4326, 27700)

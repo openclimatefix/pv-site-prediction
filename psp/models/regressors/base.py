@@ -5,7 +5,7 @@ from typing import Iterator
 
 import numpy as np
 
-from psp.ml.typings import Batch, Features
+from psp.typings import Batch, Features
 
 
 class Regressor(abc.ABC):

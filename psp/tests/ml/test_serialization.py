@@ -1,5 +1,5 @@
-from psp.ml.models.yesterday import YesterdayPvSiteModel
-from psp.ml.serialization import load_model, save_model
+from psp.models.yesterday import YesterdayPvSiteModel
+from psp.serialization import load_model, save_model
 
 
 # Inheriting from some model to not have to implement all the methods like we would have to do if we

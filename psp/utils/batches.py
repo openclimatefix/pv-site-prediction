@@ -5,7 +5,7 @@ from typing import TypeVar
 
 import numpy as np
 
-from psp.ml.typings import Batch, BatchedFeatures, BatchedX, BatchedY, Features, Sample
+from psp.typings import Batch, BatchedFeatures, BatchedX, BatchedY, Features, Sample
 
 T = TypeVar("T")
 
