@@ -1,5 +1,7 @@
 from typing import Tuple, TypeVar
 
+# This import registers a codec.
+import ocf_blosc2  # noqa
 import pyproj
 import xarray as xr
 

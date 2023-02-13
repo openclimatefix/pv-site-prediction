@@ -8,7 +8,7 @@ from psp.ml.models.regressors.decision_trees import ForestRegressor
 
 PV_DATA_PATH = "data/5min.netcdf"
 NWP_DATA_PATH = (
-    "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_3.zarr"
+    "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
 )
 
 # TODO define
