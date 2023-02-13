@@ -41,7 +41,7 @@ black = {extras = ["jupyter"], version = "^22.10.0"}
 scipy = "^1.9.3"
 pandas-stubs = "^1.5.2.221213"
 types-tqdm = "^4.64.7.9"
-mypy = "^0.991"
+mypy = "^1.0.0"
 pyarrow = "^10.0.1"
 types-pyyaml = "^6.0.12.2"
 pylint = "^2.15.9"
