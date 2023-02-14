@@ -47,44 +47,62 @@ class ForestRegressor(Regressor):
         self,
         features: BatchedFeatures,
         feature_names: dict[str, list[str]] | None = None,
-    ):
-        """
+    ) -> np.ndarray | Tuple[np.ndarray, list[str]]:
+        """Build a (sample, feature)-shaped matrix from (batched) features.
+
+        Optionally also build a list of feature names that match the columns.
+
         Return:
-        -------
+        ------
             A numpy array (rows=sample, columns=features) and the name of the columns as a list of
             string.
         """
         per_horizon = features["per_horizon"]
         common = features["common"]
 
-        n_batch, n_horizon, n_features = per_horizon.shape
+        # Start with `per_horizon`, to which we will add all the other features.
+        new_features = per_horizon
 
-        # horizon * (batch, features)
-        per_horizon_ = np.split(features["per_horizon"], per_horizon.shape[1], axis=1)
+        n_batch, n_horizon, n_features = new_features.shape
+        (n_batch2, n_common_features) = common.shape
+        assert n_batch == n_batch2
 
         if feature_names:
             col_names = feature_names["per_horizon"]
 
-        per_horizon_ = [x.squeeze(1) for x in per_horizon_]
+        # Add the horizon index as a feature.
+        horizon_idx = np.broadcast_to(
+            np.arange(n_horizon, dtype=float), (n_batch, n_horizon)
+        ).reshape(n_batch, n_horizon, 1)
 
-        # horizon * (batch, features + 1)
-        per_horizon_ = [
-            np.concatenate([x, np.broadcast_to(i, (x.shape[0], 1))], axis=1)
-            for i, x in enumerate(per_horizon_)
-        ]
+        # (batch * horizon, features + 1)
+        new_features = np.concatenate([new_features, horizon_idx], axis=2)
 
         if feature_names:
             col_names.append("horizon_idx")
 
-        # horizon * (batch, features + 1 + 2)
-        per_horizon_ = [np.concatenate([x, common], axis=1) for x in per_horizon_]
+        common = np.broadcast_to(
+            common.reshape(n_batch, 1, common.shape[1]),
+            (n_batch, n_horizon, common.shape[1]),
+        )
+
+        new_features = np.concatenate([new_features, common], axis=2)
 
         if feature_names:
-            col_names.extend(["recent_power", "recent_power_is_nan"])
+            col_names.extend(feature_names["common"])
 
-        # (horizon * batch, features + 1)
-        new_features = np.concatenate(per_horizon_, axis=0)
-        assert new_features.shape == (n_horizon * n_batch, n_features + 1 + 2)
+        assert new_features.shape == (
+            n_batch,
+            n_horizon,
+            n_features + 1 + n_common_features,
+        )
+        if feature_names:
+            assert len(col_names) == n_features + 1 + n_common_features
+
+        # Finally we flatten the horizons.
+        new_features = new_features.reshape(
+            n_batch * n_horizon, n_features + 1 + n_common_features
+        )
 
         if feature_names:
             return new_features, col_names
@@ -132,11 +150,8 @@ class ForestRegressor(Regressor):
             # practice ignoring those points seems to help a lot.
             ys = ys / (poa * factor)
 
-        # horizon * (batch)
-        ys_ = np.split(ys, ys.shape[1], axis=1)
-        ys_ = [x.squeeze(1) for x in ys_]
-        # (batch * horizon)
-        ys = np.concatenate(ys_, axis=0)
+        # Flatten the targets just like we "flattened" the features.
+        ys = ys.reshape(-1)
 
         # Remove `nan`, `inf`, etc. from ys.
         mask = np.isfinite(ys)
@@ -147,8 +162,7 @@ class ForestRegressor(Regressor):
         self._tree.fit(xs, ys)
 
     def predict(self, features: Features):
-        batched_features = batch_features([features])
-        new_features = self._prepare_features(batched_features)
+        new_features = self._prepare_features(batch_features([features]))
         pred = self._tree.predict(new_features)
         return pred
 

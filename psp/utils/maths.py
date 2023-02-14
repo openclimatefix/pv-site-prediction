@@ -7,22 +7,29 @@ T = TypeVar("T", bound=np.ndarray | xr.DataArray)
 
 
 @overload
-def safe_div(num: float, den: float) -> float:
+def safe_div(num: float, den: float, fallback: float = 0.0) -> float:
     ...
 
 
 @overload
-def safe_div(num: T, den: T | float) -> T:
+def safe_div(num: T, den: T | float, fallback: float = 0.0) -> T:
     ...
 
 
 @overload
-def safe_div(num: T | float, den: T) -> T:
+def safe_div(num: T | float, den: T, fallback: float = 0.0) -> T:
     ...
 
 
-def safe_div(num, den):
-    return np.divide(num, den, out=np.zeros_like(num), where=den != 0)
+def safe_div(num: T | float, den: T | float, fallback: float = 0.0) -> T | float:
+    if isinstance(num, float) and isinstance(den, float):
+        if den == 0 or not np.isfinite(den):
+            return fallback
+        return num / den
+
+    return np.divide(  # type: ignore
+        num, den, out=np.full_like(num, fallback), where=(den != 0) & np.isfinite(den)
+    )
 
 
 class MeanAggregator:

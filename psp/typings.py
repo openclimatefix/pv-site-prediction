@@ -1,6 +1,6 @@
 import dataclasses
 import datetime
-from typing import Mapping, Tuple
+from typing import Mapping
 
 import numpy as np
 
@@ -18,10 +18,48 @@ class X:
     ts: Timestamp
 
 
-# Definition of the times at which we make the predictions.
-# `[[0, 15], [15, 30]]` would mean 2 predictions, one for the next 15 minutes, and one for the
-# following 15 minutes.
-Horizons = list[Tuple[float, float]]
+class Horizons:
+    """The list of time horizons for which we want to make predictions.
+
+    Each horizon can be seen as a `(start, end)` tuple where `start` and `end` are the minutes from
+    "now" (the time at which we are making the prediction).
+
+    This class behaves like a list of `(start, end)` integer tuples.
+    """
+
+    def __init__(self, duration: int, num_horizons: int):
+        """
+        Arguments:
+        ---------
+        duration: Duration (in minutes) of a single horizon.
+        num_horizons: How many horizons to consider.
+        """
+        self._duration = duration
+        self._num_horizons = num_horizons
+
+    @property
+    def duration(self):
+        """Duration of a single horizon."""
+        return self._duration
+
+    def __len__(self):
+        return self._num_horizons
+
+    def __iter__(self):
+        for i in range(self._num_horizons):
+            yield self.__getitem__(i)
+
+    def __getitem__(self, i):
+        """Get the i-th horizon as a tuple [start, end] tuple in minutes."""
+        if i < -len(self):
+            raise IndexError
+        if i >= self._num_horizons:
+            raise IndexError
+
+        if i < 0:
+            i = len(self) - i
+
+        return (self.duration * i, self.duration * (i + 1))
 
 
 @dataclasses.dataclass

@@ -3,6 +3,7 @@ import functools
 from psp.data.data_sources.pv import NetcdfPvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.yesterday import SetupConfig, YesterdayPvSiteModel
+from psp.typings import Horizons
 
 PV_DATA_PATH = "data/5min_2.netcdf"
 
@@ -21,10 +22,13 @@ class ExpConfig(ExpConfigBase):
 
     @functools.cache
     def _get_model_config(self):
-        interval_size = 15
-        interval_starts = [0.0, 30, 120, 24 * 60, 48 * 60]
-        horizons = [(s, s + interval_size) for s in interval_starts]
-        return PvSiteModelConfig(horizons=horizons, blackout=0)
+        return PvSiteModelConfig(
+            horizons=Horizons(
+                duration=15,
+                num_horizons=48 * 4,
+            ),
+            blackout=0,
+        )
 
     @functools.cache
     def get_model(self) -> PvSiteModel:

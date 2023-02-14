@@ -169,9 +169,10 @@ def find_horizon_index(horizon: float, horizons: Horizons) -> int:
     horizon_idx = 0
     for h0, h1 in horizons:
         if h0 <= horizon < h1:
-            break
+            return horizon_idx
         horizon_idx += 1
-    return horizon_idx
+
+    raise RuntimeError(f"Horizon {horizon} does not make sense")
 
 
 def _make_nwp_heatmap(
@@ -317,7 +318,7 @@ def plot_sample(
             horizons=model.config.horizons,
             horizon_idx=horizon_idx,
             pv_data_source=pv_data_source,
-            padding_hours=7 * 12,
+            padding_hours=7 * 24,
             height=150,
         )
     )

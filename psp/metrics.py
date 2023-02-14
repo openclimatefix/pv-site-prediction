@@ -10,6 +10,7 @@ Metric = Callable[[Y, Y], np.ndarray]
 
 
 def mean_absolute_error(y_true: Y, y_pred: Y) -> np.ndarray:
+    assert y_true.powers.shape == y_pred.powers.shape
     return abs(y_true.powers - y_pred.powers)
 
 

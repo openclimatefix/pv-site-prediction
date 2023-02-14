@@ -5,6 +5,7 @@ from psp.data.data_sources.pv import NetcdfPvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel, SetupConfig
 from psp.models.regressors.decision_trees import ForestRegressor
+from psp.typings import Horizons
 
 PV_DATA_PATH = "data/5min.netcdf"
 NWP_DATA_PATH = (
@@ -24,14 +25,15 @@ class ExpConfig(ExpConfigBase):
     def get_model_setup_config(self):
         return SetupConfig(
             pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=NwpDataSource(NWP_DATA_PATH),
+            nwp_data_source=NwpDataSource(NWP_DATA_PATH)  # , cache_dir=".nwp_cache"),
+            # nwp_data_source=None,
         )
 
     @functools.cache
     def _get_model_config(self):
-        delta = 15.0
-        horizons = [(i * delta, (i + 1) * delta) for i in range(48 * 4)]
-        return PvSiteModelConfig(horizons=horizons, blackout=0)
+        return PvSiteModelConfig(
+            horizons=Horizons(duration=15, num_horizons=48 * 4), blackout=0
+        )
 
     @functools.cache
     def get_model(self) -> PvSiteModel:
@@ -40,6 +42,7 @@ class ExpConfig(ExpConfigBase):
             self.get_model_setup_config(),
             regressor=ForestRegressor(num_train_samples=4096),
             use_nwp=True,
+            # use_nwp=False,
             # Those are the variables available in our prod environment.
             nwp_variables=[
                 "si10",

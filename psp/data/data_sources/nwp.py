@@ -123,10 +123,21 @@ class NwpDataSource:
     """
 
     def __init__(self, path: str, cache_dir: str | None = None):
+        """
+        Arguments:
+        ---------
+        path: Path to the .zarr data.
+        cache_dir: If provided, the `at_get` function will cache its result in the directory. This
+            is useful when always training and testing on the same dataset, as the loading of the
+            NWP is one of the main bottlenecks. Use with caution: it will create a lot of files!
+        """
         self._path = path
         self._open()
 
         self._cache_dir = pathlib.Path(cache_dir) if cache_dir else None
+
+        if self._cache_dir:
+            self._cache_dir.mkdir(exist_ok=True)
 
     def _open(self):
         self._data = xr.open_dataset(

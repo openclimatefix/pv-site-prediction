@@ -14,7 +14,6 @@ from psp.scripts._options import (
 )
 from psp.serialization import save_model
 from psp.training import make_data_loader
-from psp.utils.interupting import continue_on_interupt
 
 _log = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
 
     _log.info(f"Training on split: {splits.train}")
 
-    data_loader = make_data_loader(
+    train_data_loader = make_data_loader(
         data_source=pv_data_source,
         horizons=model.config.horizons,
         split=splits.train,
@@ -86,12 +85,13 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
         limit=limit,
     )
 
-    with continue_on_interupt(prompt=False):
-        model.train(data_loader, valid_data_loader, batch_size)
+    model.train(train_data_loader, valid_data_loader, batch_size)
 
     output_dir = exp_root / exp_name
     output_dir.mkdir(exist_ok=True)
-    save_model(model, output_dir / "model.pkl")
+    path = output_dir / "model.pkl"
+    _log.info(f"Saving model to {path}")
+    save_model(model, path)
 
 
 if __name__ == "__main__":
