@@ -8,6 +8,7 @@ from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
 from psp.typings import Horizons, PvId, Timestamp, X, Y
+from psp.utils.hashing import naive_hash
 
 
 class PvXDataPipe(IterDataPipe[X]):
@@ -318,13 +319,15 @@ def split_train_test(
     pv_ids = pv_ids.difference(SKIP_SS_IDS)
 
     # Train on 90%.
-    train_pv_ids = set(pv_id for pv_id in pv_ids if hash(pv_id) % 10 > 0)
+    train_pv_ids = set(pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 10) > 0))
     # Train on the remaining 10%.
-    test_pv_ids = set(pv_id for pv_id in pv_ids if hash(pv_id) % 10 == 0)
+    test_pv_ids = set(pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 10) == 0))
 
     # We use the same time range for train and valid.
     # But we take some of the pv_ids.
-    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if hash(pv_id) % 13 == 1)
+    valid_pv_ids = set(
+        pv_id for pv_id in train_pv_ids if ((naive_hash(pv_id) % 13) == 1)
+    )
 
     # Remove those from the train set.
     train_pv_ids = train_pv_ids.difference(valid_pv_ids)
@@ -333,20 +336,22 @@ def split_train_test(
     assert len(train_pv_ids.intersection(test_pv_ids)) == 0
     assert len(valid_pv_ids.intersection(test_pv_ids)) == 0
 
+    # Note the `sorted`. This is because `set` can mess up the order and we want the randomness we
+    # will add later (when picking pv_ids at random) to be deterministic.
     return Splits(
         train=DatasetSplit(
             start_ts=train_start,
             end_ts=train_end,
-            pv_ids=list(train_pv_ids),
+            pv_ids=list(sorted(train_pv_ids)),
         ),
         valid=DatasetSplit(
             start_ts=train_start,
             end_ts=train_end,
-            pv_ids=list(valid_pv_ids),
+            pv_ids=list(sorted(valid_pv_ids)),
         ),
         test=DatasetSplit(
             start_ts=test_start,
             end_ts=test_end,
-            pv_ids=list(test_pv_ids),
+            pv_ids=list(sorted(test_pv_ids)),
         ),
     )

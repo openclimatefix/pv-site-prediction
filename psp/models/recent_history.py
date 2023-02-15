@@ -163,13 +163,13 @@ class RecentHistoryModel(PvSiteModel):
         # Consider the NWP data in a small region around around our PV.
         if self._use_nwp:
             assert self._nwp_data_source is not None
-            nwp_data = self._nwp_data_source.at(
+            nwp_data_per_horizon = self._nwp_data_source.at_get(
                 x.ts,
                 nearest_lat=lat,
                 nearest_lon=lon,
+                timestamps=future_ts,
                 load=True,
             )
-            nwp_data_per_horizon = nwp_data.get(future_ts)
             nwp_variables = (
                 self._nwp_variables or self._nwp_data_source.list_variables()
             )

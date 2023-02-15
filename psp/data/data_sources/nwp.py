@@ -1,3 +1,5 @@
+import pathlib
+import pickle
 from typing import Tuple, TypeVar
 
 # This import registers a codec.
@@ -7,6 +9,7 @@ import xarray as xr
 
 from psp.typings import Timestamp
 from psp.utils.dates import to_pydatetime
+from psp.utils.hashing import naive_hash
 
 _transformer = pyproj.Transformer.from_crs(4326, 27700)
 
@@ -119,9 +122,11 @@ class NwpDataSource:
     >>>     data = ds_now.get(prediction_time)
     """
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, cache_dir: str | None = None):
         self._path = path
         self._open()
+
+        self._cache_dir = pathlib.Path(cache_dir) if cache_dir else None
 
     def _open(self):
         self._data = xr.open_dataset(
@@ -133,6 +138,41 @@ class NwpDataSource:
 
     def list_variables(self) -> list[str]:
         return list(self._data.coords["variable"].values)
+
+    def at_get(
+        self,
+        now: Timestamp,
+        *,
+        nearest_lat: float,
+        nearest_lon: float,
+        timestamps: list[Timestamp] | Timestamp,
+        load: bool = False,
+    ) -> xr.DataArray:
+        """Shortcut for `.at(...).get(...)`.
+
+        This shortcut is cached if `cached_dir` was provided to the constructor.
+        """
+        if self._cache_dir:
+            if isinstance(timestamps, Timestamp):
+                timestamps = [timestamps]
+            hash_data = [now, nearest_lat, nearest_lon, *timestamps]
+            hashes = tuple([naive_hash(x) for x in hash_data])
+            hash_ = str(hash(hashes))
+            path = self._cache_dir / hash_
+            if path.exists():
+                with open(path, "rb") as f:
+                    data = pickle.load(f)
+            else:
+                data = self.at(
+                    now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon
+                ).get(timestamps, load=load)
+                with open(path, "wb") as f:
+                    pickle.dump(data, f, protocol=-1)
+            return data
+        else:
+            return self.at(
+                now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon
+            ).get(timestamps, load=load)
 
     def at(
         self,
