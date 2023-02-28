@@ -108,7 +108,6 @@ def _make_pv_timeseries_chart(
     normalize: bool = False,
 ) -> alt.Chart:
     """Make a timeseries chart for the PV data."""
-
     # Get the ground truth PV data.
     raw_data = pv_data_source.get(
         pv_ids=x.pv_id,

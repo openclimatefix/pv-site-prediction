@@ -1,4 +1,8 @@
-"""Infer the orientation and tilt of pv panels from their data."""
+"""Infer the orientation and tilt of pv panels from their data.
+
+NOTE: We are assuming that the data is in Wh/5min.
+"""
+# TODO Fix the assumption above: we should probably treat everything in kW.
 
 import argparse
 import pathlib
@@ -48,9 +52,6 @@ def _infer_params(
 
     # Get the capacity.
     capacity = df[C.power].quantile(0.99)
-
-    # Convert the units from Wh/5min to kW.
-    capacity = capacity * 12 / 1000
 
     max_power = get_max_power_for_time_of_day(df[[C.power]], radius=9, min_records=10)
 
@@ -136,6 +137,11 @@ def main():
     meta = meta.set_index(C.id)
 
     df = pd.read_parquet(args.data)[[C.power]]
+
+    # Convert the units from Wh/5min to kW.
+    # TODO We should find a way to have kW as input.
+    df = df * 12 / 1000
+
     ids = df.index.get_level_values(0).unique().tolist()
     df[C.id] = df.index.get_level_values(0)
     df[C.date] = df.index.get_level_values(1)
