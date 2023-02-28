@@ -9,6 +9,7 @@ exp_root_opt = click.option(
     type=click.Path(path_type=pathlib.Path),
     default="exp_results",
     help="root directory that contains experiment directories",
+    show_default=True,
 )
 
 exp_name_opt = click.option(

@@ -15,7 +15,9 @@ from psp.dataset import get_y_from_x
 from psp.gis import approx_add_meters_to_lat_lon
 from psp.metrics import Metric, mean_absolute_error
 from psp.models.base import PvSiteModel
+from psp.pv import get_irradiance
 from psp.typings import Horizons, Timestamp, X, Y
+from psp.utils.maths import safe_div
 
 
 def _make_feature_chart(
@@ -103,17 +105,70 @@ def _make_pv_timeseries_chart(
     pv_data_source: PvDataSource,
     padding_hours: float = 12,
     height: int = 200,
+    normalize: bool = False,
 ) -> alt.Chart:
     """Make a timeseries chart for the PV data."""
+
+    # Get the ground truth PV data.
+    raw_data = pv_data_source.get(
+        pv_ids=x.pv_id,
+        start_ts=x.ts - dt.timedelta(hours=padding_hours),
+        end_ts=x.ts + dt.timedelta(hours=horizons[-1][1] / 60 + padding_hours),
+    )["power"]
+
+    # Extract the meta data for the PV.
+    lat = raw_data.coords["latitude"].values
+    lon = raw_data.coords["longitude"].values
+    factor = raw_data.coords["factor"].values
+    tilt = raw_data.coords["tilt"].values
+    orientation = raw_data.coords["orientation"].values
+
+    # Reshape as a pandas dataframe.
+    pv_data = (
+        raw_data.to_dataframe()[["power"]]
+        .reset_index()
+        .rename(columns={"ts": "timestamp"})
+    )
+
+    irr_kwargs = dict(
+        lat=lat,
+        lon=lon,
+        tilt=tilt,
+        orientation=orientation,
+    )
+
+    if normalize:
+        # Normalize the ground truth with respect to pvlib's irradiance.
+        irr = get_irradiance(
+            timestamps=pv_data["timestamp"],  # type: ignore
+            **irr_kwargs,
+        )["poa_global"]
+
+        pv_data["power"] = np.clip(
+            safe_div(pv_data["power"], irr.to_numpy() * factor), 0, 2
+        )
+
+    timestamps = [
+        x.ts + dt.timedelta(minutes=h0 + (h1 - h0) / 2) for h0, h1 in horizons
+    ]
+
+    powers = y.powers
+
+    if normalize:
+        # Normalize the predictions with respect to pvlib's irradiance.
+        irr = get_irradiance(
+            timestamps=timestamps,
+            **irr_kwargs,
+        )["poa_global"]
+
+        powers = np.clip(safe_div(powers, irr * factor), 0, 2)
+
     pred_chart = (
         alt.Chart(
             pd.DataFrame(
                 dict(
-                    power=y.powers,
-                    timestamp=[
-                        x.ts + dt.timedelta(minutes=h0 + (h1 - h0) / 2)
-                        for h0, h1 in horizons
-                    ],
+                    power=powers,
+                    timestamp=timestamps,
                     current=[
                         1 if i == horizon_idx else 0 for i in range(len(horizons))
                     ],
@@ -129,18 +184,6 @@ def _make_pv_timeseries_chart(
             ),
             size=alt.Size("current:O", scale=alt.Scale(range=[14, 30]), legend=None),
         )
-        .properties(height=height, width=800)
-    )
-
-    pv_data = (
-        pv_data_source.get(
-            pv_ids=x.pv_id,
-            start_ts=x.ts - dt.timedelta(hours=padding_hours),
-            end_ts=x.ts + dt.timedelta(hours=horizons[-1][1] / 60 + padding_hours),
-        )["power"]
-        .to_dataframe()[["power"]]
-        .reset_index()
-        .rename(columns={"ts": "timestamp"})
     )
 
     ground_truth_chart = (
@@ -151,6 +194,7 @@ def _make_pv_timeseries_chart(
             opacity=0.2,
         )
         .encode(x="timestamp", y="power")
+        .properties(height=height, width=800)
     )
 
     return (
@@ -266,6 +310,7 @@ def plot_sample(
     meta: pd.DataFrame,
     metric: Metric | None = None,
     do_nwp: bool = True,
+    normalize: bool = False,
 ):
     """Plot a sample and relevant information
 
@@ -310,30 +355,34 @@ def plot_sample(
 
     display(_make_explain_chart(x, horizon_idx, model))
 
-    display(
-        _make_pv_timeseries_chart(
-            x=x,
-            y=y,
-            pred_ts=pred_ts,
-            horizons=model.config.horizons,
-            horizon_idx=horizon_idx,
-            pv_data_source=pv_data_source,
-            padding_hours=7 * 24,
-            height=150,
+    for normalize in [False, True]:
+        print(f"Normalize = {normalize}")
+        display(
+            _make_pv_timeseries_chart(
+                x=x,
+                y=y,
+                pred_ts=pred_ts,
+                horizons=model.config.horizons,
+                horizon_idx=horizon_idx,
+                pv_data_source=pv_data_source,
+                padding_hours=7 * 12,
+                height=150,
+                normalize=normalize,
+            )
         )
-    )
 
-    display(
-        _make_pv_timeseries_chart(
-            x=x,
-            y=y,
-            pred_ts=pred_ts,
-            horizons=model.config.horizons,
-            horizon_idx=horizon_idx,
-            pv_data_source=pv_data_source,
-            padding_hours=12,
+        display(
+            _make_pv_timeseries_chart(
+                x=x,
+                y=y,
+                pred_ts=pred_ts,
+                horizons=model.config.horizons,
+                horizon_idx=horizon_idx,
+                pv_data_source=pv_data_source,
+                padding_hours=12,
+                normalize=normalize,
+            )
         )
-    )
 
     num_horizons = len(model.config.horizons)
 
