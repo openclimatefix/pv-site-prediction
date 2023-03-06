@@ -20,13 +20,5 @@ jobs:
       - name: Run lint
         run: make lint
 
-      - name: Format
-        if: failure() && github.ref != 'refs/heads/master'
-        run: make format
-      - name: Commit
-        if: failure() && github.ref != 'refs/heads/master'
-        uses: EndBug/add-and-commit@v9
-
-      # - run: make lint
       - name: Run tests
         run: make test
