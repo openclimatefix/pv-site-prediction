@@ -40,13 +40,12 @@ Unit tests.
 ## Development
 
     # Installation of the dependencies.
-    make init
+    poetry install
 
     # Formatting
     make format
 
     # Linting
-    make check-format
     make lint
 
     # Running the tests.

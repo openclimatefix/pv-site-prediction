@@ -81,7 +81,7 @@ def make_data_loader(
 ) -> DataLoader[Sample]:
     """
     Arguments:
-    --------
+    ---------
         batch_size: Batch size. None means no batching.
         step: Step in minutes for the timestamps.
         limit: return only this number of samples.

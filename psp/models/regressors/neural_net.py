@@ -71,7 +71,6 @@ class NNRegressor(Regressor):
     def _forward_batch(
         self, features: dict[str, np.ndarray], device: str
     ) -> torch.Tensor:
-
         # (batch, horizon, features)
         per_horizon = torch.tensor(
             features["per_horizon"], dtype=torch.float32, device=device
@@ -87,7 +86,6 @@ class NNRegressor(Regressor):
     def train(
         self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
     ) -> None:
-
         torch.manual_seed(123)
         optimizer = torch.optim.Adam(self._nn.parameters(), lr=2e-4, weight_decay=1e-5)
         loss_func = torch.nn.L1Loss()

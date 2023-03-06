@@ -9,7 +9,6 @@ from psp.typings import Horizons
 
 
 def test_compute_history_per_horizon():
-
     raw_data = [
         #
         [dt.datetime(2000, 1, 1, 1), 2],

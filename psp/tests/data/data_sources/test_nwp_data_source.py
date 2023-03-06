@@ -26,7 +26,6 @@ _to_osgb_transformer = pyproj.Transformer.from_crs(4326, 27700)
 
 @pytest.fixture
 def nwp_data_source(tmp_path):
-
     lats = [LAT0, LAT1, LAT2]
     lons = [LON0, LON1, LON2]
 
@@ -94,7 +93,6 @@ def hours(x: float) -> timedelta:
 def test_nwp_data_source_check_times_one_step(
     now, ts, expected_init_time, expected_step, nwp_data_source
 ):
-
     data = nwp_data_source.at(now=now).get(ts)
 
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.

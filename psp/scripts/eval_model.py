@@ -41,7 +41,6 @@ _log = logging.getLogger(__name__)
     help="Maximum number of samples to consider.",
 )
 def main(exp_root, exp_name, exp_config_name, num_workers, limit):
-
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
     # https://github.com/fsspec/gcsfs/issues/379

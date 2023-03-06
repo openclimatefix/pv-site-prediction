@@ -76,14 +76,14 @@ class RandomPvXDataPipe(PvXDataPipe):
         step: int = 1,
     ):
         """
-        Arguments
+        Arguments:
+        ---------
             step: Round the timestamp to this many minutes (with 0 seconds and 0 microseconds).
         """
         self._random_state = random_state
         super().__init__(data_source, horizons, pv_ids, start_ts, end_ts, step)
 
     def __iter__(self) -> Iterator[X]:
-
         num_seconds = (self._end_ts - self._start_ts).total_seconds()
 
         while True:

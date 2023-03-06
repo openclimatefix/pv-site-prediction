@@ -28,7 +28,6 @@ _log = logging.getLogger(__name__)
     "--log-level", type=str, help="Debug level", default="info", show_default=True
 )
 def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level: str):
-
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     # This fixes problems when loading files in parallel on GCP.

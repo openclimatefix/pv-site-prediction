@@ -19,7 +19,6 @@ def _from_records(rec):
 
 
 def test_get_max_power_for_time_of_day():
-
     df = _from_records(
         [
             [1, _ts(1, 1), 1.0],

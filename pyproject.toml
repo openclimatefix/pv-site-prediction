@@ -34,8 +34,6 @@ jupyter = "^1.0.0"
 altair = "^4.2.2"
 plotly = "^5.11.0"
 pytest = "^7.2.0"
-flake8 = "^6.0.0"
-isort = "^5.10.1"
 jupyter-contrib-nbextensions = "^0.7.0"
 black = {extras = ["jupyter"], version = "^22.10.0"}
 scipy = "^1.9.3"
@@ -45,10 +43,10 @@ mypy = "^1.0.0"
 pyarrow = "^10.0.1"
 types-pyyaml = "^6.0.12.2"
 pylint = "^2.15.9"
-pydocstyle = "^6.2.3"
 torchdata = "^0.5.1"
 shap = "^0.41.0"
 matplotlib = "^3.6.3"
+ruff = "^0.0.254"
 
 [tool.poetry.extras]
 torch = ["torch"]
@@ -57,9 +55,6 @@ torch = ["torch"]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.isort]
-profile = "black"
 
 [tool.mypy]
 check_untyped_defs = true
@@ -71,6 +66,12 @@ warn_unused_ignores = true
 module = 'astral.*'
 ignore_errors = true
 
-[tool.pydocstyle]
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "D", "I"]
 # In particular ignore all the "missing docstring" errors.
-ignore = 'D10,D203,D205,D212,D213,D400,D413,D415,D417'
+ignore = ['D10','D203','D205','D212','D213','D400','D413','D415','D417']
+
+# TODO use length of 100 everywhere
+# [tool.black]
+# line-length = 100

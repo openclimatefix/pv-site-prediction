@@ -1,9 +1,5 @@
 SRC=psp notebooks
 
-.PHONY: init
-init:
-	poetry install
-
 .PHONY: notebook
 notebook:
 	CWD=`pwd` poetry run jupyter notebook --notebook-dir notebooks --ip 0.0.0.0
@@ -16,18 +12,12 @@ test:
 .PHONY: format
 format:
 	poetry run black $(SRC)
-	poetry run isort $(SRC)
+	poetry run ruff --fix $(SRC)
 
 
 # Same as `format` but without editing the files. Useful for CI.
-.PHONY: check-format
-check-format:
-	poetry run black --check $(SRC)
-	poetry run isort --check $(SRC)
-
-
 .PHONY: lint
 lint:
-	poetry run flake8 $(SRC)
+	poetry run black --check $(SRC)
+	poetry run ruff $(SRC)
 	poetry run mypy psp
-	poetry run pydocstyle $(SRC)
