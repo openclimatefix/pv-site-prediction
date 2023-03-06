@@ -17,9 +17,7 @@ def parse_args():
     parser.add_argument("input", type=pathlib.Path, help="input file")
     parser.add_argument("-m", "--meta", type=pathlib.Path, help="metadata.csv file")
     parser.add_argument("output", type=pathlib.Path, help="output directory")
-    parser.add_argument(
-        "--seed", type=int, default=1234, help="integer seed for the sampling"
-    )
+    parser.add_argument("--seed", type=int, default=1234, help="integer seed for the sampling")
     return parser.parse_args()
 
 

@@ -174,16 +174,16 @@ class NwpDataSource:
                 with open(path, "rb") as f:
                     data = pickle.load(f)
             else:
-                data = self.at(
-                    now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon
-                ).get(timestamps, load=load)
+                data = self.at(now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon).get(
+                    timestamps, load=load
+                )
                 with open(path, "wb") as f:
                     pickle.dump(data, f, protocol=-1)
             return data
         else:
-            return self.at(
-                now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon
-            ).get(timestamps, load=load)
+            return self.at(now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon).get(
+                timestamps, load=load
+            )
 
     def at(
         self,

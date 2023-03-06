@@ -32,6 +32,4 @@ class ExpConfig(ExpConfigBase):
 
     @functools.cache
     def get_model(self) -> PvSiteModel:
-        return YesterdayPvSiteModel(
-            self._get_model_config(), self.get_model_setup_config()
-        )
+        return YesterdayPvSiteModel(self._get_model_config(), self.get_model_setup_config())

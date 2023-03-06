@@ -18,9 +18,7 @@ def concat_batched_features(batched_features: list[BatchedFeatures]) -> BatchedF
     assert len(batched_features) > 0
     keys = batched_features[0].keys()
 
-    return {
-        key: np.concatenate([b[key] for b in batched_features], axis=0) for key in keys
-    }
+    return {key: np.concatenate([b[key] for b in batched_features], axis=0) for key in keys}
 
 
 def concat_batches(batches: list[Batch]) -> Batch:

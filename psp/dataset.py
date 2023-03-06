@@ -48,9 +48,7 @@ class PvXDataPipe(IterDataPipe[X]):
         for pv_id in self._pv_ids:
             ts = self._start_ts
             minute = ts.minute
-            ts = ts.replace(
-                minute=round_to(minute, self._step), second=0, microsecond=0
-            )
+            ts = ts.replace(minute=round_to(minute, self._step), second=0, microsecond=0)
             while ts < self._end_ts:
                 x = X(pv_id=pv_id, ts=ts)
                 yield x
@@ -325,9 +323,7 @@ def split_train_test(
 
     # We use the same time range for train and valid.
     # But we take some of the pv_ids.
-    valid_pv_ids = set(
-        pv_id for pv_id in train_pv_ids if ((naive_hash(pv_id) % 13) == 1)
-    )
+    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if ((naive_hash(pv_id) % 13) == 1))
 
     # Remove those from the train set.
     train_pv_ids = train_pv_ids.difference(valid_pv_ids)

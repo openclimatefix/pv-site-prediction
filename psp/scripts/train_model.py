@@ -24,9 +24,7 @@ _log = logging.getLogger(__name__)
 @exp_config_opt
 @num_workers_opt
 @click.option("-b", "--batch-size", default=32)
-@click.option(
-    "--log-level", type=str, help="Debug level", default="info", show_default=True
-)
+@click.option("--log-level", type=str, help="Debug level", default="info", show_default=True)
 def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level: str):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -35,9 +33,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
     # https://github.com/fsspec/gcsfs/issues/379
     torch.multiprocessing.set_start_method("spawn")
 
-    exp_config_module = importlib.import_module(
-        "." + exp_config_name, "psp.exp_configs"
-    )
+    exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
     exp_config = exp_config_module.ExpConfig()
 
     random_state = np.random.RandomState(1234)

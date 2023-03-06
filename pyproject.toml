@@ -72,6 +72,5 @@ select = ["E", "F", "D", "I"]
 # In particular ignore all the "missing docstring" errors.
 ignore = ['D10','D203','D205','D212','D213','D400','D413','D415','D417']
 
-# TODO use length of 100 everywhere
-# [tool.black]
-# line-length = 100
+[tool.black]
+line-length = 100

@@ -18,12 +18,8 @@ from psp.pv import get_irradiance
 
 def parse_args():
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument(
-        "-d", "--data", type=pathlib.Path, help="parquet data file", required=True
-    )
-    parser.add_argument(
-        "-m", "--meta", type=pathlib.Path, help="metadata file", required=True
-    )
+    parser.add_argument("-d", "--data", type=pathlib.Path, help="parquet data file", required=True)
+    parser.add_argument("-m", "--meta", type=pathlib.Path, help="metadata file", required=True)
     parser.add_argument(
         "-o",
         "--output",
@@ -152,9 +148,7 @@ def main():
         meta_row = meta.loc[ss_id]
         lat = meta_row[C.lat]
         lon = meta_row[C.lon]
-        new_meta = _infer_params(
-            df, ss_id=ss_id, lat=lat, lon=lon, learn_normalisation=True
-        )
+        new_meta = _infer_params(df, ss_id=ss_id, lat=lat, lon=lon, learn_normalisation=True)
         if new_meta is not None:
             new_data.append({"ss_id": ss_id, **new_meta})
 

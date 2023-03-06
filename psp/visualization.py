@@ -46,9 +46,7 @@ def _make_feature_chart(
     if ndim == 1:
         if shape[0] == num_horizons:
             chart = (
-                alt.Chart(
-                    pd.DataFrame({name: feature_obj, "horizon": range(num_horizons)})
-                )
+                alt.Chart(pd.DataFrame({name: feature_obj, "horizon": range(num_horizons)}))
                 .mark_circle()
                 .encode(x="horizon", y=name)
                 .properties(height=75, width=700)
@@ -82,9 +80,7 @@ def _make_feature_chart(
     return None if chart is None else chart.properties(title=name)
 
 
-def time_rule(
-    timestamp: Timestamp, text: str, align: Literal["left", "right"]
-) -> alt.Chart:
+def time_rule(timestamp: Timestamp, text: str, align: Literal["left", "right"]) -> alt.Chart:
     """Chart of a vertical rule at a timestamp"""
     data = pd.DataFrame(dict(text=[text], timestamp=[timestamp]))
     rule = alt.Chart(data).mark_rule(color="red").encode(x="timestamp")
@@ -123,11 +119,7 @@ def _make_pv_timeseries_chart(
     orientation = raw_data.coords["orientation"].values
 
     # Reshape as a pandas dataframe.
-    pv_data = (
-        raw_data.to_dataframe()[["power"]]
-        .reset_index()
-        .rename(columns={"ts": "timestamp"})
-    )
+    pv_data = raw_data.to_dataframe()[["power"]].reset_index().rename(columns={"ts": "timestamp"})
 
     irr_kwargs = dict(
         lat=lat,
@@ -143,13 +135,9 @@ def _make_pv_timeseries_chart(
             **irr_kwargs,
         )["poa_global"]
 
-        pv_data["power"] = np.clip(
-            safe_div(pv_data["power"], irr.to_numpy() * factor), 0, 2
-        )
+        pv_data["power"] = np.clip(safe_div(pv_data["power"], irr.to_numpy() * factor), 0, 2)
 
-    timestamps = [
-        x.ts + dt.timedelta(minutes=h0 + (h1 - h0) / 2) for h0, h1 in horizons
-    ]
+    timestamps = [x.ts + dt.timedelta(minutes=h0 + (h1 - h0) / 2) for h0, h1 in horizons]
 
     powers = y.powers
 
@@ -168,9 +156,7 @@ def _make_pv_timeseries_chart(
                 dict(
                     power=powers,
                     timestamp=timestamps,
-                    current=[
-                        1 if i == horizon_idx else 0 for i in range(len(horizons))
-                    ],
+                    current=[1 if i == horizon_idx else 0 for i in range(len(horizons))],
                 )
             )
         )
@@ -178,9 +164,7 @@ def _make_pv_timeseries_chart(
         .encode(
             x="timestamp",
             y="power",
-            color=alt.Color(
-                "current:O", scale=alt.Scale(range=["#1f77b4", "red"]), legend=None
-            ),
+            color=alt.Color("current:O", scale=alt.Scale(range=["#1f77b4", "red"]), legend=None),
             size=alt.Size("current:O", scale=alt.Scale(range=[14, 30]), legend=None),
         )
     )
@@ -276,9 +260,7 @@ def _make_nwp_heatmap(
         df_var = df[df["variable"] == variable]
 
         charts[variable] = (
-            alt.layer(chart, data=df_var)
-            .facet(column="step")
-            .resolve_scale(color="independent")
+            alt.layer(chart, data=df_var).facet(column="step").resolve_scale(color="independent")
         )
 
         mean_data = df_var[["step", "UKV"]].groupby("step").mean().reset_index()
@@ -320,9 +302,7 @@ def plot_sample(
 
     y = model.predict(x)
 
-    y_true = get_y_from_x(
-        x=x, horizons=model.config.horizons, data_source=pv_data_source
-    )
+    y_true = get_y_from_x(x=x, horizons=model.config.horizons, data_source=pv_data_source)
 
     if y_true is None:
         err = None

@@ -13,9 +13,7 @@ def _from_records(rec):
     # Make sure the ids are strings.
     rec = [[str(x[0])] + x[1:] for x in rec]
 
-    return pd.DataFrame.from_records(rec, columns=[C.id, C.date, C.power]).set_index(
-        [C.id, C.date]
-    )
+    return pd.DataFrame.from_records(rec, columns=[C.id, C.date, C.power]).set_index([C.id, C.date])
 
 
 def test_get_max_power_for_time_of_day():

@@ -100,9 +100,7 @@ class ForestRegressor(Regressor):
             assert len(col_names) == n_features + 1 + n_common_features
 
         # Finally we flatten the horizons.
-        new_features = new_features.reshape(
-            n_batch * n_horizon, n_features + 1 + n_common_features
-        )
+        new_features = new_features.reshape(n_batch * n_horizon, n_features + 1 + n_common_features)
 
         if feature_names:
             return new_features, col_names
@@ -120,9 +118,7 @@ class ForestRegressor(Regressor):
         num_batches = num_samples // batch_size
         # We put `tqdm` here because that's the slow part that we can put a progress bar on.
         _log.info("Extracting the features.")
-        batches = [
-            b for b in tqdm.tqdm(islice(train_iter, num_batches), total=num_batches)
-        ]
+        batches = [b for b in tqdm.tqdm(islice(train_iter, num_batches), total=num_batches)]
 
         # Concatenate all the batches into one big batch.
         batch = concat_batches(batches)

@@ -138,9 +138,7 @@ def make_data_loader(
 
     # We add the ability to stop the pipeline after a `limit` number of samples.
     if limit is not None:
-        datapipe = _Limit(
-            datapipe, limit if num_workers == 0 else np.ceil(limit / num_workers)
-        )
+        datapipe = _Limit(datapipe, limit if num_workers == 0 else np.ceil(limit / num_workers))
 
     if batch_size is not None:
         datapipe = datapipe.batch(batch_size, wrapper_class=batch_samples)

@@ -46,9 +46,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     # https://github.com/fsspec/gcsfs/issues/379
     torch.multiprocessing.set_start_method("spawn")
 
-    exp_config_module = importlib.import_module(
-        "." + exp_config_name, "psp.exp_configs"
-    )
+    exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
     exp_config = exp_config_module.ExpConfig()
 
     setup_config = exp_config.get_model_setup_config()
@@ -98,9 +96,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
             for metric_name, metric in METRICS.items():
                 error = metric(y_true, y_pred)
                 # Error is a vector
-                for i, (err_value, y, pred) in enumerate(
-                    zip(error, y_true.powers, y_pred.powers)
-                ):
+                for i, (err_value, y, pred) in enumerate(zip(error, y_true.powers, y_pred.powers)):
                     horizon = model.config.horizons[i][0]
                     error_rows.append(
                         {

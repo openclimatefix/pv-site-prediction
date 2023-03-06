@@ -77,9 +77,7 @@ def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
 class NetcdfPvDataSource(PvDataSource):
     # This constructor is used when copying.
     @overload
-    def __init__(
-        self, filepath: pathlib.Path, data: xr.Dataset, max_ts: Timestamp | None
-    ):
+    def __init__(self, filepath: pathlib.Path, data: xr.Dataset, max_ts: Timestamp | None):
         ...
 
     @overload
@@ -135,9 +133,7 @@ class NetcdfPvDataSource(PvDataSource):
 
     def without_future(self, ts: Timestamp, *, blackout: int = 0):
         now = ts - datetime.timedelta(minutes=blackout) - datetime.timedelta(seconds=1)
-        return NetcdfPvDataSource(
-            self._path, self._data, min_timestamp(self._max_ts, now)
-        )
+        return NetcdfPvDataSource(self._path, self._data, min_timestamp(self._max_ts, now))
 
     def __getstate__(self):
         d = self.__dict__.copy()

@@ -68,13 +68,9 @@ class NNRegressor(Regressor):
 
         return features, yy
 
-    def _forward_batch(
-        self, features: dict[str, np.ndarray], device: str
-    ) -> torch.Tensor:
+    def _forward_batch(self, features: dict[str, np.ndarray], device: str) -> torch.Tensor:
         # (batch, horizon, features)
-        per_horizon = torch.tensor(
-            features["per_horizon"], dtype=torch.float32, device=device
-        )
+        per_horizon = torch.tensor(features["per_horizon"], dtype=torch.float32, device=device)
 
         # (batch, features2)
         common = torch.tensor(features["common"], dtype=torch.float32, device=device)
@@ -95,9 +91,7 @@ class NNRegressor(Regressor):
 
         validate_every = 10000 // batch_size
 
-        for i, batch in tqdm.tqdm(
-            enumerate(train_iter), unit="smpl", unit_scale=batch_size
-        ):
+        for i, batch in tqdm.tqdm(enumerate(train_iter), unit="smpl", unit_scale=batch_size):
             if (i < validate_every and (i % (validate_every // 10) == 0)) or (
                 i % validate_every == 0
             ):

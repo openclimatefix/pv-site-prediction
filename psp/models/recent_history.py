@@ -44,9 +44,7 @@ def compute_history_per_horizon(
     df = df[df.index < now]
 
     # Resample, matching our horizons.
-    df = df.resample(
-        timedelta(minutes=horizons.duration), origin=pd.Timestamp(now)
-    ).mean()
+    df = df.resample(timedelta(minutes=horizons.duration), origin=pd.Timestamp(now)).mean()
 
     df = df.reset_index()
 
@@ -143,9 +141,7 @@ class RecentHistoryModel(PvSiteModel):
         self, x: X, with_names: bool
     ) -> Features | Tuple[Features, dict[str, list[str]]]:
         features: Features = dict()
-        data_source = self._pv_data_source.without_future(
-            x.ts, blackout=self.config.blackout
-        )
+        data_source = self._pv_data_source.without_future(x.ts, blackout=self.config.blackout)
 
         # We'll look at stats for the previous few days.
         history_start = to_midnight(x.ts - timedelta(days=7))
@@ -165,9 +161,7 @@ class RecentHistoryModel(PvSiteModel):
         tilt = coords["tilt"].values
         orientation = coords["orientation"].values
 
-        data = data.drop_vars(
-            ["latitude", "longitude", "orientation", "tilt", "factor", "id"]
-        )
+        data = data.drop_vars(["latitude", "longitude", "orientation", "tilt", "factor", "id"])
 
         # Get the theoretical irradiance for all the timestamps in our history.
         irr1 = get_irradiance(
@@ -181,9 +175,7 @@ class RecentHistoryModel(PvSiteModel):
         # As usual we normalize the PV data wrt irradiance and our PV "factor".
         # Using `safe_div` with `np.nan` fallback to get `nan`s instead of `inf`. The `nan` are
         # ignored in `compute_history_per_horizon`.
-        norm_data = safe_div(
-            data, (irr1["poa_global"].to_numpy() * factor), fallback=np.nan
-        )
+        norm_data = safe_div(data, (irr1["poa_global"].to_numpy() * factor), fallback=np.nan)
 
         history = compute_history_per_horizon(
             norm_data,
@@ -203,8 +195,7 @@ class RecentHistoryModel(PvSiteModel):
             lat=lat,
             lon=lon,
             # We add a timestamp for the recent power, that we'll treat separately afterwards.
-            timestamps=horizon_timestamps
-            + [x.ts - timedelta(minutes=recent_power_minutes / 2)],
+            timestamps=horizon_timestamps + [x.ts - timedelta(minutes=recent_power_minutes / 2)],
             tilt=tilt,
             orientation=orientation,
         )
@@ -247,9 +238,7 @@ class RecentHistoryModel(PvSiteModel):
                 timestamps=horizon_timestamps,
                 load=True,
             )
-            nwp_variables = (
-                self._nwp_variables or self._nwp_data_source.list_variables()
-            )
+            nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
             for variable in nwp_variables:
                 var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
                 per_horizon_dict[variable] = var_per_horizon
@@ -259,9 +248,7 @@ class RecentHistoryModel(PvSiteModel):
 
         # Get the recent power.
         recent_power = float(
-            data.sel(
-                ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)
-            ).mean()
+            data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()
         )
         recent_power_nan = np.isnan(recent_power)
         # Normalize it.
@@ -283,9 +270,7 @@ class RecentHistoryModel(PvSiteModel):
         else:
             return features
 
-    def train(
-        self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
-    ):
+    def train(self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int):
         self._regressor.train(train_iter, valid_iter, batch_size)
 
     def explain(self, x: X):
@@ -310,7 +295,5 @@ class RecentHistoryModel(PvSiteModel):
 
     def set_state(self, state):
         if "_version" not in state:
-            raise RuntimeError(
-                "You are trying to load an older model with more recent code"
-            )
+            raise RuntimeError("You are trying to load an older model with more recent code")
         super().set_state(state)

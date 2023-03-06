@@ -41,9 +41,7 @@ def nwp_data_source(tmp_path):
 
     variables = "a b c".split()
 
-    data = np.arange(
-        len(xs) * len(ys) * len(init_times) * len(steps) * len(variables)
-    ).reshape(
+    data = np.arange(len(xs) * len(ys) * len(init_times) * len(steps) * len(variables)).reshape(
         len(xs),
         len(ys),
         len(init_times),
@@ -142,9 +140,7 @@ def test_nwp_data_source_check_times_many_steps(
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3 * len(expected_steps)
     assert to_pydatetime(data.coords["init_time"].values) == expected_init_time
-    assert_array_equal(
-        data.coords["step"].values, [np.timedelta64(s, "h") for s in expected_steps]
-    )
+    assert_array_equal(data.coords["step"].values, [np.timedelta64(s, "h") for s in expected_steps])
 
 
 @pytest.mark.parametrize(
@@ -176,9 +172,7 @@ def test_nwp_data_source_space(lat, lon, expected_size, nwp_data_source):
 
 
 def test_nwp_data_source_nearest(nwp_data_source):
-    data = nwp_data_source.at(T0, nearest_lat=LAT1, nearest_lon=LON1).get(
-        [T0, T0 + hours(2)]
-    )
+    data = nwp_data_source.at(T0, nearest_lat=LAT1, nearest_lon=LON1).get([T0, T0 + hours(2)])
     x, y = _to_osgb_transformer.transform(LAT1, LON1)
     assert y == data.coords["y"]
     assert x == data.coords["x"]
