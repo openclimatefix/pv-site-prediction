@@ -30,12 +30,11 @@ Machine learning (datasets, models, metrics, training, etc.).
 
 Different scripts for the library. For instance:
 
-    poetry run python psp/scripts/train_models.py --help
+    poetry run python psp/scripts/train_model.py --help
 
 [`/psp/tests`](./psp/tests)
 
 Unit tests.
-
 
 ## Development
 
@@ -53,5 +52,3 @@ Unit tests.
 
     # Starting the jupyter notebooks.
     make notebook
-
-
