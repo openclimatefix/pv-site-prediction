@@ -16,15 +16,7 @@ Jupyter notebooks, mostly for data exploration and experimentation analysis.
 
 [`/psp`](./psp)
 
-The python package defined in this repo.
-
-[`/psp/data`](./psp/data)
-
-Dealing with data.
-
-[`/psp/ml`](./psp/ml)
-
-Machine learning (datasets, models, metrics, training, etc.).
+The python package defined in this repo. The bulk of the content is in here.
 
 [`/psp/scripts`](./psp/scripts)
 
