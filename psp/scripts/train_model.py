@@ -67,14 +67,24 @@ def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
 @exp_config_opt
 @num_workers_opt
 @click.option("-b", "--batch-size", default=32)
+@click.option("--num-test-samples", default=100)
 @click.option("--log-level", type=str, help="Debug level", default="info", show_default=True)
-def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level: str):
+def main(
+    exp_root,
+    exp_name,
+    exp_config_name,
+    num_workers,
+    batch_size,
+    num_test_samples: int,
+    log_level: str,
+):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
     # https://github.com/fsspec/gcsfs/issues/379
-    torch.multiprocessing.set_start_method("spawn")
+    if num_workers > 0:
+        torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
     exp_config = exp_config_module.ExpConfig()
@@ -133,15 +143,13 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
     _log.info(f"Saving model to {path}")
     save_model(model, path)
 
-    limit = 100
-
     # Print the error on the train/valid sets.
     _log.info("Error on the train set")
     train_data_loader = make_data_loader(
         **data_loader_kwargs,
         batch_size=None,
         split=splits.train,
-        limit=limit,
+        limit=num_test_samples,
         random_state=np.random.RandomState(SEED_TRAIN),
     )
     _eval_model(model, train_data_loader)
@@ -151,7 +159,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
         **data_loader_kwargs,
         batch_size=None,
         split=splits.valid,
-        limit=limit,
+        limit=num_test_samples,
         random_state=np.random.RandomState(SEED_VALID),
     )
     _eval_model(model, valid_data_loader)
