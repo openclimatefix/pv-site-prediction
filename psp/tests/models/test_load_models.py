@@ -10,7 +10,8 @@ from psp.typings import X
 # We ran the test once to get the results and pasted here the results.
 # This way we can make sure the output doens't change.
 EXPECTED_OUTPUT = {
-    "model1": [1.0220418, 1.03555466, 1.04443434, 1.04860107, 1.04799241],
+    "model_v1": [1.0220418, 1.03555466, 1.04443434, 1.04860107, 1.04799241],
+    "model_v2": [0.447506, 0.448072, 0.446772, 0.443611, 0.438599],
 }
 
 
@@ -42,4 +43,4 @@ def test_old_models(model_path, expected, pv_data_source):
 
     output = model.predict(X(pv_id=pv_id, ts=timestamp))
 
-    assert_allclose(output.powers, expected, rtol=1e-8)
+    assert_allclose(output.powers, expected, atol=1e-6)
