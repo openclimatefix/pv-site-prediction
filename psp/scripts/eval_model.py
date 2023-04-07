@@ -10,12 +10,7 @@ import tqdm
 
 from psp.dataset import split_train_test
 from psp.metrics import Metric, mean_absolute_error
-from psp.scripts._options import (
-    exp_config_opt,
-    exp_name_opt,
-    exp_root_opt,
-    num_workers_opt,
-)
+from psp.scripts._options import exp_config_opt, exp_name_opt, exp_root_opt, num_workers_opt
 from psp.serialization import load_model
 from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
@@ -40,7 +35,11 @@ _log = logging.getLogger(__name__)
     default=1000,
     help="Maximum number of samples to consider.",
 )
-def main(exp_root, exp_name, exp_config_name, num_workers, limit):
+@click.option(
+    "--split", "split_name", type=str, default="test", help="split of the data to use: train | test"
+)
+def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name):
+    assert split_name in ["train", "test"]
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
     # https://github.com/fsspec/gcsfs/issues/379
@@ -64,9 +63,9 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     # TODO make sure the train_split from the model is consistent with the test one - we could
     # save in the model details about the training and check them here.
     splits = split_train_test(pv_data_source)
-    test_split = splits.test
+    split = getattr(splits, split_name)
 
-    _log.info(f"Testing on split: {test_split}")
+    _log.info(f"Evaluating on split: {split}")
 
     random_state = np.random.RandomState(1234)
 
@@ -74,7 +73,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     data_loader = make_data_loader(
         data_source=pv_data_source,
         horizons=model.config.horizons,
-        split=test_split,
+        split=split,
         batch_size=None,
         random_state=random_state,
         prob_keep_sample=1.0,
@@ -117,7 +116,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit):
     output_dir = exp_root / exp_name
     print(f"Saving results to {output_dir}")
     output_dir.mkdir(exist_ok=True)
-    df.to_csv(output_dir / "errors.csv")
+    df.to_csv(output_dir / f"{split_name}_errors.csv")
 
 
 if __name__ == "__main__":
