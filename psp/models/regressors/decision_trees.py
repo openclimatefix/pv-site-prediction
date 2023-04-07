@@ -1,3 +1,5 @@
+"""Define a generic regressor that wraps a scikit-learn regressor."""
+
 import logging
 from itertools import islice
 from typing import Any, Iterator, Tuple, overload
@@ -12,14 +14,19 @@ from psp.utils.batches import batch_features, concat_batches
 
 _log = logging.getLogger(__name__)
 
+_VERSION = 1
 
-class ForestRegressor(Regressor):
-    """Regressor that uses the HistGradientBoostingRegressor internally.
 
-    We train only one regressor, that predicts all the outputs.
+class SklearnRegressor(Regressor):
+    """Regressor that wraps any scikit-learn regressor.
+
+    We first flatten the all the horizon and actually train one regressor for all the horizons.
+    We also do the target normalization (using pvlib's poa_global) in here.
     """
 
-    def __init__(self, num_train_samples: int):
+    def __init__(
+        self, num_train_samples: int, normalize_targets: bool = True, sklearn_regressor=None
+    ):
         """
         Arguments:
         ---------
@@ -27,11 +34,17 @@ class ForestRegressor(Regressor):
         """
         # Using absolute error alleviates some outlier problems.
         # Squared loss (the default) makes the big outlier losses more important.
-        self._tree = HistGradientBoostingRegressor(
-            loss="absolute_error",
-            random_state=1234,
-        )
+        if sklearn_regressor is None:
+            sklearn_regressor = HistGradientBoostingRegressor(
+                loss="absolute_error",
+                random_state=1234,
+            )
+        self._regressor = sklearn_regressor
+
         self._num_train_samples = num_train_samples
+        self._normalize_targets = normalize_targets
+
+        self._version = _VERSION
 
     @overload
     def _prepare_features(self, features: BatchedFeatures) -> np.ndarray:
@@ -130,12 +143,12 @@ class ForestRegressor(Regressor):
         poa = batch.features["poa_global"]
         assert len(poa.shape) == 2
 
-        # (batch, 1)
-        factor = np.array(batch.features["factor"]).reshape(-1, 1)
-        assert factor.shape[0] == poa.shape[0]
-
         # (batch, horizon)
         ys = batch.y.powers
+
+        # (batch, 1)
+        capacity = np.array(batch.features["capacity"]).reshape(-1, 1)
+        assert capacity.shape[0] == poa.shape[0]
 
         # We can ignore the division by zeros, we treat the nan/inf later.
         with np.errstate(divide="ignore"):
@@ -144,7 +157,11 @@ class ForestRegressor(Regressor):
             # its capacity trying to learn that nights mean zero. Even if in theory it sounds like
             # a trivial decision to make for the model (if we use "poa_global" as a feature), in
             # practice ignoring those points seems to help a lot.
-            ys = ys / (poa * factor)
+            if self._normalize_targets:
+                ys = ys / (poa * capacity)
+            else:
+                # Hack to make sure we have `nan` when poa=0 even if we don't normalize.
+                ys = ys / (poa * capacity) * (poa * capacity)
 
         # Flatten the targets just like we "flattened" the features.
         ys = ys.reshape(-1)
@@ -155,12 +172,18 @@ class ForestRegressor(Regressor):
         ys = ys[mask]
 
         _log.info("Fitting the forest.")
-        self._tree.fit(xs, ys)
+        self._regressor.fit(xs, ys)
 
     def predict(self, features: Features):
         new_features = self._prepare_features(batch_features([features]))
-        pred = self._tree.predict(new_features)
-        return pred
+        pred = self._regressor.predict(new_features)
+        assert len(pred.shape) == 1
+
+        if self._normalize_targets:
+            return pred * features["capacity"] * features["poa_global"]
+        else:
+            # Return 0. when poa_global is 0., otherwise the value.
+            return pred * ((features["poa_global"] > 0) * 1.0)
 
     def explain(
         self, features: Features, feature_names: dict[str, list[str]]
@@ -180,7 +203,18 @@ class ForestRegressor(Regressor):
 
         new_features, new_feature_names = self._prepare_features(batch, feature_names)
 
-        explainer = shap.Explainer(self._tree)
+        explainer = shap.Explainer(self._regressor, feature_names=new_feature_names)
         shap_values = explainer(new_features)
         # TODO we should return something that is not shap-specific
-        return shap_values, new_feature_names
+        return shap_values
+
+    def __setstate__(self, state):
+        # Backward compatibility for before we had the _version field.
+        if "_version" not in state:
+            state["_normalize_targets"] = True
+            state["_regressor"] = state["_tree"]
+        self.__dict__ = state
+
+
+# For backward compatibility.
+ForestRegressor = SklearnRegressor

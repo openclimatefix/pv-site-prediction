@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import math
 import warnings
 from datetime import datetime, timedelta
@@ -15,6 +16,8 @@ from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
 from psp.typings import Batch, Features, Horizons, X, Y
 from psp.utils.maths import safe_div
+
+_log = logging.getLogger(__name__)
 
 
 def to_midnight(ts: datetime) -> datetime:
@@ -94,6 +97,9 @@ class SetupConfig:
     nwp_data_source: NwpDataSource | None
 
 
+_VERSION = 2
+
+
 class RecentHistoryModel(PvSiteModel):
     def __init__(
         self,
@@ -102,12 +108,16 @@ class RecentHistoryModel(PvSiteModel):
         regressor: Regressor,
         use_nwp: bool = True,
         nwp_variables: list[str] | None = None,
+        normalize_features: bool = True,
+        use_inferred_meta: bool = False,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
         self._regressor = regressor
         self._use_nwp = use_nwp
         self._nwp_variables = nwp_variables
+        self._normalize_features = normalize_features
+        self._use_inferred_meta = use_inferred_meta
 
         self.setup(setup_config)
 
@@ -116,14 +126,12 @@ class RecentHistoryModel(PvSiteModel):
 
         # We bump this when we make backward-incompatible changes in the code, to support old
         # serialized models.
-        self._version = 1
+        self._version = _VERSION
 
         super().__init__(config, setup_config)
 
     def predict_from_features(self, features: Features) -> Y:
-        pred = self._regressor.predict(features)
-        assert len(pred.shape) == 1
-        powers = pred * features["factor"] * features["poa_global"]
+        powers = self._regressor.predict(features)
         y = Y(powers=powers)
         return y
 
@@ -156,26 +164,44 @@ class RecentHistoryModel(PvSiteModel):
         coords = data.coords
 
         lat = coords["latitude"].values
-        factor = coords["factor"].values
         lon = coords["longitude"].values
-        tilt = coords["tilt"].values
-        orientation = coords["orientation"].values
 
-        data = data.drop_vars(["latitude", "longitude", "orientation", "tilt", "factor", "id"])
+        if self._use_inferred_meta:
+            tilt = float(coords["tilt"].values)
+            orientation = float(coords["orientation"].values)
+            capacity = float(coords["factor"].values)
+        else:
+            # We hard-code the `tilt` and `orientation` to standard values for the UK.
+            # This means that our normalization won't be perfect, but in practice the model is able
+            # to cope for that.
+            tilt = 35
+            orientation = 180
+            # We define the capacity as the 99% quantile over the last week of data.
+            # In practice this seems to work well.
+            try:
+                capacity = float(data.quantile(0.99))
+            except Exception as e:
+                _log.warning("Error while calculating capacity")
+                _log.exception(e)
+                capacity = np.nan
 
-        # Get the theoretical irradiance for all the timestamps in our history.
-        irr1 = get_irradiance(
-            lat=lat,
-            lon=lon,
-            timestamps=data.coords["ts"],
-            tilt=tilt,
-            orientation=orientation,
-        )
+        data = data.drop_vars(["latitude", "longitude", "id", "tilt", "orientation", "factor"])
 
         # As usual we normalize the PV data wrt irradiance and our PV "factor".
         # Using `safe_div` with `np.nan` fallback to get `nan`s instead of `inf`. The `nan` are
         # ignored in `compute_history_per_horizon`.
-        norm_data = safe_div(data, (irr1["poa_global"].to_numpy() * factor), fallback=np.nan)
+        if self._normalize_features:
+            # Get the theoretical irradiance for all the timestamps in our history.
+            irr1 = get_irradiance(
+                lat=lat,
+                lon=lon,
+                timestamps=data.coords["ts"],
+                tilt=tilt,
+                orientation=orientation,
+            )
+            norm_data = safe_div(data, irr1["poa_global"].to_numpy() * capacity, fallback=np.nan)
+        else:
+            norm_data = data
 
         history = compute_history_per_horizon(
             norm_data,
@@ -207,13 +233,16 @@ class RecentHistoryModel(PvSiteModel):
         poa_global = poa_global[:-1]
 
         features["poa_global"] = poa_global
-        features["factor"] = factor
+        features["capacity"] = capacity
 
         per_horizon_dict: dict[str, np.ndarray] = {
             "poa_global": poa_global,
         }
 
         common_dict: dict[str, float] = {}
+
+        if self._version >= 2:
+            common_dict["capacity"] = capacity if np.isfinite(capacity) else -1.0
 
         for agg in ["max", "mean", "median"]:
             # When the array is empty or all nan, numpy emits a warning. We don't care about those
@@ -241,6 +270,12 @@ class RecentHistoryModel(PvSiteModel):
             nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
             for variable in nwp_variables:
                 var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
+
+                # We have seen `inf` values for this one.
+                if variable == "vis":
+                    # Using -1 because this is not a possible value for this feature.
+                    var_per_horizon = np.nan_to_num(var_per_horizon, nan=-1, posinf=-1, neginf=-1.0)
+
                 per_horizon_dict[variable] = var_per_horizon
 
         # Concatenate all the per-horizon features in a matrix of dimensions (horizon, features)
@@ -251,11 +286,16 @@ class RecentHistoryModel(PvSiteModel):
             data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()
         )
         recent_power_nan = np.isnan(recent_power)
+
         # Normalize it.
-        recent_power = safe_div(recent_power, poa_global_now * factor)
+        if self._normalize_features:
+            recent_power = safe_div(recent_power, poa_global_now * capacity)
 
         common_dict["recent_power"] = 0.0 if recent_power_nan else recent_power
         common_dict["recent_power_nan"] = recent_power_nan * 1.0
+
+        if self._version >= 2:
+            common_dict["poa_global_now_is_zero"] = poa_global_now == 0.0
 
         features["per_horizon"] = per_horizon
         features["common"] = np.array(list(map(float, common_dict.values())))
@@ -295,5 +335,15 @@ class RecentHistoryModel(PvSiteModel):
 
     def set_state(self, state):
         if "_version" not in state:
-            raise RuntimeError("You are trying to load an older model with more recent code")
+            raise RuntimeError("You are trying to load a deprecated model")
+
+        if state["_version"] > _VERSION:
+            raise RuntimeError(
+                "You are trying to load a newer model in an older version of the code."
+            )
+
+        # Load default arguments from older versions.
+        if state["_version"] < 2:
+            state["_use_inferred_meta"] = True
+            state["_normalize_features"] = True
         super().set_state(state)
