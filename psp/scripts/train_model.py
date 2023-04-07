@@ -1,21 +1,64 @@
 import importlib
 import logging
+import shutil
+from collections import defaultdict
 
 import click
 import numpy as np
 import torch
+import tqdm
+from torch.utils.data import DataLoader
 
 from psp.dataset import split_train_test
-from psp.scripts._options import (
-    exp_config_opt,
-    exp_name_opt,
-    exp_root_opt,
-    num_workers_opt,
-)
+from psp.metrics import mean_absolute_error
+from psp.models.base import PvSiteModel
+from psp.scripts._options import exp_config_opt, exp_name_opt, exp_root_opt, num_workers_opt
 from psp.serialization import save_model
 from psp.training import make_data_loader
+from psp.typings import Sample
 
 _log = logging.getLogger(__name__)
+
+SEED_TRAIN = 1234
+SEED_VALID = 4321
+
+
+def _count(x):
+    """Count the number of non-nan/inf values."""
+    return np.count_nonzero(np.isfinite(x))
+
+
+def _err(x):
+    """Calculate the error (95% confidence interval) on the mean of a list of points.
+
+    We ignore the nan/inf values.
+    """
+    return 1.96 * np.nanstd(x) / np.sqrt(_count(x))
+
+
+def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
+    """Evaluate a `model` on samples from a `dataloader` and log the error."""
+    horizon_buckets = 8 * 60
+    errors_per_bucket = defaultdict(list)
+    all_errors = []
+    for sample in tqdm.tqdm(dataloader):
+        pred = model.predict(sample.x)
+        error = mean_absolute_error(sample.y, pred)
+        for (start, end), err in zip(model.config.horizons, error):
+            bucket = start // horizon_buckets
+            errors_per_bucket[bucket].append(err)
+            all_errors.append(err)
+
+    for i, errors in errors_per_bucket.items():
+        bucket_start = i * horizon_buckets // 60
+        bucket_end = (i + 1) * horizon_buckets // 60
+        mean_err = np.nanmean(errors)
+        # Error on the error!
+        err_err = _err(errors)
+        _log.info(f"[{bucket_start:<2}, {bucket_end:<2}[ : {mean_err:.3f} ± {err_err:.3f}")
+    mean_err = np.nanmean(all_errors)
+    err_err = _err(all_errors)
+    _log.info(f"Total: {mean_err:.3f} ± {err_err:.3f}")
 
 
 @click.command()
@@ -36,7 +79,11 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
     exp_config = exp_config_module.ExpConfig()
 
-    random_state = np.random.RandomState(1234)
+    output_dir = exp_root / exp_name
+    output_dir.mkdir(exist_ok=True)
+
+    # Also copy the config into the experiment.
+    shutil.copy(f"./psp/exp_configs/{exp_config_name}.py", output_dir)
 
     # Load the model.
     model = exp_config.get_model()
@@ -48,15 +95,19 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
 
     _log.info(f"Training on split: {splits.train}")
 
-    train_data_loader = make_data_loader(
+    data_loader_kwargs = dict(
         data_source=pv_data_source,
         horizons=model.config.horizons,
-        split=splits.train,
-        batch_size=batch_size,
         get_features=model.get_features,
         num_workers=num_workers,
-        random_state=random_state,
         shuffle=True,
+    )
+
+    train_data_loader = make_data_loader(
+        **data_loader_kwargs,
+        batch_size=batch_size,
+        split=splits.train,
+        random_state=np.random.RandomState(SEED_TRAIN),
     )
 
     limit = 128
@@ -68,25 +119,42 @@ def main(exp_root, exp_name, exp_config_name, num_workers, batch_size, log_level
     _log.info(f"Validating on split: {splits.valid}")
 
     valid_data_loader = make_data_loader(
-        data_source=pv_data_source,
-        horizons=model.config.horizons,
+        **data_loader_kwargs,
         split=splits.valid,
         batch_size=batch_size,
-        get_features=model.get_features,
-        num_workers=num_workers,
-        random_state=np.random.RandomState(4321),
+        random_state=np.random.RandomState(SEED_VALID),
         # We shuffle to get a good sample of data points.
-        shuffle=True,
         limit=limit,
     )
 
     model.train(train_data_loader, valid_data_loader, batch_size)
 
-    output_dir = exp_root / exp_name
-    output_dir.mkdir(exist_ok=True)
     path = output_dir / "model.pkl"
     _log.info(f"Saving model to {path}")
     save_model(model, path)
+
+    limit = 100
+
+    # Print the error on the train/valid sets.
+    _log.info("Error on the train set")
+    train_data_loader = make_data_loader(
+        **data_loader_kwargs,
+        batch_size=None,
+        split=splits.train,
+        limit=limit,
+        random_state=np.random.RandomState(SEED_TRAIN),
+    )
+    _eval_model(model, train_data_loader)
+
+    _log.info("Error on the valid set")
+    valid_data_loader = make_data_loader(
+        **data_loader_kwargs,
+        batch_size=None,
+        split=splits.valid,
+        limit=limit,
+        random_state=np.random.RandomState(SEED_VALID),
+    )
+    _eval_model(model, valid_data_loader)
 
 
 if __name__ == "__main__":
