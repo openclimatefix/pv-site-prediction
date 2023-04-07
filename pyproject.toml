@@ -47,6 +47,7 @@ torchdata = "^0.5.1"
 shap = "^0.41.0"
 matplotlib = "^3.6.3"
 ruff = "^0.0.254"
+dtreeviz = "^2.2.0"
 
 [tool.poetry.extras]
 torch = ["torch"]
