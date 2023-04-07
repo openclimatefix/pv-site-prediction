@@ -94,7 +94,7 @@ def time_rule(timestamp: Timestamp, text: str, align: Literal["left", "right"]) 
 
 def _make_pv_timeseries_chart(
     x: X,
-    y: Y,
+    all_y: dict[str, Y],
     pred_ts: Timestamp,
     horizons: Horizons,
     horizon_idx: int,
@@ -111,12 +111,15 @@ def _make_pv_timeseries_chart(
         end_ts=x.ts + dt.timedelta(hours=horizons[-1][1] / 60 + padding_hours),
     )["power"]
 
+    capacity = float(
+        pv_data_source.get(pv_ids=x.pv_id, start_ts=x.ts - dt.timedelta(days=7), end_ts=x.ts)[
+            "power"
+        ].quantile(0.99)
+    )
+
     # Extract the meta data for the PV.
     lat = raw_data.coords["latitude"].values
     lon = raw_data.coords["longitude"].values
-    factor = raw_data.coords["factor"].values
-    tilt = raw_data.coords["tilt"].values
-    orientation = raw_data.coords["orientation"].values
 
     # Reshape as a pandas dataframe.
     pv_data = raw_data.to_dataframe()[["power"]].reset_index().rename(columns={"ts": "timestamp"})
@@ -124,8 +127,8 @@ def _make_pv_timeseries_chart(
     irr_kwargs = dict(
         lat=lat,
         lon=lon,
-        tilt=tilt,
-        orientation=orientation,
+        tilt=35,
+        orientation=180,
     )
 
     if normalize:
@@ -135,11 +138,11 @@ def _make_pv_timeseries_chart(
             **irr_kwargs,
         )["poa_global"]
 
-        pv_data["power"] = np.clip(safe_div(pv_data["power"], irr.to_numpy() * factor), 0, 2)
+        pv_data["power"] = np.clip(pv_data["power"] / (irr.to_numpy() * capacity), 0, 0.003)
 
     timestamps = [x.ts + dt.timedelta(minutes=h0 + (h1 - h0) / 2) for h0, h1 in horizons]
 
-    powers = y.powers
+    all_powers = {m: y.powers for m, y in all_y.items()}
 
     if normalize:
         # Normalize the predictions with respect to pvlib's irradiance.
@@ -148,23 +151,34 @@ def _make_pv_timeseries_chart(
             **irr_kwargs,
         )["poa_global"]
 
-        powers = np.clip(safe_div(powers, irr * factor), 0, 2)
+        all_powers = {
+            m: np.clip(safe_div(powers, irr * capacity), 0, 0.003)
+            for m, powers in all_powers.items()
+        }
+
+    model_data = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "timestamp": timestamps,
+                    "current": [1 if i == horizon_idx else 0 for i in range(len(horizons))],
+                    "model": model_name,
+                    "power": powers,
+                }
+            )
+            for model_name, powers in all_powers.items()
+        ]
+    )
 
     pred_chart = (
-        alt.Chart(
-            pd.DataFrame(
-                dict(
-                    power=powers,
-                    timestamp=timestamps,
-                    current=[1 if i == horizon_idx else 0 for i in range(len(horizons))],
-                )
-            )
-        )
+        alt.Chart(model_data)
         .mark_circle(size=14, opacity=0.8)
         .encode(
             x="timestamp",
             y="power",
-            color=alt.Color("current:O", scale=alt.Scale(range=["#1f77b4", "red"]), legend=None),
+            shape="current:O",
+            color="model:N",
+            # color=alt.Color("current:O", scale=alt.Scale(range=["#1f77b4", "red"])),
             size=alt.Size("current:O", scale=alt.Scale(range=[14, 30]), legend=None),
         )
     )
@@ -277,15 +291,15 @@ def _make_nwp_heatmap(
 
 def _make_explain_chart(x: X, horizon_idx: int, model: PvSiteModel):
     """Make a model explain chart for the sample."""
-    shap_values, feature_names = model.explain(x)
-    chart = shap.plots.force(shap_values[horizon_idx], feature_names=feature_names)
+    shap_values = model.explain(x)
+    chart = shap.plots.force(shap_values[horizon_idx])
     return chart
 
 
 def plot_sample(
     x: X,
     horizon_idx: int,
-    model: PvSiteModel,
+    models: dict[str, PvSiteModel],
     pv_data_source: PvDataSource,
     nwp_data_source: NwpDataSource,
     meta: pd.DataFrame,
@@ -300,52 +314,61 @@ def plot_sample(
     if metric is None:
         metric = mean_absolute_error
 
-    y = model.predict(x)
-
-    y_true = get_y_from_x(x=x, horizons=model.config.horizons, data_source=pv_data_source)
-
-    if y_true is None:
-        err = None
-    else:
-        err = metric(y_true, y)
-
     pv_id = x.pv_id
     ts = x.ts
-    horizon = model.config.horizons[horizon_idx]
 
+    # We assume that all the horizons are the same
+    horizon = next(iter(models.values())).config.horizons[horizon_idx]
     pred_ts = ts + dt.timedelta(minutes=horizon[0] + (horizon[1] - horizon[0]) / 2)
-    meta_row = meta.loc[pv_id]
-    lat = float(meta_row["latitude"])
-    lon = float(meta_row["longitude"])
 
-    row_as_dict = dict(
-        ts=ts,
-        pred_ts=pred_ts,
-        horizon=horizon,
-        lat=lat,
-        lon=lon,
-        error=err is not None and err[horizon_idx],
-        y_true=y_true.powers[horizon_idx] if y_true else None,
-        y=y.powers[horizon_idx],
-    )
+    all_y: dict[str, Y] = {}
 
-    for key, value in row_as_dict.items():
-        print(f"{key:10} {value}")
+    for model_name, model in models.items():
+        y = model.predict(x)
 
-    display(_make_explain_chart(x, horizon_idx, model))
+        all_y[model_name] = y
+
+        y_true = get_y_from_x(x=x, horizons=model.config.horizons, data_source=pv_data_source)
+
+        if y_true is None:
+            err = None
+        else:
+            err = metric(y_true, y)
+
+        meta_row = meta.loc[pv_id]
+        lat = float(meta_row["latitude"])
+        lon = float(meta_row["longitude"])
+
+        row_as_dict = dict(
+            ts=ts,
+            pred_ts=pred_ts,
+            horizon=horizon,
+            lat=lat,
+            lon=lon,
+            error=err is not None and err[horizon_idx],
+            y_true=y_true.powers[horizon_idx] if y_true else None,
+            y=y.powers[horizon_idx],
+        )
+
+        for key, value in row_as_dict.items():
+            print(f"{key:10} {value}")
+
+    for model_name, model in models.items():
+        print(model_name)
+        display(_make_explain_chart(x, horizon_idx, model))
 
     for normalize in [False, True]:
         print(f"Normalize = {normalize}")
         display(
             _make_pv_timeseries_chart(
                 x=x,
-                y=y,
+                all_y=all_y,
                 pred_ts=pred_ts,
                 horizons=model.config.horizons,
                 horizon_idx=horizon_idx,
                 pv_data_source=pv_data_source,
-                padding_hours=7 * 12,
-                height=150,
+                padding_hours=7 * 24,
+                height=200,
                 normalize=normalize,
             )
         )
@@ -353,7 +376,7 @@ def plot_sample(
         display(
             _make_pv_timeseries_chart(
                 x=x,
-                y=y,
+                all_y=all_y,
                 pred_ts=pred_ts,
                 horizons=model.config.horizons,
                 horizon_idx=horizon_idx,
@@ -378,21 +401,23 @@ def plot_sample(
             display(chart)
 
     print("*** FEATURES ***")
-    features, feature_names = model.get_features_with_names(X(pv_id=pv_id, ts=ts))
-    for key, value in features.items():
-        if isinstance(value, (int, float)):
-            chart = None
-        else:
-            chart = _make_feature_chart(
-                name=key,
-                feature_obj=value,
-                # We assume that the `feature_names` keys will match the `features`.
-                feature_names=feature_names.get(key),
-                horizon_idx=horizon_idx,
-                num_horizons=num_horizons,
-            )
-        if chart is None:
-            print(key)
-            print(value)
-        else:
-            display(chart)
+    for model_name, model in models.items():
+        print(model_name)
+        features, feature_names = model.get_features_with_names(X(pv_id=pv_id, ts=ts))
+        for key, value in features.items():
+            if isinstance(value, (int, float)):
+                chart = None
+            else:
+                chart = _make_feature_chart(
+                    name=key,
+                    feature_obj=value,
+                    # We assume that the `feature_names` keys will match the `features`.
+                    feature_names=feature_names.get(key),
+                    horizon_idx=horizon_idx,
+                    num_horizons=num_horizons,
+                )
+            if chart is None:
+                print(key)
+                print(value)
+            else:
+                display(chart)
