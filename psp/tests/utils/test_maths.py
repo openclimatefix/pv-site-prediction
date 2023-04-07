@@ -41,6 +41,19 @@ def assert_equal(a, b):
             None,
             xr.DataArray([[0, 1], [1, 1]]),
         ],
+        #
+        [
+            xr.DataArray([[0.0, 1], [2, 3]]),
+            np.array([[0.0, 1], [2, 3]]),
+            None,
+            xr.DataArray([[0, 1], [1, 1]]),
+        ],
+        [
+            xr.DataArray([0.0, 1, 2, 3]),
+            np.array([0.0, 1, 2, 3]),
+            None,
+            xr.DataArray([0, 1, 1, 1]),
+        ],
     ],
 )
 def test_safe_div(num, den, fallback, expected):
