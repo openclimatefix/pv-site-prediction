@@ -339,7 +339,8 @@ class RecentHistoryModel(PvSiteModel):
 
         if state["_version"] > _VERSION:
             raise RuntimeError(
-                "You are trying to load a newer model in an older version of the code."
+                "You are trying to load a newer model in an older version of the code"
+                f" ({state['_version']} > {_VERSION})."
             )
 
         # Load default arguments from older versions.
