@@ -158,138 +158,6 @@ class DatasetSplit:
         )
 
 
-# A list of SS_ID that don't contain enough data.
-# I just didn't want to calculate them everytime.
-# TODO Get rid of those when we prepare the dataset.
-SKIP_SS_IDS: set[PvId] = set(
-    [
-        str(x)
-        for x in [
-            8440,
-            16718,
-            8715,
-            17073,
-            9108,
-            9172,
-            10167,
-            10205,
-            10207,
-            10278,
-            26778,
-            26819,
-            10437,
-            10466,
-            26915,
-            10547,
-            26939,
-            26971,
-            10685,
-            10689,
-            2638,
-            2661,
-            2754,
-            2777,
-            2783,
-            2786,
-            2793,
-            2812,
-            2829,
-            2830,
-            2867,
-            2883,
-            2904,
-            2923,
-            2947,
-            2976,
-            2989,
-            2999,
-            3003,
-            3086,
-            3118,
-            3123,
-            3125,
-            3264,
-            3266,
-            3271,
-            3313,
-            3334,
-            3470,
-            3502,
-            11769,
-            11828,
-            11962,
-            3772,
-            11983,
-            3866,
-            3869,
-            4056,
-            4067,
-            4116,
-            4117,
-            4124,
-            4323,
-            4420,
-            20857,
-            4754,
-            13387,
-            13415,
-            5755,
-            5861,
-            5990,
-            6026,
-            6038,
-            6054,
-            14455,
-            6383,
-            6430,
-            6440,
-            6478,
-            6488,
-            6541,
-            6548,
-            6560,
-            14786,
-            6630,
-            6804,
-            6849,
-            6868,
-            6870,
-            6878,
-            6901,
-            6971,
-            7055,
-            7111,
-            7124,
-            7132,
-            7143,
-            7154,
-            7155,
-            7156,
-            7158,
-            7201,
-            7237,
-            7268,
-            7289,
-            7294,
-            7311,
-            7329,
-            7339,
-            7379,
-            7392,
-            7479,
-            7638,
-            7695,
-            7772,
-            15967,
-            7890,
-            16215,
-            # This one has funny night values.
-            7830,
-        ]
-    ]
-)
-
-
 @dataclasses.dataclass
 class Splits:
     train: DatasetSplit
@@ -298,39 +166,92 @@ class Splits:
 
 
 def split_train_test(
-    data_source: PvDataSource,
+    pv_data_source: PvDataSource,
+    *,
+    train_start: datetime | None = None,
+    train_end: datetime | None = None,
+    test_start: datetime | None = None,
+    test_end: datetime | None = None,
+    pv_split: float | None = 0.9,
+    valid_split: float = 0.1,
 ) -> Splits:
-    # Note: Currently we hard-code a bunch of stuff in here, at some point we might want to make
-    # some customizable.
+    """
+    Split the PV Data Source into train/valid/test sets.
 
-    # Starting in 2020 because we only have NWP data from 2020.
-    # TODO Get the NWP data for 2018 and 2019.
-    # train_start = datetime(2018, 1, 1)
-    train_start = datetime(2020, 1, 1)
-    # Leaving a couple of days at the end to be safe.
-    train_end = datetime(2020, 12, 29)
+    Each split is basically a list of PV ids and a start and end datetimes.
 
-    test_start = datetime(2021, 1, 1)
-    test_end = datetime(2022, 1, 1)
+    Arguments:
+    ---------
+        train_start: Beginning of the train set.
+        train_end: End of the train set.
+        test_start: Beginning of the test set.
+        test_end: End of the test set.
+        pv_split: Ratio of PV sites to put in the train set. The rest will go in the test set. Use
+            an explicit `None` to *not* split on PV ids (use all the PV ids for both train and
+            test). This can make sense in use-cases where there is a small and stable number PV
+            sites.
+        valid_split: Ratio of Pv sites from the train set to use as valid set. Note that the
+            time range is the same for train and valid.
+    """
+    # For simplicity, we only support setting all the dates or None of them, in which we simply
+    # split the data 50/50 between train and test.
+    num_none = sum([x is None for x in [train_start, train_end, test_start, test_end]])
 
-    pv_ids = set(data_source.list_pv_ids())
-    pv_ids = pv_ids.difference(SKIP_SS_IDS)
+    if num_none not in [0, 4]:
+        raise NotImplementedError("you need to specify all dates or no dates.")
 
-    # Train on 90%.
-    train_pv_ids = set(pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 10) > 0))
-    # Train on the remaining 10%.
-    test_pv_ids = set(pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 10) == 0))
+    if num_none == 4:
+        min_ts = pv_data_source.min_ts()
+        max_ts = pv_data_source.max_ts()
 
-    # We use the same time range for train and valid.
-    # But we take some of the pv_ids.
-    valid_pv_ids = set(pv_id for pv_id in train_pv_ids if ((naive_hash(pv_id) % 13) == 1))
+        train_start = min_ts
+        test_end = max_ts
+        # 50/50 split.
+        test_start = test_end - (max_ts - min_ts) / 2
 
-    # Remove those from the train set.
-    train_pv_ids = train_pv_ids.difference(valid_pv_ids)
+        # Put one day between train and test to be safe.
+        train_end = test_start - timedelta(days=1)
 
-    assert len(train_pv_ids.intersection(valid_pv_ids)) == 0
-    assert len(train_pv_ids.intersection(test_pv_ids)) == 0
-    assert len(valid_pv_ids.intersection(test_pv_ids)) == 0
+    # For mypy.
+    assert train_start is not None
+    assert train_end is not None
+    assert test_start is not None
+    assert test_end is not None
+
+    assert train_start < train_end
+    assert train_end < test_start
+    assert test_start < test_end
+
+    pv_ids = set(pv_data_source.list_pv_ids())
+
+    if pv_split is None:
+        train_pv_ids = pv_ids
+        valid_pv_ids = pv_ids
+        test_pv_ids = pv_ids
+    else:
+        assert isinstance(pv_split, float)
+        # We split on a hash of the pv_ids.
+        train_pv_ids = set(
+            pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 1000) < 1000 * pv_split)
+        )
+        test_pv_ids = set(
+            pv_id for pv_id in pv_ids if ((naive_hash(pv_id) % 1000) >= 1000 * pv_split)
+        )
+
+        # We use the same time range for train and valid.
+        # But we take some of the pv_ids, using the same kind of heuristic as the train/tests split.
+        valid_pv_ids = set(
+            pv_id
+            for pv_id in train_pv_ids
+            if ((naive_hash(pv_id + " - hack to get a different hash") % 1000) < 1000 * valid_split)
+        )
+
+        # Remove those from the train set.
+        train_pv_ids = train_pv_ids.difference(valid_pv_ids)
+
+        assert len(train_pv_ids.intersection(valid_pv_ids)) == 0
+        assert len(train_pv_ids.intersection(test_pv_ids)) == 0
+        assert len(valid_pv_ids.intersection(test_pv_ids)) == 0
 
     # Note the `sorted`. This is because `set` can mess up the order and we want the randomness we
     # will add later (when picking pv_ids at random) to be deterministic.

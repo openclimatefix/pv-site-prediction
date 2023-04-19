@@ -8,9 +8,15 @@ import pandas as pd
 import torch
 import tqdm
 
-from psp.dataset import split_train_test
+from psp.exp_configs.base import ExpConfigBase
 from psp.metrics import Metric, mean_absolute_error
-from psp.scripts._options import exp_config_opt, exp_name_opt, exp_root_opt, num_workers_opt
+from psp.scripts._options import (
+    exp_config_opt,
+    exp_name_opt,
+    exp_root_opt,
+    log_level_opt,
+    num_workers_opt,
+)
 from psp.serialization import load_model
 from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
@@ -28,6 +34,7 @@ _log = logging.getLogger(__name__)
 @exp_name_opt
 @exp_config_opt
 @num_workers_opt
+@log_level_opt
 @click.option(
     "-l",
     "--limit",
@@ -38,7 +45,9 @@ _log = logging.getLogger(__name__)
 @click.option(
     "--split", "split_name", type=str, default="test", help="split of the data to use: train | test"
 )
-def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name):
+def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name, log_level):
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
+
     assert split_name in ["train", "test"]
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
@@ -46,9 +55,9 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name):
     torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
-    exp_config = exp_config_module.ExpConfig()
+    exp_config: ExpConfigBase = exp_config_module.ExpConfig()
 
-    setup_config = exp_config.get_model_setup_config()
+    data_source_kwargs = exp_config.get_data_source_kwargs()
     pv_data_source = exp_config.get_pv_data_source()
 
     # Load the saved model.
@@ -56,13 +65,13 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name):
     model = load_model(model_path)
 
     # Model-specifi setup.
-    model.setup(setup_config)
+    model.set_data_sources(**data_source_kwargs)
 
     # Setup the dataset.
 
     # TODO make sure the train_split from the model is consistent with the test one - we could
     # save in the model details about the training and check them here.
-    splits = split_train_test(pv_data_source)
+    splits = exp_config.make_dataset_splits(pv_data_source)
     split = getattr(splits, split_name)
 
     _log.info(f"Evaluating on split: {split}")

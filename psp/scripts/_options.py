@@ -32,3 +32,11 @@ num_workers_opt = click.option(
     default=0,
     help="Number of workers for data pre-processing. Defaults to no parallelism.",
 )
+
+log_level_opt = click.option(
+    "--log-level",
+    type=str,
+    help="Debug level",
+    default="info",
+    show_default=True,
+)

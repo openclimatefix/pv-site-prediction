@@ -2,7 +2,7 @@
 
 import logging
 from itertools import islice
-from typing import Any, Iterator, Tuple, overload
+from typing import Any, Iterable, Tuple, overload
 
 import numpy as np
 import tqdm
@@ -122,8 +122,8 @@ class SklearnRegressor(Regressor):
 
     def train(
         self,
-        train_iter: Iterator[Batch],
-        valid_iter: Iterator[Batch],
+        train_iter: Iterable[Batch],
+        valid_iter: Iterable[Batch],
         batch_size: int,
     ):
         num_samples = self._num_train_samples

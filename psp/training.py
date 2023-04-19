@@ -1,6 +1,6 @@
 import functools
 from operator import itemgetter
-from typing import Callable
+from typing import Callable, overload
 
 import numpy as np
 from torch.utils.data import DataLoader
@@ -8,7 +8,7 @@ from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
 from psp.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
-from psp.typings import Features, Horizons, Sample, X
+from psp.typings import Batch, Features, Horizons, Sample, X
 from psp.utils.batches import batch_samples
 
 
@@ -65,6 +65,43 @@ def _build_sample(
     return Sample(x=x, y=y, features=features)
 
 
+# We need to `overload` to have a different return type depending on if we batch or not.
+@overload
+def make_data_loader(
+    *,
+    data_source: PvDataSource,
+    horizons: Horizons,
+    split: DatasetSplit,
+    get_features: Callable[[X], Features],
+    prob_keep_sample: float = 1.0,
+    random_state: np.random.RandomState | None = None,
+    batch_size: None = None,
+    num_workers: int = 0,
+    shuffle: bool = False,
+    step: int = 1,
+    limit: int | None = None,
+) -> DataLoader[Sample]:
+    ...
+
+
+@overload
+def make_data_loader(
+    *,
+    data_source: PvDataSource,
+    horizons: Horizons,
+    split: DatasetSplit,
+    get_features: Callable[[X], Features],
+    prob_keep_sample: float = 1.0,
+    random_state: np.random.RandomState | None = None,
+    batch_size: int,
+    num_workers: int = 0,
+    shuffle: bool = False,
+    step: int = 1,
+    limit: int | None = None,
+) -> DataLoader[Batch]:
+    ...
+
+
 def make_data_loader(
     *,
     data_source: PvDataSource,
@@ -78,7 +115,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
-) -> DataLoader[Sample]:
+) -> DataLoader[Sample] | DataLoader[Batch]:
     """
     Arguments:
     ---------

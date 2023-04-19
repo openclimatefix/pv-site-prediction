@@ -91,3 +91,19 @@ def test_pv_data_source_ignore_future(pv_data_source):
         ].size
         == 2
     )
+
+
+def test_ignore_pv_ids(tmp_path):
+    d = _make_pv_data_xarray()
+    path = tmp_path / "pv_data_source_test_ignore_pv.netcdf"
+    d.to_netcdf(path)
+
+    ds = NetcdfPvDataSource(path, ignore_pv_ids=["2", "3"])
+
+    assert ds.list_pv_ids() == ["1"]
+
+    with pytest.raises(KeyError):
+        ds.get(pv_ids=["2"])
+
+    with pytest.raises(KeyError):
+        ds.get(pv_ids=["1", "3"])

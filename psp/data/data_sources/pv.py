@@ -1,6 +1,6 @@
 import abc
-import copy
 import datetime
+import logging
 import pathlib
 from typing import TypeVar
 
@@ -16,6 +16,9 @@ _TS = "ts"
 _Self = TypeVar("_Self", bound="PvDataSource")
 
 
+_log = logging.getLogger(__name__)
+
+
 class PvDataSource(abc.ABC):
     """Definition of the interface for loading PV data."""
 
@@ -26,9 +29,10 @@ class PvDataSource(abc.ABC):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
-        # We assume that the returned Dataset has dimensions "id" and "ts".
-        # Any number of coordinates or variables could be present - it will be up to the models to
-        # know about the specifics of a given data source.
+        """Get a slice of the data as a xarray Dataset.
+
+        The returned Dataset should have dimensions "pv_id" and "ts", and any `coords`.
+        """
         pass
 
     @abc.abstractmethod
@@ -84,6 +88,7 @@ class NetcdfPvDataSource(PvDataSource):
         timestamp_dim_name: str = _TS,
         id_dim_name: str = _ID,
         rename: dict[str, str] | None = None,
+        ignore_pv_ids: list[str] | None = None,
     ):
         """
         Arguments:
@@ -91,8 +96,8 @@ class NetcdfPvDataSource(PvDataSource):
             filepath: File path of the netcdf file.
             timestamp_dim_name: Name for the timestamp dimensions in the dataset.
             id_dim_name: Name for the "id" dimensions in the dataset.
-            rename: This is passed to `xarray` to
-                rename any coordinates or variable.
+            rename: This is passed to `xarray` to rename any coordinates or variable.
+            ignore_pv_ids: The PV ids from this list will be completely ignored.
         """
         if rename is None:
             rename = {}
@@ -101,6 +106,7 @@ class NetcdfPvDataSource(PvDataSource):
         self._timestamp_dim_name = timestamp_dim_name
         self._id_dim_name = id_dim_name
         self._rename = rename
+        self._ignore_pv_ids = ignore_pv_ids
 
         self._open()
 
@@ -125,6 +131,12 @@ class NetcdfPvDataSource(PvDataSource):
 
         # We use `str` types for ids throughout.
         self._data.coords[_ID] = self._data.coords[_ID].astype(str)
+
+        if self._ignore_pv_ids is not None:
+            num_pvs_before = len(self._data.coords["pv_id"])
+            self._data = self._data.drop_sel(pv_id=self._ignore_pv_ids)
+            num_pvs = len(self._data.coords["pv_id"])
+            _log.debug(f"Removed {num_pvs_before - num_pvs} PVs")
 
     def get(
         self,
@@ -151,10 +163,16 @@ class NetcdfPvDataSource(PvDataSource):
         ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
         return min_timestamp(ts, self._max_ts)
 
-    def without_future(self, ts: Timestamp, *, blackout: int = 0):
+    def without_future(self, ts: Timestamp, *, blackout: int = 0) -> "NetcdfPvDataSource":
         now = ts - datetime.timedelta(minutes=blackout) - datetime.timedelta(seconds=1)
-        new_ds = copy.copy(self)
+        # We simply make a copy and change it's `max_ts`.
+        # Using `copy.copy` used __setstate__ and __getstate__, which we tampered with so we use our
+        # own implementation, which is inspired from the pickle doc:
+        # https://docs.python.org/3/library/pickle.html#pickling-class-instances
+        new_ds = NetcdfPvDataSource.__new__(NetcdfPvDataSource)
+        new_ds.__dict__.update(self.__dict__)
         new_ds._set_max_ts(min_timestamp(self._max_ts, now))
+
         return new_ds
 
     def __getstate__(self):

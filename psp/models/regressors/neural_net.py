@@ -6,7 +6,7 @@ Initially used in the `RecentHistoryModel`
 but swapped for decision trees which were simpler to optimize.
 """
 
-from typing import Iterator
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -80,7 +80,7 @@ class NNRegressor(Regressor):
     # TODO We should probably extract some of this code that could be share with future models.
     # TODO Inject some of the dependencies (optimizer, loss function, etc.)
     def train(
-        self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
+        self, train_iter: Iterable[Batch], valid_iter: Iterable[Batch], batch_size: int
     ) -> None:
         torch.manual_seed(123)
         optimizer = torch.optim.Adam(self._nn.parameters(), lr=2e-4, weight_decay=1e-5)

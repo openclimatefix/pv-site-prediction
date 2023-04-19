@@ -301,10 +301,8 @@ def plot_sample(
     horizon_idx: int,
     models: dict[str, PvSiteModel],
     pv_data_source: PvDataSource,
-    nwp_data_source: NwpDataSource,
-    meta: pd.DataFrame,
+    nwp_data_source: NwpDataSource | None,
     metric: Metric | None = None,
-    do_nwp: bool = True,
     normalize: bool = False,
 ):
     """Plot a sample and relevant information
@@ -335,9 +333,8 @@ def plot_sample(
         else:
             err = metric(y_true, y)
 
-        meta_row = meta.loc[pv_id]
-        lat = float(meta_row["latitude"])
-        lon = float(meta_row["longitude"])
+        lat = float(pv_data_source.get(pv_ids=pv_id).coords["latitude"])
+        lon = float(pv_data_source.get(pv_ids=pv_id).coords["longitude"])
 
         row_as_dict = dict(
             ts=ts,
@@ -388,7 +385,7 @@ def plot_sample(
 
     num_horizons = len(model.config.horizons)
 
-    if do_nwp:
+    if nwp_data_source is not None:
         print("*** NWP ***")
         for name, chart in _make_nwp_heatmap(
             ts=ts,

@@ -1,14 +1,12 @@
 import functools
 
 from psp.data.data_sources.pv import NetcdfPvDataSource
+from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
-from psp.models.yesterday import SetupConfig, YesterdayPvSiteModel
+from psp.models.yesterday import YesterdayPvSiteModel
 from psp.typings import Horizons
 
 PV_DATA_PATH = "data/5min_2.netcdf"
-
-# TODO define
-ExpConfigBase = object
 
 
 class ExpConfig(ExpConfigBase):
@@ -17,8 +15,8 @@ class ExpConfig(ExpConfigBase):
         return NetcdfPvDataSource(PV_DATA_PATH)
 
     @functools.cache
-    def get_model_setup_config(self):
-        return SetupConfig(data_source=self.get_pv_data_source())
+    def get_data_source_kwargs(self):
+        return dict(data_source=self.get_pv_data_source())
 
     @functools.cache
     def _get_model_config(self):
@@ -32,4 +30,4 @@ class ExpConfig(ExpConfigBase):
 
     @functools.cache
     def get_model(self) -> PvSiteModel:
-        return YesterdayPvSiteModel(self._get_model_config(), self.get_model_setup_config())
+        return YesterdayPvSiteModel(self._get_model_config(), **self.get_data_source_kwargs())

@@ -3,7 +3,6 @@ import pathlib
 import pytest
 from numpy.testing import assert_allclose
 
-from psp.models.recent_history import SetupConfig
 from psp.serialization import load_model
 from psp.typings import X
 
@@ -12,6 +11,7 @@ from psp.typings import X
 EXPECTED_OUTPUT = {
     "model_v1": [1.0220418, 1.03555466, 1.04443434, 1.04860107, 1.04799241],
     "model_v2": [0.447506, 0.448072, 0.446772, 0.443611, 0.438599],
+    "model_v3": [0.801439, 0.802452, 0.800124, 0.794462, 0.785487],
 }
 
 
@@ -28,11 +28,9 @@ def test_old_models_sanity_check():
 def test_old_models(model_path, expected, pv_data_source):
     """Make sure that we can load previously trained models."""
     model = load_model(f"psp/tests/fixtures/models/{model_path}.pkl")
-    model.setup(
-        SetupConfig(
-            pv_data_source=pv_data_source,
-            nwp_data_source=None,
-        )
+    model.set_data_sources(
+        pv_data_source=pv_data_source,
+        nwp_data_source=None,
     )
 
     pv_id = pv_data_source.list_pv_ids()[0]

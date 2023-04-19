@@ -9,10 +9,16 @@ import torch
 import tqdm
 from torch.utils.data import DataLoader
 
-from psp.dataset import split_train_test
+from psp.exp_configs.base import ExpConfigBase
 from psp.metrics import mean_absolute_error
 from psp.models.base import PvSiteModel
-from psp.scripts._options import exp_config_opt, exp_name_opt, exp_root_opt, num_workers_opt
+from psp.scripts._options import (
+    exp_config_opt,
+    exp_name_opt,
+    exp_root_opt,
+    log_level_opt,
+    num_workers_opt,
+)
 from psp.serialization import save_model
 from psp.training import make_data_loader
 from psp.typings import Sample
@@ -66,15 +72,15 @@ def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
 @exp_name_opt
 @exp_config_opt
 @num_workers_opt
-@click.option("-b", "--batch-size", default=32)
-@click.option("--num-test-samples", default=100)
-@click.option("--log-level", type=str, help="Debug level", default="info", show_default=True)
+@log_level_opt
+@click.option("-b", "--batch-size", default=32, show_default=True)
+@click.option("--num-test-samples", default=100, show_default=True)
 def main(
     exp_root,
     exp_name,
     exp_config_name,
     num_workers,
-    batch_size,
+    batch_size: int,
     num_test_samples: int,
     log_level: str,
 ):
@@ -87,7 +93,7 @@ def main(
         torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
-    exp_config = exp_config_module.ExpConfig()
+    exp_config: ExpConfigBase = exp_config_module.ExpConfig()
 
     output_dir = exp_root / exp_name
     output_dir.mkdir(exist_ok=True)
@@ -101,7 +107,7 @@ def main(
     pv_data_source = exp_config.get_pv_data_source()
 
     # Dataset
-    splits = split_train_test(pv_data_source)
+    splits = exp_config.make_dataset_splits(pv_data_source)
 
     _log.info(f"Training on split: {splits.train}")
 
@@ -145,24 +151,24 @@ def main(
 
     # Print the error on the train/valid sets.
     _log.info("Error on the train set")
-    train_data_loader = make_data_loader(
+    train_data_loader2 = make_data_loader(
         **data_loader_kwargs,
         batch_size=None,
         split=splits.train,
         limit=num_test_samples,
         random_state=np.random.RandomState(SEED_TRAIN),
     )
-    _eval_model(model, train_data_loader)
+    _eval_model(model, train_data_loader2)
 
     _log.info("Error on the valid set")
-    valid_data_loader = make_data_loader(
+    valid_data_loader2 = make_data_loader(
         **data_loader_kwargs,
         batch_size=None,
         split=splits.valid,
         limit=num_test_samples,
         random_state=np.random.RandomState(SEED_VALID),
     )
-    _eval_model(model, valid_data_loader)
+    _eval_model(model, valid_data_loader2)
 
 
 if __name__ == "__main__":

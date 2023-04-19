@@ -1,9 +1,8 @@
-import dataclasses
 import logging
 import math
 import warnings
 from datetime import datetime, timedelta
-from typing import Iterator, Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
 import pandas as pd
@@ -91,25 +90,25 @@ def minutes_since_start_of_day(ts: datetime) -> float:
     return (ts - midnight).total_seconds() / 60.0
 
 
-@dataclasses.dataclass
-class SetupConfig:
-    pv_data_source: PvDataSource
-    nwp_data_source: NwpDataSource | None
-
-
-_VERSION = 2
+# To maintain backward compatibility with older serialized models, we bump this version when we make
+# changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
+# account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
+# whenever we bump this, using a simplified config file (to get a small model).
+_VERSION = 3
 
 
 class RecentHistoryModel(PvSiteModel):
     def __init__(
         self,
         config: PvSiteModelConfig,
-        setup_config: SetupConfig,
+        pv_data_source: PvDataSource,
+        nwp_data_source: NwpDataSource | None,
         regressor: Regressor,
         use_nwp: bool = True,
         nwp_variables: list[str] | None = None,
         normalize_features: bool = True,
         use_inferred_meta: bool = False,
+        use_data_capacity: bool = False,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
@@ -118,8 +117,12 @@ class RecentHistoryModel(PvSiteModel):
         self._nwp_variables = nwp_variables
         self._normalize_features = normalize_features
         self._use_inferred_meta = use_inferred_meta
+        self._use_data_capacity = use_data_capacity
 
-        self.setup(setup_config)
+        self.set_data_sources(
+            pv_data_source=pv_data_source,
+            nwp_data_source=nwp_data_source,
+        )
 
         if use_nwp:
             assert self._nwp_data_source is not None
@@ -128,7 +131,17 @@ class RecentHistoryModel(PvSiteModel):
         # serialized models.
         self._version = _VERSION
 
-        super().__init__(config, setup_config)
+        super().__init__(config)
+
+    def set_data_sources(
+        self, *, pv_data_source: PvDataSource, nwp_data_source: NwpDataSource | None = None
+    ):
+        """Set the data sources.
+
+        This has to be called after deserializing a model using `load_model`.
+        """
+        self._pv_data_source = pv_data_source
+        self._nwp_data_source = nwp_data_source
 
     def predict_from_features(self, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -155,16 +168,18 @@ class RecentHistoryModel(PvSiteModel):
         history_start = to_midnight(x.ts - timedelta(days=7))
 
         # Slice as much as we can right away.
-        data = data_source.get(
+        _data = data_source.get(
             pv_ids=x.pv_id,
             start_ts=history_start,
             end_ts=x.ts,
-        )["power"]
+        )
 
-        coords = data.coords
+        data = _data["power"]
 
-        lat = coords["latitude"].values
-        lon = coords["longitude"].values
+        coords = _data.coords
+
+        lat = float(coords["latitude"].values)
+        lon = float(coords["longitude"].values)
 
         if self._use_inferred_meta:
             tilt = float(coords["tilt"].values)
@@ -179,13 +194,21 @@ class RecentHistoryModel(PvSiteModel):
             # We define the capacity as the 99% quantile over the last week of data.
             # In practice this seems to work well.
             try:
-                capacity = float(data.quantile(0.99))
+                # If there is a `capacity` variable in our data, we use that.
+                if self._use_data_capacity:
+                    # Take the first value, assuming the capacity doesn't change that rapidly.
+                    capacity = _data["capacity"].values[0]
+                else:
+                    # Otherwise use some heuristic as capacity.
+                    capacity = float(data.quantile(0.99))
             except Exception as e:
                 _log.warning("Error while calculating capacity")
                 _log.exception(e)
                 capacity = np.nan
 
-        data = data.drop_vars(["latitude", "longitude", "pv_id", "tilt", "orientation", "factor"])
+        # Drop every coordinate except `ts`.
+        extra_var = set(data.coords).difference(["ts"])
+        data = data.drop_vars(extra_var)
 
         # As usual we normalize the PV data wrt irradiance and our PV "factor".
         # Using `safe_div` with `np.nan` fallback to get `nan`s instead of `inf`. The `nan` are
@@ -310,7 +333,9 @@ class RecentHistoryModel(PvSiteModel):
         else:
             return features
 
-    def train(self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int):
+    def train(
+        self, train_iter: Iterable[Batch], valid_iter: Iterable[Batch], batch_size: int
+    ) -> None:
         self._regressor.train(train_iter, valid_iter, batch_size)
 
     def explain(self, x: X):
@@ -318,10 +343,6 @@ class RecentHistoryModel(PvSiteModel):
         features, feature_names = self.get_features_with_names(x)
         explanation = self._regressor.explain(features, feature_names)
         return explanation
-
-    def setup(self, setup_config: SetupConfig):
-        self._pv_data_source = setup_config.pv_data_source
-        self._nwp_data_source = setup_config.nwp_data_source
 
     def get_state(self):
         state = self.__dict__.copy()
@@ -347,4 +368,6 @@ class RecentHistoryModel(PvSiteModel):
         if state["_version"] < 2:
             state["_use_inferred_meta"] = True
             state["_normalize_features"] = True
+        elif state["_version"] < 3:
+            state["_use_data_capacity"] = False
         super().set_state(state)

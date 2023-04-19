@@ -2,7 +2,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Iterator, Tuple
+from typing import Any, Iterable, Tuple
 
 from psp.typings import Batch, Features, Horizons, X, Y
 
@@ -21,7 +21,7 @@ class PvSiteModelConfig:
 class PvSiteModel(abc.ABC):
     """Abstract interface for our models."""
 
-    def __init__(self, config: PvSiteModelConfig, setup_config: Any):
+    def __init__(self, config: PvSiteModelConfig):
         self._config = config
 
     @abc.abstractmethod
@@ -68,16 +68,13 @@ class PvSiteModel(abc.ABC):
         return self._config
 
     def train(
-        self, train_iter: Iterator[Batch], valid_iter: Iterator[Batch], batch_size: int
+        self, train_iter: Iterable[Batch], valid_iter: Iterable[Batch], batch_size: int
     ) -> None:
         """Train the model."""
         pass
 
-    def setup(self, setup_config: Any):
-        """Set up the model after initialization or deserialization.
-
-        For instance defining data sources.
-        """
+    def set_data_sources(self, *args, **kwargs):
+        """Set datasources, typically after having deserialized the model."""
         pass
 
     def get_state(self):

@@ -1,4 +1,3 @@
-import dataclasses
 from datetime import timedelta
 
 import numpy as np
@@ -11,17 +10,12 @@ from psp.typings import Features, Timestamp, X, Y
 BUFFER = timedelta(minutes=30)
 
 
-@dataclasses.dataclass
-class SetupConfig:
-    data_source: PvDataSource
-
-
 class YesterdayPvSiteModel(PvSiteModel):
     """Baseline that returns the power output of the previous day at the same time."""
 
-    def __init__(self, config: PvSiteModelConfig, setup_config: SetupConfig):
-        self._data_source = setup_config.data_source
-        super().__init__(config, setup_config)
+    def __init__(self, config: PvSiteModelConfig, pv_data_source: PvDataSource):
+        self._data_source = pv_data_source
+        super().__init__(config)
 
     def predict_from_features(self, features: Features) -> Y:
         powers = features["yesterday_means"]
