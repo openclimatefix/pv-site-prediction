@@ -20,7 +20,12 @@ ExpConfigBase = object
 class ExpConfig(ExpConfigBase):
     @functools.cache
     def get_pv_data_source(self):
-        return NetcdfPvDataSource(PV_DATA_PATH)
+        return NetcdfPvDataSource(
+            PV_DATA_PATH,
+            id_dim_name="ss_id",
+            timestamp_dim_name="timestamp",
+            rename={"generation_wh": "power"},
+        )
 
     @functools.cache
     def get_model_setup_config(self):

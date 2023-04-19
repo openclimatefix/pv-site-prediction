@@ -185,7 +185,7 @@ class RecentHistoryModel(PvSiteModel):
                 _log.exception(e)
                 capacity = np.nan
 
-        data = data.drop_vars(["latitude", "longitude", "id", "tilt", "orientation", "factor"])
+        data = data.drop_vars(["latitude", "longitude", "pv_id", "tilt", "orientation", "factor"])
 
         # As usual we normalize the PV data wrt irradiance and our PV "factor".
         # Using `safe_div` with `np.nan` fallback to get `nan`s instead of `inf`. The `nan` are

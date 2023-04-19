@@ -1,12 +1,16 @@
 import abc
+import copy
 import datetime
 import pathlib
-from typing import TypeVar, overload
+from typing import TypeVar
 
 import xarray as xr
 
 from psp.typings import PvId, Timestamp
 from psp.utils.dates import to_pydatetime
+
+_ID = "pv_id"
+_TS = "ts"
 
 # https://peps.python.org/pep-0673/
 _Self = TypeVar("_Self", bound="PvDataSource")
@@ -22,9 +26,9 @@ class PvDataSource(abc.ABC):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
-        # We assume that the name of the variables in the Dataset are:
-        # pv_id, power, ts, latitude, longitude, tilt, factor
-        # TODO Better define `factor`.
+        # We assume that the returned Dataset has dimensions "id" and "ts".
+        # Any number of coordinates or variables could be present - it will be up to the models to
+        # know about the specifics of a given data source.
         pass
 
     @abc.abstractmethod
@@ -49,9 +53,8 @@ class PvDataSource(abc.ABC):
 
         Arguments:
         ---------
-            ts: The "now" timestamp, everything after is the future. Use `None` for "don't ignore".
-            blackout: A number of minutes before `ts` ("now") that we also want to ignore. Ignored
-                if `ts is None`.
+            ts: The "now" timestamp, everything after is the future.
+            blackout: A number of minutes before `ts` ("now") that we also want to ignore.
         """
         pass
 
@@ -75,36 +78,53 @@ def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
 
 
 class NetcdfPvDataSource(PvDataSource):
-    # This constructor is used when copying.
-    @overload
-    def __init__(self, filepath: pathlib.Path, data: xr.Dataset, max_ts: Timestamp | None):
-        ...
-
-    @overload
-    def __init__(self, filepath: pathlib.Path | str):
-        ...
-
     def __init__(
         self,
         filepath: pathlib.Path | str,
-        data: xr.Dataset | None = None,
-        max_ts: Timestamp | None = None,
+        timestamp_dim_name: str = _TS,
+        id_dim_name: str = _ID,
+        rename: dict[str, str] | None = None,
     ):
+        """
+        Arguments:
+        ---------
+            filepath: File path of the netcdf file.
+            timestamp_dim_name: Name for the timestamp dimensions in the dataset.
+            id_dim_name: Name for the "id" dimensions in the dataset.
+            rename: This is passed to `xarray` to
+                rename any coordinates or variable.
+        """
+        if rename is None:
+            rename = {}
+
         self._path = pathlib.Path(filepath)
-        if data is None:
-            self._open()
-        else:
-            self._data = data
+        self._timestamp_dim_name = timestamp_dim_name
+        self._id_dim_name = id_dim_name
+        self._rename = rename
+
+        self._open()
+
+        self._set_max_ts(None)
+
+    def _set_max_ts(self, ts: Timestamp | None) -> None:
         # See `ignore_future`.
-        self._max_ts: Timestamp | None = max_ts
+        self._max_ts = ts
 
     def _open(self):
-        self._data = xr.open_dataset(self._path).rename(
-            {"generation_wh": "power", "timestamp": "ts", "ss_id": "id"}
-        )
+        # Xarray doesn't like trivial renamings so we build a mapping of what actually changes.
+        rename_map: dict[str, str] = {}
+
+        if self._id_dim_name != _ID:
+            rename_map[self._id_dim_name] = _ID
+        if self._timestamp_dim_name != _TS:
+            rename_map[self._timestamp_dim_name] = _TS
+
+        rename_map.update(self._rename)
+
+        self._data = xr.open_dataset(self._path).rename(rename_map)
 
         # We use `str` types for ids throughout.
-        self._data.coords["id"] = self._data.coords["id"].astype(str)
+        self._data.coords[_ID] = self._data.coords[_ID].astype(str)
 
     def get(
         self,
@@ -113,10 +133,10 @@ class NetcdfPvDataSource(PvDataSource):
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
         end_ts = min_timestamp(self._max_ts, end_ts)
-        return self._data.sel(id=pv_ids, ts=slice(start_ts, end_ts))
+        return self._data.sel(pv_id=pv_ids, ts=slice(start_ts, end_ts))
 
     def list_pv_ids(self):
-        out = list(self._data.coords["id"].values)
+        out = list(self._data.coords[_ID].values)
 
         if len(out) > 0:
             assert isinstance(out[0], PvId)
@@ -124,16 +144,18 @@ class NetcdfPvDataSource(PvDataSource):
         return out
 
     def min_ts(self):
-        ts = to_pydatetime(self._data.coords["ts"].min().values)  # type:ignore
+        ts = to_pydatetime(self._data.coords[_TS].min().values)  # type:ignore
         return min_timestamp(ts, self._max_ts)
 
     def max_ts(self):
-        ts = to_pydatetime(self._data.coords["ts"].max().values)  # type:ignore
+        ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
         return min_timestamp(ts, self._max_ts)
 
     def without_future(self, ts: Timestamp, *, blackout: int = 0):
         now = ts - datetime.timedelta(minutes=blackout) - datetime.timedelta(seconds=1)
-        return NetcdfPvDataSource(self._path, self._data, min_timestamp(self._max_ts, now))
+        new_ds = copy.copy(self)
+        new_ds._set_max_ts(min_timestamp(self._max_ts, now))
+        return new_ds
 
     def __getstate__(self):
         d = self.__dict__.copy()

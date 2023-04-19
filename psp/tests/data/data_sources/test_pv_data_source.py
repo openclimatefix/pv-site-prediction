@@ -7,8 +7,7 @@ import xarray as xr
 from psp.data.data_sources.pv import NetcdfPvDataSource
 
 
-@pytest.fixture
-def pv_data_source(tmp_path):
+def _make_pv_data_xarray() -> xr.Dataset:
     pv_ids = [1, 2, 3]
     t0 = datetime(2023, 1, 1)
     dt = timedelta(days=1)
@@ -24,16 +23,42 @@ def pv_data_source(tmp_path):
         data=data,
         coords={
             # Using the same column names as in the original dataset.
-            "ss_id": pv_ids,
-            "timestamp": ts_range,
+            "pv_id": pv_ids,
+            "ts": ts_range,
         },
-        dims=["ss_id", "timestamp"],
+        dims=["pv_id", "ts"],
+    )
+    d = xr.Dataset({"power": da})
+    return d
+
+
+@pytest.fixture
+def pv_data_source(tmp_path):
+    d = _make_pv_data_xarray()
+    path = tmp_path / "pv_data_source.netcdf"
+    d.to_netcdf(path)
+    return NetcdfPvDataSource(
+        path,
     )
 
-    path = tmp_path / "pv_data_source.netcdf"
-    d = xr.Dataset({"generation_wh": da})
+
+def test_pv_data_source_rename(tmp_path):
+    d = _make_pv_data_xarray()
+    d = d.rename({"pv_id": "mon_id", "ts": "mon_ts", "power": "mon_power"})
+    path = tmp_path / "pv_data_source_wrong_col.netcdf"
     d.to_netcdf(path)
-    return NetcdfPvDataSource(path)
+
+    ds = NetcdfPvDataSource(
+        path,
+        id_dim_name="mon_id",
+        timestamp_dim_name="mon_ts",
+        rename={"mon_power": "power"},
+    )
+
+    assert (
+        ds.get(pv_ids="1", start_ts=datetime(2023, 1, 2), end_ts=datetime(2023, 1, 3))["power"].size
+        == 2
+    )
 
 
 def test_pv_data_source_ignore_future(pv_data_source):
