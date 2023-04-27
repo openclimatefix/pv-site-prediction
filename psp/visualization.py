@@ -415,6 +415,11 @@ def plot_sample(
                 )
             if chart is None:
                 print(key)
-                print(value)
+                names = feature_names.get(key)
+                if names is not None:
+                    for name, v in zip(names, value):
+                        print(f"  {name}: {v}")
+                else:
+                    print(value)
             else:
                 display(chart)
