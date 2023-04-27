@@ -10,13 +10,7 @@ import tqdm
 
 from psp.exp_configs.base import ExpConfigBase
 from psp.metrics import Metric, mean_absolute_error
-from psp.scripts._options import (
-    exp_config_opt,
-    exp_name_opt,
-    exp_root_opt,
-    log_level_opt,
-    num_workers_opt,
-)
+from psp.scripts._options import exp_name_opt, exp_root_opt, log_level_opt, num_workers_opt
 from psp.serialization import load_model
 from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
@@ -32,7 +26,6 @@ _log = logging.getLogger(__name__)
 @click.command()
 @exp_root_opt
 @exp_name_opt
-@exp_config_opt
 @num_workers_opt
 @log_level_opt
 @click.option(
@@ -45,7 +38,7 @@ _log = logging.getLogger(__name__)
 @click.option(
     "--split", "split_name", type=str, default="test", help="split of the data to use: train | test"
 )
-def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name, log_level):
+def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     assert split_name in ["train", "test"]
@@ -54,7 +47,7 @@ def main(exp_root, exp_name, exp_config_name, num_workers, limit, split_name, lo
     # https://github.com/fsspec/gcsfs/issues/379
     torch.multiprocessing.set_start_method("spawn")
 
-    exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
+    exp_config_module = importlib.import_module(".config", f"{exp_root}.{exp_name}")
     exp_config: ExpConfigBase = exp_config_module.ExpConfig()
 
     data_source_kwargs = exp_config.get_data_source_kwargs()

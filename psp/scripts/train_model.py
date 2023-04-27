@@ -96,10 +96,10 @@ def main(
     exp_config: ExpConfigBase = exp_config_module.ExpConfig()
 
     output_dir = exp_root / exp_name
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=False)
 
     # Also copy the config into the experiment.
-    shutil.copy(f"./psp/exp_configs/{exp_config_name}.py", output_dir)
+    shutil.copy(f"./psp/exp_configs/{exp_config_name}.py", output_dir / "config.py")
 
     # Load the model.
     model = exp_config.get_model()
