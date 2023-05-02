@@ -1,7 +1,8 @@
 from math import cos, radians, sqrt
-from typing import Sequence, Tuple
+from typing import Iterable, Sequence
 
 import numpy as np
+import pyproj
 
 # Radius of the earth in meters.
 EARTH_RADIUS = 6371_000
@@ -26,7 +27,7 @@ def approx_distance(lat_lon1: Sequence[float], lat_lon2: Sequence[float]) -> flo
     return sqrt(dx**2 + dy**2)
 
 
-def _parse_list_of_points(x: np.ndarray | list[float]) -> Tuple[bool, np.ndarray]:
+def _parse_list_of_points(x: np.ndarray | list[float]) -> tuple[bool, np.ndarray]:
     if not isinstance(x, np.ndarray):
         x = np.array(x)
     # Make sure we have an (n, 2)-shaped array.
@@ -78,3 +79,30 @@ def approx_add_meters_to_lat_lon(
         out = out[0]
 
     return out
+
+
+Point = tuple[float, float]
+
+
+class CoordinateTransformer:
+    """Convenience wrapper around pyproj's Transformer API.
+
+    Example:
+    -------
+    >>> transform = CoordinateTransformer(27700, 4326)
+    >>> transform([(1000., 2000.), (3000., 4000.)])
+    """
+
+    def __init__(self, from_: int, to: int):
+        """Define the coordinate systems from and to which we want to transform.
+
+        Arguments:
+        ---------
+        from_: Input coordinate reference system code.
+        to: Output coordinate reference system code.
+        """
+        self._transformer = pyproj.Transformer.from_crs(from_, to)
+
+    def __call__(self, points: Iterable[Point]) -> list[Point]:
+        """Transform `points` from one coordinate system to the other."""
+        return list(self._transformer.itransform(points))  # type: ignore

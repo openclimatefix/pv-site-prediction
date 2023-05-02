@@ -163,7 +163,12 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=NwpDataSource(NWP_DATA_PATH)  # , cache_dir=".nwp_cache"),
+            nwp_data_source=NwpDataSource(
+                NWP_DATA_PATH,
+                coord_system=27700,
+                time_dim_name="init_time",
+                value_name="UKV",
+            )  # , cache_dir=".nwp_cache"),
             # nwp_data_source=None,
         )
 

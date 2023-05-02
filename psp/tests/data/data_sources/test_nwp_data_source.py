@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
 
 import numpy as np
-import pyproj
 import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
 
 from psp.data.data_sources.nwp import NwpDataSource
+from psp.gis import CoordinateTransformer
 from psp.utils.dates import to_pydatetime
 
 T0 = datetime(2023, 1, 1, 0)
@@ -21,30 +21,36 @@ LAT0 = 50
 LAT1 = 51
 LAT2 = 52
 
-_to_osgb_transformer = pyproj.Transformer.from_crs(4326, 27700)
 
+@pytest.fixture(params=[27700, 4326])
+def nwp_data_source(tmp_path, request):
 
-@pytest.fixture
-def nwp_data_source(tmp_path):
+    coord_system: int = request.param
+
     lats = [LAT0, LAT1, LAT2]
     lons = [LON0, LON1, LON2]
 
-    xs, ys = list(zip(*_to_osgb_transformer.itransform(zip(lats, lons))))
+    transform_coords = CoordinateTransformer(4326, coord_system)
+
+    new_coords = transform_coords(zip(lats, lons))
+
+    xs = [p[0] for p in new_coords]
+    ys = [p[1] for p in new_coords]
 
     # In NWP data, the Y coordinates are reversed.
     ys = list(reversed(ys))
 
-    init_times = [T0, T1, T2]
+    times = [T0, T1, T2]
 
     # Predictions for the next 2 hours (including one for right now).
     steps = [timedelta(0), timedelta(hours=1), timedelta(hours=2)]
 
     variables = "a b c".split()
 
-    data = np.arange(len(xs) * len(ys) * len(init_times) * len(steps) * len(variables)).reshape(
+    data = np.arange(len(xs) * len(ys) * len(times) * len(steps) * len(variables)).reshape(
         len(xs),
         len(ys),
-        len(init_times),
+        len(times),
         len(steps),
         len(variables),
     )
@@ -52,19 +58,19 @@ def nwp_data_source(tmp_path):
     coords = {
         "x": list(xs),
         "y": list(ys),
-        "init_time": init_times,
+        "time": times,
         "step": steps,
         "variable": variables,
     }
 
     da = xr.DataArray(data=data, coords=coords)
 
-    ds = xr.Dataset({"UKV": da})
+    ds = xr.Dataset({"value": da})
 
     path = tmp_path / "nwp_fixture.zarr"
     ds.to_zarr(path)
 
-    return NwpDataSource(path)
+    return NwpDataSource(path, coord_system=coord_system)
 
 
 def hours(x: float) -> timedelta:
@@ -72,7 +78,7 @@ def hours(x: float) -> timedelta:
 
 
 @pytest.mark.parametrize(
-    "now,ts,expected_init_time,expected_step",
+    "now,ts,expected_time,expected_step",
     [
         [T0, T0, T0, 0],
         [T0, T0 + hours(1), T0, 1],
@@ -89,18 +95,18 @@ def hours(x: float) -> timedelta:
     ],
 )
 def test_nwp_data_source_check_times_one_step(
-    now, ts, expected_init_time, expected_step, nwp_data_source
+    now, ts, expected_time, expected_step, nwp_data_source
 ):
     data = nwp_data_source.at(now=now).get(ts)
 
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3
-    assert to_pydatetime(data.coords["init_time"].values) == expected_init_time
+    assert to_pydatetime(data.coords["time"].values) == expected_time
     assert data.coords["step"].values == np.timedelta64(expected_step, "h")
 
 
 @pytest.mark.parametrize(
-    "now,ts,expected_init_time,expected_steps",
+    "now,ts,expected_time,expected_steps",
     [
         [T0, [T0], T0, [0]],
         [T0, [T0 + hours(1)], T0, [1]],
@@ -133,13 +139,13 @@ def test_nwp_data_source_check_times_one_step(
     ],
 )
 def test_nwp_data_source_check_times_many_steps(
-    now, ts, expected_init_time, expected_steps, nwp_data_source
+    now, ts, expected_time, expected_steps, nwp_data_source
 ):
     data = nwp_data_source.at(now=now).get(ts)
 
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3 * len(expected_steps)
-    assert to_pydatetime(data.coords["init_time"].values) == expected_init_time
+    assert to_pydatetime(data.coords["time"].values) == expected_time
     assert_array_equal(data.coords["step"].values, [np.timedelta64(s, "h") for s in expected_steps])
 
 
@@ -173,7 +179,7 @@ def test_nwp_data_source_space(lat, lon, expected_size, nwp_data_source):
 
 def test_nwp_data_source_nearest(nwp_data_source):
     data = nwp_data_source.at(T0, nearest_lat=LAT1, nearest_lon=LON1).get([T0, T0 + hours(2)])
-    x, y = _to_osgb_transformer.transform(LAT1, LON1)
+    x, y = nwp_data_source._coordinate_transformer([(LAT1, LON1)])[0]
     assert y == data.coords["y"]
     assert x == data.coords["x"]
     assert data.size == 6
