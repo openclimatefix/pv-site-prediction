@@ -75,6 +75,13 @@ def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
 @log_level_opt
 @click.option("-b", "--batch-size", default=32, show_default=True)
 @click.option("--num-test-samples", default=100, show_default=True)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Erase the output directory if it already exists",
+    default=False,
+    show_default=True,
+)
 def main(
     exp_root,
     exp_name,
@@ -83,6 +90,7 @@ def main(
     batch_size: int,
     num_test_samples: int,
     log_level: str,
+    force: bool,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -96,7 +104,10 @@ def main(
     exp_config: ExpConfigBase = exp_config_module.ExpConfig()
 
     output_dir = exp_root / exp_name
-    output_dir.mkdir(exist_ok=False)
+    if not output_dir.exists() or force:
+        output_dir.mkdir(exist_ok=True)
+    else:
+        raise RuntimeError(f'Output directory "{output_dir}" already exists')
 
     # Also copy the config into the experiment.
     shutil.copy(f"./psp/exp_configs/{exp_config_name}.py", output_dir / "config.py")
