@@ -165,6 +165,20 @@ class Splits:
     test: DatasetSplit
 
 
+def _floor_date(date: datetime) -> datetime:
+    """Round date down to midnight."""
+    return datetime(*date.timetuple()[:3])
+
+
+def _ceiling_date(date: datetime) -> datetime:
+    """Round date up to next midnight"""
+    rounded = _floor_date(date)
+    if rounded == date:
+        return date
+    else:
+        return date + timedelta(days=1)
+
+
 def split_train_test(
     pv_data_source: PvDataSource,
     *,
@@ -193,23 +207,22 @@ def split_train_test(
         valid_split: Ratio of Pv sites from the train set to use as valid set. Note that the
             time range is the same for train and valid.
     """
-    # For simplicity, we only support setting all the dates or None of them, in which we simply
-    # split the data 50/50 between train and test.
-    num_none = sum([x is None for x in [train_start, train_end, test_start, test_end]])
+    # Use some simple rules to choose missing dates.
+    if train_start is None:
+        train_start = _ceiling_date(pv_data_source.min_ts())
 
-    if num_none not in [0, 4]:
-        raise NotImplementedError("you need to specify all dates or no dates.")
+    if test_end is None:
+        test_end = _floor_date(pv_data_source.max_ts())
 
-    if num_none == 4:
-        min_ts = pv_data_source.min_ts()
-        max_ts = pv_data_source.max_ts()
-
-        train_start = min_ts
-        test_end = max_ts
+    if train_end is None and test_start is not None:
+        train_end = test_start - timedelta(days=1)
+    elif test_start is None and train_end is not None:
+        test_start = train_end + timedelta(days=1)
+    elif train_end is None and test_start is None:
         # 50/50 split.
-        test_start = test_end - (max_ts - min_ts) / 2
-
-        # Put one day between train and test to be safe.
+        test_start = test_end - (test_end - train_start) / 2
+        # Round to a whole day.
+        test_start = _ceiling_date(test_start)
         train_end = test_start - timedelta(days=1)
 
     # For mypy.
@@ -218,6 +231,7 @@ def split_train_test(
     assert test_start is not None
     assert test_end is not None
 
+    # Important sanity check!
     assert train_start < train_end
     assert train_end < test_start
     assert test_start < test_end
