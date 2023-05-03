@@ -74,7 +74,12 @@ def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
 @num_workers_opt
 @log_level_opt
 @click.option("-b", "--batch-size", default=32, show_default=True)
-@click.option("--num-test-samples", default=100, show_default=True)
+@click.option(
+    "--num-test-samples",
+    default=100,
+    show_default=True,
+    help="Number of samples to use to test on train and valid. Use 0 to skip completely.",
+)
 @click.option(
     "--force",
     is_flag=True,
@@ -161,25 +166,26 @@ def main(
     save_model(model, path)
 
     # Print the error on the train/valid sets.
-    _log.info("Error on the train set")
-    train_data_loader2 = make_data_loader(
-        **data_loader_kwargs,
-        batch_size=None,
-        split=splits.train,
-        limit=num_test_samples,
-        random_state=np.random.RandomState(SEED_TRAIN),
-    )
-    _eval_model(model, train_data_loader2)
+    if num_test_samples > 0:
+        _log.info("Error on the train set")
+        train_data_loader2 = make_data_loader(
+            **data_loader_kwargs,
+            batch_size=None,
+            split=splits.train,
+            limit=num_test_samples,
+            random_state=np.random.RandomState(SEED_TRAIN),
+        )
+        _eval_model(model, train_data_loader2)
 
-    _log.info("Error on the valid set")
-    valid_data_loader2 = make_data_loader(
-        **data_loader_kwargs,
-        batch_size=None,
-        split=splits.valid,
-        limit=num_test_samples,
-        random_state=np.random.RandomState(SEED_VALID),
-    )
-    _eval_model(model, valid_data_loader2)
+        _log.info("Error on the valid set")
+        valid_data_loader2 = make_data_loader(
+            **data_loader_kwargs,
+            batch_size=None,
+            split=splits.valid,
+            limit=num_test_samples,
+            random_state=np.random.RandomState(SEED_VALID),
+        )
+        _eval_model(model, valid_data_loader2)
 
 
 if __name__ == "__main__":
