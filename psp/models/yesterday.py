@@ -23,7 +23,7 @@ class YesterdayPvSiteModel(PvSiteModel):
         return Y(powers=powers)
 
     def get_features(self, x: X) -> Features:
-        data_source = self._data_source.without_future(x.ts, blackout=self.config.blackout)
+        data_source = self._data_source.as_available_at(x.ts)
         max_minutes = max(x[1] for x in self.config.horizons)
 
         yesterday = x.ts - timedelta(days=1)

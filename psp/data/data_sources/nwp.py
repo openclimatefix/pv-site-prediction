@@ -1,3 +1,4 @@
+import datetime as dt
 import pathlib
 import pickle
 from typing import TypeVar
@@ -141,6 +142,7 @@ class NwpDataSource:
         variable_dim_name: str = _VARIABLE,
         value_name: str = _VALUE,
         cache_dir: str | None = None,
+        blackout: float = 0.0,
     ):
         """
         Arguments:
@@ -153,6 +155,9 @@ class NwpDataSource:
         cache_dir: If provided, the `at_get` function will cache its result in the directory. This
             is useful when always training and testing on the same dataset, as the loading of the
             NWP is one of the main bottlenecks. Use with caution: it will create a lot of files!
+        blackout: Delay (in minutes) before the data is available. This is to mimic the fact that in
+            production, the data is often late. We will add a "blackout" of `blackout` minutes when
+            calling the `at` method.
         """
         self._path = path
         # We'll have to transform the lat/lon coordinates to the internal dataset's coordinate
@@ -165,6 +170,8 @@ class NwpDataSource:
         self._step_dim_name = step_dim_name
         self._variable_dim_name = variable_dim_name
         self._value_name = value_name
+
+        self._blackout = blackout
 
         self._open()
 
@@ -220,7 +227,7 @@ class NwpDataSource:
         if self._cache_dir:
             if isinstance(timestamps, Timestamp):
                 timestamps = [timestamps]
-            hash_data = [now, nearest_lat, nearest_lon, *timestamps]
+            hash_data = [now, nearest_lat, nearest_lon, self._path, self._blackout, *timestamps]
             hashes = tuple([naive_hash(x) for x in hash_data])
             hash_ = str(hash(hashes))
             path = self._cache_dir / hash_
@@ -284,7 +291,7 @@ class NwpDataSource:
         )
 
         # Forward fill so that we get the value from the past, not the future!
-        ds = ds.sel(time=now, method="ffill")
+        ds = ds.sel(time=now - dt.timedelta(minutes=self._blackout), method="ffill")
         da = ds[_VALUE]
 
         if load:

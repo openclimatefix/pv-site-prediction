@@ -74,7 +74,7 @@ def test_pv_data_source_ignore_future(pv_data_source):
     )
 
     # With `ignore_future`.
-    new_data_source = pv_data_source.without_future(datetime(2023, 1, 3))
+    new_data_source = pv_data_source.as_available_at(datetime(2023, 1, 3))
     assert new_data_source.min_ts() == datetime(2023, 1, 1)
     assert new_data_source.max_ts() == datetime(2023, 1, 2, 23, 59, 59)
     assert (

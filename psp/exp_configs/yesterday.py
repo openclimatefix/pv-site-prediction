@@ -24,8 +24,7 @@ class ExpConfig(ExpConfigBase):
             horizons=Horizons(
                 duration=15,
                 num_horizons=48 * 4,
-            ),
-            blackout=0,
+            )
         )
 
     @functools.cache

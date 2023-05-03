@@ -12,10 +12,6 @@ class PvSiteModelConfig:
     """Model meta data that all models must define."""
 
     horizons: Horizons
-    # Blackout in minutes.
-    # This is a window of time before the timestamp at which we don't have access to data.
-    # This is to simulate a delay in the availability of the data, which can happen in production.
-    blackout: int
 
 
 class PvSiteModel(abc.ABC):

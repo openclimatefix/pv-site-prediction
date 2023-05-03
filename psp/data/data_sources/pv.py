@@ -48,17 +48,21 @@ class PvDataSource(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def without_future(self: _Self, ts: Timestamp, *, blackout: int = 0) -> _Self:
-        """Return a copy of the data source but without the data after `ts - blackout`.
+    def as_available_at(self: _Self, ts: Timestamp) -> _Self:
+        """Return a copy of the data source that will filter anything that was not available at
+        `ts`.
 
         This is a intended as a safety mechanism when we want to make sure we can't use data after
         a certain point in time. In particular, we don't want to be able to use data from the
         future when training models.
 
+        Note that in general this does not necessarily means filtering everything before `ts`.
+        Sometimes even less data is available at time `ts` (see for instance how we use the
+        `blackout` parameter in `NetcdfPvDataSource`).
+
         Arguments:
         ---------
             ts: The "now" timestamp, everything after is the future.
-            blackout: A number of minutes before `ts` ("now") that we also want to ignore.
         """
         pass
 
@@ -89,6 +93,7 @@ class NetcdfPvDataSource(PvDataSource):
         id_dim_name: str = _ID,
         rename: dict[str, str] | None = None,
         ignore_pv_ids: list[str] | None = None,
+        blackout: float = 0.0,
     ):
         """
         Arguments:
@@ -98,6 +103,10 @@ class NetcdfPvDataSource(PvDataSource):
             id_dim_name: Name for the "id" dimensions in the dataset.
             rename: This is passed to `xarray` to rename any coordinates or variable.
             ignore_pv_ids: The PV ids from this list will be completely ignored.
+            blackout: This represents the time (in minutes) it takes before the data is available
+                in practice. Concretely, this means that when we call `as_available_at`, `blackout`
+                minutes will subtracted from the passed timestamp. When training, this should be set
+                to the expected delay before the PV data is available, in production.
         """
         if rename is None:
             rename = {}
@@ -107,6 +116,7 @@ class NetcdfPvDataSource(PvDataSource):
         self._id_dim_name = id_dim_name
         self._rename = rename
         self._ignore_pv_ids = ignore_pv_ids
+        self._blackout = blackout
 
         self._open()
 
@@ -163,8 +173,8 @@ class NetcdfPvDataSource(PvDataSource):
         ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
         return min_timestamp(ts, self._max_ts)
 
-    def without_future(self, ts: Timestamp, *, blackout: int = 0) -> "NetcdfPvDataSource":
-        now = ts - datetime.timedelta(minutes=blackout) - datetime.timedelta(seconds=1)
+    def as_available_at(self, ts: Timestamp) -> "NetcdfPvDataSource":
+        now = ts - datetime.timedelta(minutes=self._blackout) - datetime.timedelta(seconds=1)
         # We simply make a copy and change it's `max_ts`.
         # Using `copy.copy` used __setstate__ and __getstate__, which we tampered with so we use our
         # own implementation, which is inspired from the pickle doc:

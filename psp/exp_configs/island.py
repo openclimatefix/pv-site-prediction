@@ -43,7 +43,12 @@ class ExpConfig(ExpConfigBase):
 
     @functools.cache
     def _get_model_config(self):
-        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4), blackout=0)
+        return PvSiteModelConfig(
+            horizons=Horizons(
+                duration=15,
+                num_horizons=48 * 4,
+            )
+        )
 
     @functools.cache
     def get_model(self) -> PvSiteModel:

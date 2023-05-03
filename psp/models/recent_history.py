@@ -162,7 +162,7 @@ class RecentHistoryModel(PvSiteModel):
         self, x: X, with_names: bool
     ) -> Features | Tuple[Features, dict[str, list[str]]]:
         features: Features = dict()
-        data_source = self._pv_data_source.without_future(x.ts, blackout=self.config.blackout)
+        data_source = self._pv_data_source.as_available_at(x.ts)
 
         # We'll look at stats for the previous few days.
         history_start = to_midnight(x.ts - timedelta(days=7))

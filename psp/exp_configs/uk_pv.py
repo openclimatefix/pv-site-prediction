@@ -174,9 +174,7 @@ class ExpConfig(ExpConfigBase):
 
     def get_model(self) -> PvSiteModel:
         return RecentHistoryModel(
-            config=PvSiteModelConfig(
-                horizons=Horizons(duration=15, num_horizons=48 * 4), blackout=0
-            ),
+            config=PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4)),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
                 num_train_samples=4096,
