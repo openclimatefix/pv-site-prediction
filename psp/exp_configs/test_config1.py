@@ -2,6 +2,8 @@
 
 import functools
 
+from sklearn.ensemble import HistGradientBoostingRegressor
+
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import Splits, split_train_test
 from psp.exp_configs.base import ExpConfigBase
@@ -38,6 +40,9 @@ class ExpConfig(ExpConfigBase):
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
                 num_train_samples=10,
+                sklearn_regressor=HistGradientBoostingRegressor(
+                    max_iter=2,
+                ),
             ),
             use_nwp=False,
         )

@@ -93,7 +93,7 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # To maintain backward compatibility with older serialized models, we bump this version when we make
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
-# whenever we bump this, using a simplified config file (to get a small model).
+# whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
 _VERSION = 3
 
 
