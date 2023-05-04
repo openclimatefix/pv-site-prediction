@@ -13,7 +13,7 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 PV_DATA_PATH = "data/island/data_15min_FIN.nc"
-NWP_PATH = "data/island/nwp_simon_v5.nwp"
+NWP_PATH = "data/island/nwp_v6.nwp"
 
 
 class ExpConfig(ExpConfigBase):
@@ -63,16 +63,13 @@ class ExpConfig(ExpConfigBase):
             normalize_features=True,
             use_inferred_meta=False,
             use_data_capacity=True,
+            use_capacity_as_feature=False,
         )
 
     def make_dataset_splits(self, pv_data_source: PvDataSource) -> Splits:
         return split_train_test(
             pv_data_source,
             pv_split=None,
-            # train_start = datetime(2018, 1, 1)
-            train_start=dt.datetime(2021, 4, 12),
-            # Leaving a couple of days at the end to be safe.
-            train_end=dt.datetime(2022, 4, 12),
-            test_start=dt.datetime(2022, 4, 13),
-            test_end=dt.datetime(2023, 1, 1),
+            train_start=dt.datetime(2019, 1, 1),
+            test_end=dt.datetime(2022, 10, 15),
         )

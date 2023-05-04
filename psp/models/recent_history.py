@@ -94,7 +94,7 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 3
+_VERSION = 4
 
 
 class RecentHistoryModel(PvSiteModel):
@@ -109,6 +109,7 @@ class RecentHistoryModel(PvSiteModel):
         normalize_features: bool = True,
         use_inferred_meta: bool = False,
         use_data_capacity: bool = False,
+        use_capacity_as_feature: bool = True,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
@@ -118,6 +119,7 @@ class RecentHistoryModel(PvSiteModel):
         self._normalize_features = normalize_features
         self._use_inferred_meta = use_inferred_meta
         self._use_data_capacity = use_data_capacity
+        self._use_capacity_as_feature = use_capacity_as_feature
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -264,7 +266,7 @@ class RecentHistoryModel(PvSiteModel):
 
         common_dict: dict[str, float] = {}
 
-        if self._version >= 2:
+        if self._version >= 2 and self._use_capacity_as_feature:
             common_dict["capacity"] = capacity if np.isfinite(capacity) else -1.0
 
         for agg in ["max", "mean", "median"]:
@@ -290,6 +292,7 @@ class RecentHistoryModel(PvSiteModel):
                 timestamps=horizon_timestamps,
                 load=True,
             )
+
             nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
             for variable in nwp_variables:
                 var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
@@ -368,6 +371,8 @@ class RecentHistoryModel(PvSiteModel):
         if state["_version"] < 2:
             state["_use_inferred_meta"] = True
             state["_normalize_features"] = True
-        elif state["_version"] < 3:
+        if state["_version"] < 3:
             state["_use_data_capacity"] = False
+        if state["_version"] < 4:
+            state["_use_capacity_as_feature"] = True
         super().set_state(state)
