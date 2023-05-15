@@ -32,6 +32,8 @@ def _slice_on_lat_lon(
     nearest_lat: float | None = None,
     nearest_lon: float | None = None,
     transformer: CoordinateTransformer,
+    x_is_ascending: bool,
+    y_is_ascending: bool,
 ) -> T:
     # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
     # by lat/lon).
@@ -51,11 +53,13 @@ def _slice_on_lat_lon(
         min_x, min_y = point1
         max_x, max_y = point2
 
-        # Type ignore because this is still simpler than addin some `@overload`.
+        if not x_is_ascending:
+            min_x, max_x = max_x, min_x
+        if not y_is_ascending:
+            min_y, max_y = max_y, min_y
 
-        # Note the reversed min_y and max_y. This is because in NWP data, the Y is reversed.
-        # TODO: I'm not sure this will always be the case, maybe we need a flag for this.
-        return data.sel(x=slice(min_x, max_x), y=slice(max_y, min_y))  # type: ignore
+        # Type ignore because this is still simpler than addin some `@overload`.
+        return data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))  # type: ignore
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
@@ -66,9 +70,17 @@ def _slice_on_lat_lon(
 
 
 class _NwpDataSourceAtTimestamp:
-    def __init__(self, data: xr.DataArray, transformer: CoordinateTransformer):
+    def __init__(
+        self,
+        data: xr.DataArray,
+        transformer: CoordinateTransformer,
+        x_is_ascending: bool,
+        y_is_ascending: bool,
+    ):
         self._data = data
         self._coordinate_transformer = transformer
+        self._x_is_ascending = x_is_ascending
+        self._y_is_ascending = y_is_ascending
 
     def get(
         self,
@@ -103,6 +115,8 @@ class _NwpDataSourceAtTimestamp:
             nearest_lat=nearest_lat,
             nearest_lon=nearest_lon,
             transformer=self._coordinate_transformer,
+            x_is_ascending=self._x_is_ascending,
+            y_is_ascending=self._y_is_ascending,
         )
 
         # Get the nearest prediction to what we are interested in.
@@ -141,6 +155,8 @@ class NwpDataSource:
         step_dim_name: str = _STEP,
         variable_dim_name: str = _VARIABLE,
         value_name: str = _VALUE,
+        x_is_ascending: bool = True,
+        y_is_ascending: bool = True,
         cache_dir: str | None = None,
         blackout: float = 0.0,
     ):
@@ -158,6 +174,10 @@ class NwpDataSource:
         blackout: Delay (in minutes) before the data is available. This is to mimic the fact that in
             production, the data is often late. We will add a "blackout" of `blackout` minutes when
             calling the `at` method.
+        x_is_ascending: Is the `x` coordinate in ascending order. If it's in descending order, set
+            this to `False`.
+        y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
+            this to `False`.
         """
         self._path = path
         # We'll have to transform the lat/lon coordinates to the internal dataset's coordinate
@@ -170,6 +190,8 @@ class NwpDataSource:
         self._step_dim_name = step_dim_name
         self._variable_dim_name = variable_dim_name
         self._value_name = value_name
+        self._x_is_ascending = x_is_ascending
+        self._y_is_ascending = y_is_ascending
 
         self._blackout = blackout
 
@@ -288,6 +310,8 @@ class NwpDataSource:
             nearest_lat=nearest_lat,
             nearest_lon=nearest_lon,
             transformer=self._coordinate_transformer,
+            x_is_ascending=self._x_is_ascending,
+            y_is_ascending=self._y_is_ascending,
         )
 
         # Forward fill so that we get the value from the past, not the future!
@@ -296,7 +320,12 @@ class NwpDataSource:
 
         if load:
             da = da.load()
-        return _NwpDataSourceAtTimestamp(da, self._coordinate_transformer)
+        return _NwpDataSourceAtTimestamp(
+            da,
+            self._coordinate_transformer,
+            x_is_ascending=self._x_is_ascending,
+            y_is_ascending=self._y_is_ascending,
+        )
 
     def __getstate__(self):
         d = self.__dict__.copy()

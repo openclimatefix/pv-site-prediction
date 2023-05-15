@@ -66,6 +66,9 @@ class PvDataSource(abc.ABC):
         """
         pass
 
+    def list_data_variables(self) -> list[str]:
+        raise NotImplementedError
+
 
 def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
     """Util function to calculate the minimum between two timestamps that supports `None`.
@@ -196,3 +199,6 @@ class NetcdfPvDataSource(PvDataSource):
         for key, value in state.items():
             setattr(self, key, value)
         self._open()
+
+    def list_data_variables(self) -> list[str]:
+        return list(self._data.data_vars)

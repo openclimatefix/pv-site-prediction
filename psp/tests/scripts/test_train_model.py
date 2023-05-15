@@ -37,4 +37,4 @@ def test_train_model(tmp_path):
     _test_command(main, cmd_args)
 
     # Make sure a model was created.
-    assert (tmp_path / "train_test" / "model.pkl").exists()
+    assert (tmp_path / "train_test" / "model_0.pkl").exists()

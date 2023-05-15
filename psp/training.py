@@ -1,3 +1,4 @@
+import datetime as dt
 import functools
 from operator import itemgetter
 from typing import Callable, overload
@@ -7,8 +8,8 @@ from torch.utils.data import DataLoader
 from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.dataset import DatasetSplit, PvXDataPipe, RandomPvXDataPipe, get_y_from_x
-from psp.typings import Batch, Features, Horizons, Sample, X
+from psp.dataset import PvXDataPipe, RandomPvXDataPipe, get_y_from_x
+from psp.typings import Batch, Features, Horizons, PvId, Sample, X
 from psp.utils.batches import batch_samples
 
 
@@ -71,7 +72,9 @@ def make_data_loader(
     *,
     data_source: PvDataSource,
     horizons: Horizons,
-    split: DatasetSplit,
+    pv_ids: list[PvId],
+    start_ts: dt.datetime,
+    end_ts: dt.datetime,
     get_features: Callable[[X], Features],
     prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
@@ -89,7 +92,9 @@ def make_data_loader(
     *,
     data_source: PvDataSource,
     horizons: Horizons,
-    split: DatasetSplit,
+    pv_ids: list[PvId],
+    start_ts: dt.datetime,
+    end_ts: dt.datetime,
     get_features: Callable[[X], Features],
     prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
@@ -106,7 +111,9 @@ def make_data_loader(
     *,
     data_source: PvDataSource,
     horizons: Horizons,
-    split: DatasetSplit,
+    pv_ids: list[PvId],
+    start_ts: dt.datetime,
+    end_ts: dt.datetime,
     get_features: Callable[[X], Features],
     prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
@@ -133,18 +140,18 @@ def make_data_loader(
             data_source=data_source,
             horizons=horizons,
             random_state=random_state,
-            pv_ids=split.pv_ids,
-            start_ts=split.start_ts,
-            end_ts=split.end_ts,
+            pv_ids=pv_ids,
+            start_ts=start_ts,
+            end_ts=end_ts,
             step=step,
         )
     else:
         pvx_datapipe = PvXDataPipe(
             data_source=data_source,
             horizons=horizons,
-            pv_ids=split.pv_ids,
-            start_ts=split.start_ts,
-            end_ts=split.end_ts,
+            pv_ids=pv_ids,
+            start_ts=start_ts,
+            end_ts=end_ts,
             step=step,
         )
 

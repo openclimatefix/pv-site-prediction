@@ -1,3 +1,4 @@
+import datetime as dt
 import importlib
 import logging
 import shutil
@@ -9,6 +10,7 @@ import torch
 import tqdm
 from torch.utils.data import DataLoader
 
+from psp.dataset import pv_list_to_short_str
 from psp.exp_configs.base import ExpConfigBase
 from psp.metrics import mean_absolute_error
 from psp.models.base import PvSiteModel
@@ -123,69 +125,77 @@ def main(
     pv_data_source = exp_config.get_pv_data_source()
 
     # Dataset
-    splits = exp_config.make_dataset_splits(pv_data_source)
+    pv_splits = exp_config.make_pv_splits(pv_data_source)
 
-    _log.info(f"Training on split: {splits.train}")
+    date_splits = exp_config.get_date_splits()
 
-    data_loader_kwargs = dict(
-        data_source=pv_data_source,
-        horizons=model.config.horizons,
-        get_features=model.get_features,
-        num_workers=num_workers,
-        shuffle=True,
-    )
+    _log.info(f"Train PVs: {pv_list_to_short_str(pv_splits.train)}")
+    _log.info(f"Valid PVs: {pv_list_to_short_str(pv_splits.valid)}")
 
-    train_data_loader = make_data_loader(
-        **data_loader_kwargs,
-        batch_size=batch_size,
-        split=splits.train,
-        random_state=np.random.RandomState(SEED_TRAIN),
-    )
+    for i, date in enumerate(date_splits.train_dates):
+        start_ts = date - dt.timedelta(days=date_splits.num_train_days)
+        end_ts = date
+        _log.info(f"Train time range: [{start_ts}, {end_ts}]")
 
-    limit = 128
+        data_loader_kwargs = dict(
+            data_source=pv_data_source,
+            horizons=model.config.horizons,
+            get_features=model.get_features,
+            num_workers=num_workers,
+            shuffle=True,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
 
-    # Ensure that way we always have the same valid set, no matter the batch size (for this we need
-    # to have only whole batches).
-    assert limit % batch_size == 0
-
-    _log.info(f"Validating on split: {splits.valid}")
-
-    valid_data_loader = make_data_loader(
-        **data_loader_kwargs,
-        split=splits.valid,
-        batch_size=batch_size,
-        random_state=np.random.RandomState(SEED_VALID),
-        # We shuffle to get a good sample of data points.
-        limit=limit,
-    )
-
-    model.train(train_data_loader, valid_data_loader, batch_size)
-
-    path = output_dir / "model.pkl"
-    _log.info(f"Saving model to {path}")
-    save_model(model, path)
-
-    # Print the error on the train/valid sets.
-    if num_test_samples > 0:
-        _log.info("Error on the train set")
-        train_data_loader2 = make_data_loader(
+        train_data_loader = make_data_loader(
             **data_loader_kwargs,
-            batch_size=None,
-            split=splits.train,
-            limit=num_test_samples,
+            batch_size=batch_size,
+            pv_ids=pv_splits.train,
             random_state=np.random.RandomState(SEED_TRAIN),
         )
-        _eval_model(model, train_data_loader2)
 
-        _log.info("Error on the valid set")
-        valid_data_loader2 = make_data_loader(
+        limit = 128
+
+        # Ensure that way we always have the same valid set, no matter the batch size (for this we
+        # need to have only whole batches).
+        assert limit % batch_size == 0
+
+        valid_data_loader = make_data_loader(
             **data_loader_kwargs,
-            batch_size=None,
-            split=splits.valid,
-            limit=num_test_samples,
+            pv_ids=pv_splits.valid,
+            batch_size=batch_size,
             random_state=np.random.RandomState(SEED_VALID),
+            # We shuffle to get a good sample of data points.
+            limit=limit,
         )
-        _eval_model(model, valid_data_loader2)
+
+        model.train(train_data_loader, valid_data_loader, batch_size)
+
+        path = output_dir / f"model_{i}.pkl"
+        _log.info(f"Saving model trained on {end_ts} to {path}")
+        save_model(model, path)
+
+        # Print the error on the train/valid sets.
+        if num_test_samples > 0:
+            _log.info("Error on the train set")
+            train_data_loader2 = make_data_loader(
+                **data_loader_kwargs,
+                batch_size=None,
+                pv_ids=pv_splits.train,
+                limit=num_test_samples,
+                random_state=np.random.RandomState(SEED_TRAIN),
+            )
+            _eval_model(model, train_data_loader2)
+
+            _log.info("Error on the valid set")
+            valid_data_loader2 = make_data_loader(
+                **data_loader_kwargs,
+                batch_size=None,
+                pv_ids=pv_splits.valid,
+                limit=num_test_samples,
+                random_state=np.random.RandomState(SEED_VALID),
+            )
+            _eval_model(model, valid_data_loader2)
 
 
 if __name__ == "__main__":

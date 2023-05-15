@@ -1,59 +1,64 @@
 """Main config for the "island" use-case."""
 
 import datetime as dt
-import functools
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import Splits, split_train_test
+from psp.dataset import DateSplits, PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_DATA_PATH = "data/island/data_15min_FIN.nc"
-NWP_PATH = "data/island/nwp_v6.nwp"
+PV_TARGET_DATA_PATH = "data/island/data_hourly_MW_dstfix_clean_v2.nc"
+NWP_PATH = "data/island/nwp_v8.zarr"
 
 
 class ExpConfig(ExpConfigBase):
-    @functools.cache
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
-            PV_DATA_PATH,
+            PV_TARGET_DATA_PATH,
             id_dim_name="id",
             timestamp_dim_name="datetimeUTC",
             rename={
-                "Power at point in time MW": "power",
-                "Total Installed Capacity MWp": "capacity",
+                "Hourly PV Generated Units (MW)": "power",
+                "Total Max Capacity (MW)": "capacity",
             },
         )
 
-    @functools.cache
     def get_data_source_kwargs(self):
         return dict(
-            pv_data_source=self.get_pv_data_source(),
+            pv_data_source=NetcdfPvDataSource(
+                PV_TARGET_DATA_PATH,
+                id_dim_name="id",
+                timestamp_dim_name="datetimeUTC",
+                rename={
+                    "Hourly PV Generated Units (MW)": "power",
+                    "Total Max Capacity (MW)": "capacity",
+                },
+                blackout=5 * 24 * 60,
+            ),
             nwp_data_source=NwpDataSource(
                 NWP_PATH,
                 coord_system=4326,
                 x_dim_name="latitude",
                 y_dim_name="longitude",
+                x_is_ascending=False,
             ),
         )
 
-    @functools.cache
-    def _get_model_config(self):
+    def get_model_config(self):
         return PvSiteModelConfig(
             horizons=Horizons(
-                duration=15,
-                num_horizons=48 * 4,
+                duration=60,
+                num_horizons=48,
             )
         )
 
-    @functools.cache
     def get_model(self) -> PvSiteModel:
         return RecentHistoryModel(
-            self._get_model_config(),
+            self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
                 num_train_samples=2048,
@@ -64,12 +69,18 @@ class ExpConfig(ExpConfigBase):
             use_inferred_meta=False,
             use_data_capacity=True,
             use_capacity_as_feature=False,
+            num_days_history=12,
         )
 
-    def make_dataset_splits(self, pv_data_source: PvDataSource) -> Splits:
-        return split_train_test(
+    def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
+        return split_pvs(
             pv_data_source,
             pv_split=None,
-            train_start=dt.datetime(2019, 1, 1),
-            test_end=dt.datetime(2022, 10, 15),
+        )
+
+    def get_date_splits(self) -> DateSplits:
+        return auto_date_split(
+            dt.datetime(2019, 1, 1),
+            dt.datetime(2022, 10, 15),
+            num_trainings=8,
         )

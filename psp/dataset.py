@@ -144,25 +144,18 @@ def get_y_from_x(x: X, *, horizons: Horizons, data_source: PvDataSource) -> Y | 
 
 
 @dataclasses.dataclass
-class DatasetSplit:
-    """Dataset split on pv_ids and a time range."""
-
-    start_ts: datetime
-    end_ts: datetime
-    pv_ids: list[PvId]
-
-    def __repr__(self) -> str:
-        return (
-            f"<DataSplit pv_ids=<len={len(self.pv_ids)} start_ts={self.start_ts}"
-            f" end_ts={self.end_ts}>"
-        )
+class PvSplits:
+    train: list[PvId]
+    valid: list[PvId]
+    test: list[PvId]
 
 
-@dataclasses.dataclass
-class Splits:
-    train: DatasetSplit
-    valid: DatasetSplit
-    test: DatasetSplit
+def pv_list_to_short_str(x: list[PvId]) -> str:
+    """Util to format a list of PV ids into a small string."""
+    if len(x) < 4:
+        return str(x)
+    else:
+        return f"[{repr(x[0])}, {repr(x[1])}, ..., {repr(x[-1])}]"
 
 
 def _floor_date(date: datetime) -> datetime:
@@ -179,27 +172,17 @@ def _ceiling_date(date: datetime) -> datetime:
         return date + timedelta(days=1)
 
 
-def split_train_test(
+def split_pvs(
     pv_data_source: PvDataSource,
     *,
-    train_start: datetime | None = None,
-    train_end: datetime | None = None,
-    test_start: datetime | None = None,
-    test_end: datetime | None = None,
     pv_split: float | None = 0.9,
     valid_split: float = 0.1,
-) -> Splits:
+) -> PvSplits:
     """
-    Split the PV Data Source into train/valid/test sets.
-
-    Each split is basically a list of PV ids and a start and end datetimes.
+    Split the PV ids in a PV Data Source into train/valid/test sets.
 
     Arguments:
     ---------
-        train_start: Beginning of the train set.
-        train_end: End of the train set.
-        test_start: Beginning of the test set.
-        test_end: End of the test set.
         pv_split: Ratio of PV sites to put in the train set. The rest will go in the test set. Use
             an explicit `None` to *not* split on PV ids (use all the PV ids for both train and
             test). This can make sense in use-cases where there is a small and stable number PV
@@ -207,35 +190,6 @@ def split_train_test(
         valid_split: Ratio of Pv sites from the train set to use as valid set. Note that the
             time range is the same for train and valid.
     """
-    # Use some simple rules to choose missing dates.
-    if train_start is None:
-        train_start = _ceiling_date(pv_data_source.min_ts())
-
-    if test_end is None:
-        test_end = _floor_date(pv_data_source.max_ts())
-
-    if train_end is None and test_start is not None:
-        train_end = test_start - timedelta(days=1)
-    elif test_start is None and train_end is not None:
-        test_start = train_end + timedelta(days=1)
-    elif train_end is None and test_start is None:
-        # 50/50 split.
-        test_start = test_end - (test_end - train_start) / 2
-        # Round to a whole day.
-        test_start = _ceiling_date(test_start)
-        train_end = test_start - timedelta(days=1)
-
-    # For mypy.
-    assert train_start is not None
-    assert train_end is not None
-    assert test_start is not None
-    assert test_end is not None
-
-    # Important sanity check!
-    assert train_start < train_end
-    assert train_end < test_start
-    assert test_start < test_end
-
     pv_ids = set(pv_data_source.list_pv_ids())
 
     if pv_split is None:
@@ -269,20 +223,46 @@ def split_train_test(
 
     # Note the `sorted`. This is because `set` can mess up the order and we want the randomness we
     # will add later (when picking pv_ids at random) to be deterministic.
-    return Splits(
-        train=DatasetSplit(
-            start_ts=train_start,
-            end_ts=train_end,
-            pv_ids=list(sorted(train_pv_ids)),
-        ),
-        valid=DatasetSplit(
-            start_ts=train_start,
-            end_ts=train_end,
-            pv_ids=list(sorted(valid_pv_ids)),
-        ),
-        test=DatasetSplit(
-            start_ts=test_start,
-            end_ts=test_end,
-            pv_ids=list(sorted(test_pv_ids)),
-        ),
+    return PvSplits(
+        train=list(sorted(train_pv_ids)),
+        valid=list(sorted(valid_pv_ids)),
+        test=list(sorted(test_pv_ids)),
+    )
+
+
+@dataclasses.dataclass
+class DateSplits:
+    """The specification for a split in time for training and evaluating a model on some PV data.
+
+    We assume that N models will be trained, one for each date in `train_dates`. Each model will be
+    trained using the `num_train_days` days before its date. The resulting models will be evaluated
+    on the `num_test_days` following the earliest of the `train_dates`. When evaluating, the
+    "latest" model *before* the sample date should be used.
+    """
+
+    # Dates at which the training is done.
+    train_dates: list[datetime]
+    # Number of days we will train on, for each train date.
+    num_train_days: int
+    # Number of total test days (the right model from the right train_date will be used).
+    num_test_days: int
+
+
+def auto_date_split(min_date: datetime, max_date: datetime, num_trainings: int = 1) -> DateSplits:
+    """Make a DateSplits object that trains on half the data between `min_date` and `max_date`,
+    tests on the other half, with `num_trainings` model retraining evenly distributed in the test
+    time range.
+    """
+    d0 = _floor_date(min_date + (max_date - min_date) // 2)
+    num_train_days = (d0 - min_date).days
+    num_test_days = (max_date - d0).days
+    train_dates = [
+        _floor_date(d0 + i * timedelta(days=num_test_days) / num_trainings)
+        for i in range(num_trainings)
+    ]
+
+    return DateSplits(
+        train_dates=train_dates,
+        num_train_days=num_train_days,
+        num_test_days=num_test_days,
     )

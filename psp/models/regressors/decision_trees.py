@@ -171,8 +171,11 @@ class SklearnRegressor(Regressor):
         xs = xs[mask]
         ys = ys[mask]
 
+        # In practice this does not improve the results, but it does improve the model explanation.
+        sample_weight = poa.reshape(-1)[mask]
+
         _log.info("Fitting the forest.")
-        self._regressor.fit(xs, ys)
+        self._regressor.fit(xs, ys, sample_weight=sample_weight)
 
     def predict(self, features: Features):
         new_features = self._prepare_features(batch_features([features]))

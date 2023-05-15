@@ -24,7 +24,6 @@ LAT2 = 52
 
 @pytest.fixture(params=[27700, 4326])
 def nwp_data_source(tmp_path, request):
-
     coord_system: int = request.param
 
     lats = [LAT0, LAT1, LAT2]
@@ -36,9 +35,6 @@ def nwp_data_source(tmp_path, request):
 
     xs = [p[0] for p in new_coords]
     ys = [p[1] for p in new_coords]
-
-    # In NWP data, the Y coordinates are reversed.
-    ys = list(reversed(ys))
 
     times = [T0, T1, T2]
 
@@ -149,6 +145,8 @@ def test_nwp_data_source_check_times_many_steps(
     assert_array_equal(data.coords["step"].values, [np.timedelta64(s, "h") for s in expected_steps])
 
 
+@pytest.mark.parametrize("reverse_x", [True, False])
+@pytest.mark.parametrize("reverse_y", [True, False])
 @pytest.mark.parametrize(
     "lat,lon,expected_size",
     [
@@ -159,7 +157,16 @@ def test_nwp_data_source_check_times_many_steps(
         [(None, None), (None, None), 27],
     ],
 )
-def test_nwp_data_source_space(lat, lon, expected_size, nwp_data_source):
+def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nwp_data_source):
+
+    # Reverse the data order and see if our flag words.
+    if reverse_x:
+        nwp_data_source._data = nwp_data_source._data.sortby("x", ascending=False)
+        nwp_data_source._x_is_ascending = False
+    if reverse_y:
+        nwp_data_source._data = nwp_data_source._data.sortby("y", ascending=False)
+        nwp_data_source._y_is_ascending = False
+
     ll_kwargs = dict(
         min_lat=lat[0],
         max_lat=lat[1],

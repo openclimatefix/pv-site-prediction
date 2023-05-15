@@ -2,12 +2,15 @@ import abc
 from typing import Any
 
 from psp.data.data_sources.pv import PvDataSource
-from psp.dataset import Splits
-from psp.models.base import PvSiteModel
+from psp.models.base import PvSiteModel, PvSiteModelConfig
 
 
 class ExpConfigBase(abc.ABC):
     """Defines the interface of an experiment config."""
+
+    @abc.abstractmethod
+    def get_model_config(self) -> PvSiteModelConfig:
+        pass
 
     @abc.abstractmethod
     def get_pv_data_source(self) -> PvDataSource:
@@ -28,6 +31,10 @@ class ExpConfigBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def make_dataset_splits(self, pv_data_source: PvDataSource) -> Splits:
+    def make_pv_splits(self, pv_data_source: PvDataSource):
         """Make the dataset splits from the pv data source."""
+        pass
+
+    @abc.abstractmethod
+    def get_date_splits(self):
         pass

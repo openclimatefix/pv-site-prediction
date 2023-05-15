@@ -21,7 +21,7 @@ class PvSiteModel(abc.ABC):
         self._config = config
 
     @abc.abstractmethod
-    def predict_from_features(self, features: Features) -> Y:
+    def predict_from_features(self, x: X, features: Features) -> Y:
         """Predict the output from the features.
 
         Useful if the features were already computed, or to leverage
@@ -35,7 +35,7 @@ class PvSiteModel(abc.ABC):
         This is what should be called in production.
         """
         features = self.get_features(x)
-        return self.predict_from_features(features)
+        return self.predict_from_features(x, features)
 
     @abc.abstractmethod
     def get_features(self, x: X) -> Features:

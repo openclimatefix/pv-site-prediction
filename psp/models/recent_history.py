@@ -94,7 +94,7 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 4
+_VERSION = 5
 
 
 class RecentHistoryModel(PvSiteModel):
@@ -110,6 +110,7 @@ class RecentHistoryModel(PvSiteModel):
         use_inferred_meta: bool = False,
         use_data_capacity: bool = False,
         use_capacity_as_feature: bool = True,
+        num_days_history: int = 7,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
@@ -120,6 +121,7 @@ class RecentHistoryModel(PvSiteModel):
         self._use_inferred_meta = use_inferred_meta
         self._use_data_capacity = use_data_capacity
         self._use_capacity_as_feature = use_capacity_as_feature
+        self._num_days_history = num_days_history
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -145,7 +147,7 @@ class RecentHistoryModel(PvSiteModel):
         self._pv_data_source = pv_data_source
         self._nwp_data_source = nwp_data_source
 
-    def predict_from_features(self, features: Features) -> Y:
+    def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
         y = Y(powers=powers)
         return y
@@ -167,7 +169,7 @@ class RecentHistoryModel(PvSiteModel):
         data_source = self._pv_data_source.as_available_at(x.ts)
 
         # We'll look at stats for the previous few days.
-        history_start = to_midnight(x.ts - timedelta(days=7))
+        history_start = to_midnight(x.ts - timedelta(days=self._num_days_history))
 
         # Slice as much as we can right away.
         _data = data_source.get(
@@ -375,4 +377,7 @@ class RecentHistoryModel(PvSiteModel):
             state["_use_data_capacity"] = False
         if state["_version"] < 4:
             state["_use_capacity_as_feature"] = True
+        if state["_version"] < 5:
+            state["_num_days_history"] = 7
+
         super().set_state(state)

@@ -102,13 +102,14 @@ def _make_pv_timeseries_chart(
     padding_hours: float = 12,
     height: int = 200,
     normalize: bool = False,
+    colors: list[str] | None = None,
 ) -> alt.Chart:
     """Make a timeseries chart for the PV data."""
     # Get the ground truth PV data.
     raw_data = pv_data_source.get(
         pv_ids=x.pv_id,
         start_ts=x.ts - dt.timedelta(hours=padding_hours),
-        end_ts=x.ts + dt.timedelta(hours=horizons[-1][1] / 60 + padding_hours),
+        end_ts=x.ts + dt.timedelta(hours=horizons[-1][1] / 60 + min(padding_hours, 12)),
     )["power"]
 
     capacity = float(
@@ -170,16 +171,20 @@ def _make_pv_timeseries_chart(
         ]
     )
 
+    x_axis = alt.Axis(tickCount="day", format=("%d %b %Y"))
+
     pred_chart = (
         alt.Chart(model_data)
-        .mark_circle(size=14, opacity=0.8)
+        .mark_line(
+            # size=14, opacity=0.8
+            # opacity=0.8,
+            # width=3,
+            point=alt.OverlayMarkDef(size=10, opacity=1),
+        )
         .encode(
-            x="timestamp",
-            y="power",
-            shape="current:O",
-            color="model:N",
-            # color=alt.Color("current:O", scale=alt.Scale(range=["#1f77b4", "red"])),
-            size=alt.Size("current:O", scale=alt.Scale(range=[14, 30]), legend=None),
+            x=alt.X("timestamp", title="Time", axis=x_axis),
+            y=alt.Y("power", title="Power (MW)"),
+            color=alt.Color("model:N", scale=alt.Scale(range=colors)),
         )
     )
 
@@ -188,7 +193,7 @@ def _make_pv_timeseries_chart(
         .mark_line(
             point=alt.OverlayMarkDef(color="black", size=10, opacity=0.8),
             color="gray",
-            opacity=0.2,
+            opacity=1.0,
         )
         .encode(x="timestamp", y="power")
         .properties(height=height, width=800)
@@ -299,11 +304,13 @@ def _make_explain_chart(x: X, horizon_idx: int, model: PvSiteModel):
 def plot_sample(
     x: X,
     horizon_idx: int,
+    horizons: Horizons,
     models: dict[str, PvSiteModel],
     pv_data_source: PvDataSource,
     nwp_data_source: NwpDataSource | None,
     metric: Metric | None = None,
     normalize: bool = False,
+    colors: list[str] | None = None,
 ):
     """Plot a sample and relevant information
 
@@ -316,7 +323,7 @@ def plot_sample(
     ts = x.ts
 
     # We assume that all the horizons are the same
-    horizon = next(iter(models.values())).config.horizons[horizon_idx]
+    horizon = horizons[horizon_idx]
     pred_ts = ts + dt.timedelta(minutes=horizon[0] + (horizon[1] - horizon[0]) / 2)
 
     all_y: dict[str, Y] = {}
@@ -326,7 +333,7 @@ def plot_sample(
 
         all_y[model_name] = y
 
-        y_true = get_y_from_x(x=x, horizons=model.config.horizons, data_source=pv_data_source)
+        y_true = get_y_from_x(x=x, horizons=horizons, data_source=pv_data_source)
 
         if y_true is None:
             err = None
@@ -352,7 +359,10 @@ def plot_sample(
 
     for model_name, model in models.items():
         print(model_name)
-        display(_make_explain_chart(x, horizon_idx, model))
+        try:
+            display(_make_explain_chart(x, horizon_idx, model))
+        except Exception:
+            print("Could not do explain chart")
 
     for normalize in [False, True]:
         print(f"Normalize = {normalize}")
@@ -361,12 +371,13 @@ def plot_sample(
                 x=x,
                 all_y=all_y,
                 pred_ts=pred_ts,
-                horizons=model.config.horizons,
+                horizons=horizons,
                 horizon_idx=horizon_idx,
                 pv_data_source=pv_data_source,
-                padding_hours=7 * 24,
-                height=200,
+                padding_hours=3 * 24,
+                height=100,
                 normalize=normalize,
+                colors=colors,
             )
         )
 
@@ -375,15 +386,17 @@ def plot_sample(
                 x=x,
                 all_y=all_y,
                 pred_ts=pred_ts,
-                horizons=model.config.horizons,
+                horizons=horizons,
                 horizon_idx=horizon_idx,
                 pv_data_source=pv_data_source,
+                height=100,
                 padding_hours=12,
                 normalize=normalize,
+                colors=colors,
             )
         )
 
-    num_horizons = len(model.config.horizons)
+    num_horizons = len(horizons)
 
     if nwp_data_source is not None:
         print("*** NWP ***")

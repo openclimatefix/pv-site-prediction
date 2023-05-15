@@ -5,7 +5,7 @@ import functools
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import Splits, split_train_test
+from psp.dataset import DateSplits, PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
@@ -168,13 +168,17 @@ class ExpConfig(ExpConfigBase):
                 coord_system=27700,
                 time_dim_name="init_time",
                 value_name="UKV",
+                y_is_ascending=False,
             )  # , cache_dir=".nwp_cache"),
             # nwp_data_source=None,
         )
 
+    def get_model_config(self) -> PvSiteModelConfig:
+        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4))
+
     def get_model(self) -> PvSiteModel:
         return RecentHistoryModel(
-            config=PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4)),
+            config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
                 num_train_samples=4096,
@@ -212,15 +216,10 @@ class ExpConfig(ExpConfigBase):
             use_inferred_meta=False,
         )
 
-    def make_dataset_splits(self, pv_data_source: PvDataSource) -> Splits:
-        return split_train_test(
-            pv_data_source,
-            # Starting in 2020 because we only have NWP data from 2020.
-            # TODO Get the NWP data for 2018 and 2019.
-            # train_start = datetime(2018, 1, 1)
-            train_start=dt.datetime(2020, 1, 1),
-            # Leaving a couple of days at the end to be safe.
-            train_end=dt.datetime(2020, 12, 29),
-            test_start=dt.datetime(2021, 1, 1),
-            test_end=dt.datetime(2022, 1, 1),
+    def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
+        return split_pvs(pv_data_source)
+
+    def get_date_splits(self) -> DateSplits:
+        return auto_date_split(
+            min_date=dt.datetime(2020, 1, 1), max_date=dt.datetime(2022, 1, 1), num_trainings=1
         )
