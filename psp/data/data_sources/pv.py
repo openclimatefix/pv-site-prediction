@@ -91,7 +91,7 @@ def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
 class NetcdfPvDataSource(PvDataSource):
     def __init__(
         self,
-        filepath: pathlib.Path | str,
+        path_or_data: pathlib.Path | str | xr.Dataset,
         timestamp_dim_name: str = _TS,
         id_dim_name: str = _ID,
         rename: dict[str, str] | None = None,
@@ -114,22 +114,28 @@ class NetcdfPvDataSource(PvDataSource):
         if rename is None:
             rename = {}
 
-        self._path = pathlib.Path(filepath)
+        if isinstance(path_or_data, xr.Dataset):
+            self._path = None
+            raw_data = path_or_data
+        else:
+            self._path = path_or_data
+            raw_data = xr.open_dataset(self._path)
+
         self._timestamp_dim_name = timestamp_dim_name
         self._id_dim_name = id_dim_name
         self._rename = rename
         self._ignore_pv_ids = ignore_pv_ids
         self._lag_minutes = lag_minutes
 
-        self._open()
+        self._prepare_data(raw_data)
 
         self._set_max_ts(None)
 
     def _set_max_ts(self, ts: Timestamp | None) -> None:
-        # See `ignore_future`.
+        # See `as_available_at`.
         self._max_ts = ts
 
-    def _open(self):
+    def _prepare_data(self, raw_dataset: xr.Dataset) -> None:
         # Xarray doesn't like trivial renamings so we build a mapping of what actually changes.
         rename_map: dict[str, str] = {}
 
@@ -140,7 +146,7 @@ class NetcdfPvDataSource(PvDataSource):
 
         rename_map.update(self._rename)
 
-        self._data = xr.open_dataset(self._path).rename(rename_map)
+        self._data = raw_dataset.rename(rename_map)
 
         # We use `str` types for ids throughout.
         self._data.coords[_ID] = self._data.coords[_ID].astype(str)
@@ -185,10 +191,15 @@ class NetcdfPvDataSource(PvDataSource):
         new_ds = NetcdfPvDataSource.__new__(NetcdfPvDataSource)
         new_ds.__dict__.update(self.__dict__)
         new_ds._set_max_ts(min_timestamp(self._max_ts, now))
-
         return new_ds
 
     def __getstate__(self):
+        # Prevent pickling (potentially big) data sources when we don't have a path. Having a path
+        # means we don't need to save the data itself.
+        if self._path is None:
+            raise RuntimeError(
+                "You can only pickle `PvDataSource`s that were constructed using a path"
+            )
         d = self.__dict__.copy()
         # I'm not sure of the state contained in a `Dataset` object, so I make sure we don't save
         # it.
@@ -198,7 +209,9 @@ class NetcdfPvDataSource(PvDataSource):
     def __setstate__(self, state):
         for key, value in state.items():
             setattr(self, key, value)
-        self._open()
+        # Only data sources with a path should have been pickled.
+        assert self._path is not None
+        self._prepare_data(xr.open_dataset(self._path))
 
     def list_data_variables(self) -> list[str]:
         return list(self._data.data_vars)
