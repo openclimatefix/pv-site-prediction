@@ -158,7 +158,7 @@ class NwpDataSource:
         x_is_ascending: bool = True,
         y_is_ascending: bool = True,
         cache_dir: str | None = None,
-        blackout: float = 0.0,
+        lag_minutes: float = 0.0,
     ):
         """
         Arguments:
@@ -171,9 +171,9 @@ class NwpDataSource:
         cache_dir: If provided, the `at_get` function will cache its result in the directory. This
             is useful when always training and testing on the same dataset, as the loading of the
             NWP is one of the main bottlenecks. Use with caution: it will create a lot of files!
-        blackout: Delay (in minutes) before the data is available. This is to mimic the fact that in
-            production, the data is often late. We will add a "blackout" of `blackout` minutes when
-            calling the `at` method.
+        lag_minutes: Delay (in minutes) before the data is available. This is to mimic the fact that
+            in production, the data is often late. We will add a "lag_minutes" of `lag_minutes`
+            minutes when calling the `at` method.
         x_is_ascending: Is the `x` coordinate in ascending order. If it's in descending order, set
             this to `False`.
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
@@ -193,7 +193,7 @@ class NwpDataSource:
         self._x_is_ascending = x_is_ascending
         self._y_is_ascending = y_is_ascending
 
-        self._blackout = blackout
+        self._lag_minutes = lag_minutes
 
         self._open()
 
@@ -249,7 +249,7 @@ class NwpDataSource:
         if self._cache_dir:
             if isinstance(timestamps, Timestamp):
                 timestamps = [timestamps]
-            hash_data = [now, nearest_lat, nearest_lon, self._path, self._blackout, *timestamps]
+            hash_data = [now, nearest_lat, nearest_lon, self._path, self._lag_minutes, *timestamps]
             hashes = tuple([naive_hash(x) for x in hash_data])
             hash_ = str(hash(hashes))
             path = self._cache_dir / hash_
@@ -315,7 +315,7 @@ class NwpDataSource:
         )
 
         # Forward fill so that we get the value from the past, not the future!
-        ds = ds.sel(time=now - dt.timedelta(minutes=self._blackout), method="ffill")
+        ds = ds.sel(time=now - dt.timedelta(minutes=self._lag_minutes), method="ffill")
         da = ds[_VALUE]
 
         if load:

@@ -58,7 +58,7 @@ class PvDataSource(abc.ABC):
 
         Note that in general this does not necessarily means filtering everything before `ts`.
         Sometimes even less data is available at time `ts` (see for instance how we use the
-        `blackout` parameter in `NetcdfPvDataSource`).
+        `lag_minutes` parameter in `NetcdfPvDataSource`).
 
         Arguments:
         ---------
@@ -96,7 +96,7 @@ class NetcdfPvDataSource(PvDataSource):
         id_dim_name: str = _ID,
         rename: dict[str, str] | None = None,
         ignore_pv_ids: list[str] | None = None,
-        blackout: float = 0.0,
+        lag_minutes: float = 0.0,
     ):
         """
         Arguments:
@@ -106,10 +106,10 @@ class NetcdfPvDataSource(PvDataSource):
             id_dim_name: Name for the "id" dimensions in the dataset.
             rename: This is passed to `xarray` to rename any coordinates or variable.
             ignore_pv_ids: The PV ids from this list will be completely ignored.
-            blackout: This represents the time (in minutes) it takes before the data is available
-                in practice. Concretely, this means that when we call `as_available_at`, `blackout`
-                minutes will subtracted from the passed timestamp. When training, this should be set
-                to the expected delay before the PV data is available, in production.
+            lag_minutes: This represents the time (in minutes) it takes before the data is available
+                in practice. Concretely, this means that when we call `as_available_at`,
+                `lag_minutes` minutes will subtracted from the passed timestamp. When training, this
+                should be set to the expected delay before the PV data is available, in production.
         """
         if rename is None:
             rename = {}
@@ -119,7 +119,7 @@ class NetcdfPvDataSource(PvDataSource):
         self._id_dim_name = id_dim_name
         self._rename = rename
         self._ignore_pv_ids = ignore_pv_ids
-        self._blackout = blackout
+        self._lag_minutes = lag_minutes
 
         self._open()
 
@@ -177,7 +177,7 @@ class NetcdfPvDataSource(PvDataSource):
         return min_timestamp(ts, self._max_ts)
 
     def as_available_at(self, ts: Timestamp) -> "NetcdfPvDataSource":
-        now = ts - datetime.timedelta(minutes=self._blackout) - datetime.timedelta(seconds=1)
+        now = ts - datetime.timedelta(minutes=self._lag_minutes) - datetime.timedelta(seconds=1)
         # We simply make a copy and change it's `max_ts`.
         # Using `copy.copy` used __setstate__ and __getstate__, which we tampered with so we use our
         # own implementation, which is inspired from the pickle doc:

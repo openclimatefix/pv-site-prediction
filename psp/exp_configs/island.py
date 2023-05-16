@@ -37,7 +37,7 @@ class ExpConfig(ExpConfigBase):
                     "Hourly PV Generated Units (MW)": "power",
                     "Total Max Capacity (MW)": "capacity",
                 },
-                blackout=5 * 24 * 60,
+                lag_minutes=5 * 24 * 60,
             ),
             nwp_data_source=NwpDataSource(
                 NWP_PATH,

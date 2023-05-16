@@ -1,5 +1,7 @@
 # Effect of blackout
 
+*Note that since we made those experiments, the term "blackout" has been changed to "lag" throughout the code.*
+
 
 ## Context
 
