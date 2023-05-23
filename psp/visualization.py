@@ -248,16 +248,18 @@ def _make_nwp_heatmap(
     # TODO: Should this be hard-coded?
     nwp_freq = dt.timedelta(hours=3)
 
-    nwp_data = nwp_data_source.at(
+    nwp_data = nwp_data_source.get(
         now=ts,
+        # Get data for three steps. 1 before, 1 at prediction time, and 1 after.
+        timestamps=[pred_ts - nwp_freq, pred_ts, pred_ts + nwp_freq],
         min_lat=min_lat,
         max_lat=max_lat,
         min_lon=min_lon,
         max_lon=max_lon,
-    ).get(
-        # Get data for three steps. 1 before, 1 at prediction time, and 1 after.
-        timestamps=[pred_ts - nwp_freq, pred_ts, pred_ts + nwp_freq]
     )
+
+    if nwp_data is None:
+        return {}
 
     df = nwp_data.to_dataframe()[["UKV"]].reset_index()
     df["step"] = df["step"].dt.seconds / 60.0

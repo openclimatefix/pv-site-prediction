@@ -94,7 +94,7 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 5
+_VERSION = 6
 
 
 class RecentHistoryModel(PvSiteModel):
@@ -111,6 +111,7 @@ class RecentHistoryModel(PvSiteModel):
         use_data_capacity: bool = False,
         use_capacity_as_feature: bool = True,
         num_days_history: int = 7,
+        nwp_tolerance: str | None = None,
     ):
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
@@ -122,6 +123,7 @@ class RecentHistoryModel(PvSiteModel):
         self._use_data_capacity = use_data_capacity
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
+        self._nwp_tolerance = nwp_tolerance
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -287,24 +289,34 @@ class RecentHistoryModel(PvSiteModel):
         # Consider the NWP data in a small region around around our PV.
         if self._use_nwp:
             assert self._nwp_data_source is not None
-            nwp_data_per_horizon = self._nwp_data_source.at_get(
-                x.ts,
+            nwp_data_per_horizon = self._nwp_data_source.get(
+                now=x.ts,
+                timestamps=horizon_timestamps,
                 nearest_lat=lat,
                 nearest_lon=lon,
-                timestamps=horizon_timestamps,
-                load=True,
+                tolerance=self._nwp_tolerance,
             )
 
-            nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
-            for variable in nwp_variables:
-                var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
+            # Loading here makes it faster, somehow!
+            if nwp_data_per_horizon is not None:
+                nwp_data_per_horizon = nwp_data_per_horizon.load()
 
-                # We have seen `inf` values for this one.
-                if variable == "vis":
-                    # Using -1 because this is not a possible value for this feature.
-                    var_per_horizon = np.nan_to_num(var_per_horizon, nan=-1, posinf=-1, neginf=-1.0)
+            nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
+
+            for variable in nwp_variables:
+                # Deal with the trivial case where the returns NWP is simply `None`. This happens if
+                # there wasn't any data for the given tolerance.
+                if nwp_data_per_horizon is None:
+                    var_per_horizon = np.array([np.nan for _ in self.config.horizons])
+                else:
+                    var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
+
+                # Deal with potential NaN values in NWP.
+                var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
+                var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
 
                 per_horizon_dict[variable] = var_per_horizon
+                per_horizon_dict[variable + "_isnan"] = var_per_horizon_is_nan
 
         # Concatenate all the per-horizon features in a matrix of dimensions (horizon, features)
         per_horizon = np.stack(list(per_horizon_dict.values()), axis=-1)
@@ -379,5 +391,7 @@ class RecentHistoryModel(PvSiteModel):
             state["_use_capacity_as_feature"] = True
         if state["_version"] < 5:
             state["_num_days_history"] = 7
+        if state["_version"] < 6:
+            state["_nwp_tolerance"] = None
 
         super().set_state(state)

@@ -93,9 +93,9 @@ def hours(x: float) -> timedelta:
 def test_nwp_data_source_check_times_one_step(
     now, ts, expected_time, expected_step, nwp_data_source
 ):
-    data = nwp_data_source.at(now=now).get(ts)
+    data = nwp_data_source.get(now=now, timestamps=ts)
 
-    # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
+    # Always one init_time, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3
     assert to_pydatetime(data.coords["time"].values) == expected_time
     assert data.coords["step"].values == np.timedelta64(expected_step, "h")
@@ -122,22 +122,21 @@ def test_nwp_data_source_check_times_one_step(
         [
             T0 + hours(0.51),
             [
-                T0,
-                T0 + hours(0.49),
                 T0 + hours(0.51),
+                T0 + hours(0.52),
                 T1,
                 T1 + hours(0.49),
                 T1 + hours(0.51),
             ],
             T0,
-            [0, 0, 1, 1, 1, 2],
+            [1, 1, 1, 1, 2],
         ],
     ],
 )
 def test_nwp_data_source_check_times_many_steps(
     now, ts, expected_time, expected_steps, nwp_data_source
 ):
-    data = nwp_data_source.at(now=now).get(ts)
+    data = nwp_data_source.get(now=now, timestamps=ts)
 
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3 * len(expected_steps)
@@ -167,26 +166,35 @@ def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nw
         nwp_data_source._data = nwp_data_source._data.sortby("y", ascending=False)
         nwp_data_source._y_is_ascending = False
 
-    ll_kwargs = dict(
+    data = nwp_data_source.get(
+        now=T0,
+        timestamps=T0,
         min_lat=lat[0],
         max_lat=lat[1],
         min_lon=lon[0],
         max_lon=lon[1],
     )
-    data1 = nwp_data_source.at(
-        now=T0,
-        **ll_kwargs,
-    ).get(T0)
 
-    data2 = nwp_data_source.at(now=T0).get(T0, **ll_kwargs)
-
-    for data in [data1, data2]:
-        assert data.size == expected_size
+    assert data.size == expected_size
 
 
 def test_nwp_data_source_nearest(nwp_data_source):
-    data = nwp_data_source.at(T0, nearest_lat=LAT1, nearest_lon=LON1).get([T0, T0 + hours(2)])
+    data = nwp_data_source.get(
+        now=T0, timestamps=[T0, T0 + hours(2)], nearest_lat=LAT1, nearest_lon=LON1
+    )
     x, y = nwp_data_source._coordinate_transformer([(LAT1, LON1)])[0]
     assert y == data.coords["y"]
     assert x == data.coords["x"]
     assert data.size == 6
+
+
+def test_nwp_data_source_tolerance(nwp_data_source):
+    now = T1 + timedelta(days=2)
+    data = nwp_data_source.get(
+        now=now,
+        timestamps=now,
+    )
+
+    assert data is not None
+    data = nwp_data_source.get(now=now, timestamps=now, tolerance="24h")
+    assert data is None

@@ -63,85 +63,15 @@ def _slice_on_lat_lon(
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
-
         return data.sel(x=x, y=y, method="nearest")  # type: ignore
 
     return data
-
-
-class _NwpDataSourceAtTimestamp:
-    def __init__(
-        self,
-        data: xr.DataArray,
-        transformer: CoordinateTransformer,
-        x_is_ascending: bool,
-        y_is_ascending: bool,
-    ):
-        self._data = data
-        self._coordinate_transformer = transformer
-        self._x_is_ascending = x_is_ascending
-        self._y_is_ascending = y_is_ascending
-
-    def get(
-        self,
-        timestamps: Timestamp | list[Timestamp],
-        *,
-        min_lat: float | None = None,
-        max_lat: float | None = None,
-        min_lon: float | None = None,
-        max_lon: float | None = None,
-        nearest_lat: float | None = None,
-        nearest_lon: float | None = None,
-        load: bool = False,
-    ) -> xr.DataArray:
-        """Slice the internal xarray."""
-        if isinstance(timestamps, Timestamp):
-            timestamps = [timestamps]
-
-        for t in timestamps:
-            assert t >= self.time
-
-        # How long after `time` do we need the predictions.
-        deltas = [t - self.time for t in timestamps]
-
-        da = self._data
-
-        da = _slice_on_lat_lon(
-            da,
-            min_lat=min_lat,
-            max_lat=max_lat,
-            min_lon=min_lon,
-            max_lon=max_lon,
-            nearest_lat=nearest_lat,
-            nearest_lon=nearest_lon,
-            transformer=self._coordinate_transformer,
-            x_is_ascending=self._x_is_ascending,
-            y_is_ascending=self._y_is_ascending,
-        )
-
-        # Get the nearest prediction to what we are interested in.
-        da = da.sel(step=deltas, method="nearest")
-
-        if load:
-            da = da.load()
-        return da
-
-    @property
-    def time(self) -> Timestamp:
-        return to_pydatetime(self._data.coords[_TIME].values)
 
 
 class NwpDataSource:
     """Wrapper around a zarr file containing the NWP data.
 
     We assume that the data is a 5D tensor, with the dimensions being (time, step, x, y, variable).
-
-    Example:
-    -------
-    >>> ds = NwpDataSource('path.zarr')
-    >>> ds_now = ds.at(now, min_lat=123, ..., load=True)
-    >>> for prediction_time in prediction_times:
-    >>>     data = ds_now.get(prediction_time)
     """
 
     def __init__(
@@ -233,73 +163,134 @@ class NwpDataSource:
     def list_variables(self) -> list[str]:
         return list(self._data.coords[_VARIABLE].values)
 
-    def at_get(
+    def get(
         self,
-        now: Timestamp,
         *,
-        nearest_lat: float,
-        nearest_lon: float,
+        now: Timestamp,
         timestamps: list[Timestamp] | Timestamp,
-        load: bool = False,
-    ) -> xr.DataArray:
-        """Shortcut for `.at(...).get(...)`.
-
-        This shortcut is cached if `cached_dir` was provided to the constructor.
-        """
-        if self._cache_dir:
-            if isinstance(timestamps, Timestamp):
-                timestamps = [timestamps]
-            hash_data = [now, nearest_lat, nearest_lon, self._path, self._lag_minutes, *timestamps]
-            hashes = tuple([naive_hash(x) for x in hash_data])
-            hash_ = str(hash(hashes))
-            path = self._cache_dir / hash_
-            if path.exists():
-                with open(path, "rb") as f:
-                    data = pickle.load(f)
-            else:
-                data = self.at(now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon).get(
-                    timestamps, load=load
-                )
-                with open(path, "wb") as f:
-                    pickle.dump(data, f, protocol=-1)
-            return data
-        else:
-            return self.at(now=now, nearest_lat=nearest_lat, nearest_lon=nearest_lon).get(
-                timestamps, load=load
-            )
-
-    def at(
-        self,
-        now: Timestamp,
-        *,
         min_lat: float | None = None,
         max_lat: float | None = None,
         min_lon: float | None = None,
         max_lon: float | None = None,
         nearest_lat: float | None = None,
         nearest_lon: float | None = None,
-        load: bool = False,
-    ) -> _NwpDataSourceAtTimestamp:
+        tolerance: str | None = None,
+        load: bool = True,
+    ) -> xr.DataArray | None:
         """Slice the original data in the `time` dimension, and optionally on the x,y
         coordinates.
 
+        There are two ways of filtering on the lat/lon coordinates:
+            * Using the max/min_lat/lon, in which case we'll return many lat/lons.
+            * Using the nearest_lat/lon, in which case we'll return the closest point.
+
         Arguments:
         ---------
+        now: Time at which we are doing the query: we will use the closest "time of
+            prediction" *before* this.
+        timestamps: List of timestamps for which we want the predictions. For each of those, we'll
+            return the *closest* prediction.
         min_lat: Lower bound on latitude (in degrees).
         max_lat: Upper bound on latitude.
         min_lon: Lower bound on longitude.
         max_lon: Upper bound on longitude.
-        now: Time at which we are doing the query: we will use the closest "time of
-            prediction" *before* this.
-        load: Should we `load` the xarray in memory. It is often useful to do it at this step,
-            especially when providing mix/max lat/lon coordinates: the resulting data is small
-            enough and makes the subsequent queries faster.
+        nearest_lat: Keep the data for the closest latitude.
+        nearest_lon: Keep the data for the closest longitude.
+        tolerance: Tolerance on the `now` timestamp. If the data is older than the tolerance, we'll
+            return `None` instead of a DataArray. This argument is passed directly to
+            `xarray.Dataset.sel`, see `xarray`'s doc for details.
+        load: Should we explicitely load the data (call `.load()` on the `xarray.Dataset`). Defaults
+            to `True` as loading typically makes subsequent usage of the data faster.
 
         Return:
         ------
-        A _NwpDataSourceAtTimestamp object, that can be further sliced.
+        A `xarray.DataArray` object, or `None`.
+        """
+        if isinstance(timestamps, Timestamp):
+            timestamps = [timestamps]
+
+        for t in timestamps:
+            if t < now:
+                raise ValueError(f'Timestamp "{t}" should be after now={now}')
+
+        # Only cache for nearest_* because lat/lon ranges could be big.
+        use_cache = self._cache_dir and (nearest_lon is not None or nearest_lat is not None)
+
+        data = None
+
+        # Try to load it from the cache
+        if use_cache:
+            assert self._cache_dir is not None
+            hash_data = [
+                now,
+                nearest_lat,
+                nearest_lon,
+                self._path,
+                self._lag_minutes,
+                tolerance,
+                *timestamps,
+            ]
+            hashes = tuple([naive_hash(x) for x in hash_data])
+            hash_ = str(hash(hashes))
+            path = self._cache_dir / hash_
+            if path.exists():
+                with open(path, "rb") as f:
+                    data = pickle.load(f)
+
+        # If it was not loaded from the cache, we load it from the original dataset.
+        if data is None:
+            data = self._get(
+                now=now,
+                timestamps=timestamps,
+                nearest_lat=nearest_lat,
+                nearest_lon=nearest_lon,
+                min_lat=min_lat,
+                max_lat=max_lat,
+                min_lon=min_lon,
+                max_lon=max_lon,
+                tolerance=tolerance,
+                load=load,
+            )
+            # If using the cache, save it for next time.
+            if use_cache:
+                with open(path, "wb") as f:
+                    pickle.dump(data, f, protocol=-1)
+
+        return data
+
+    def _get(
+        self,
+        *,
+        now: Timestamp,
+        timestamps: list[Timestamp],
+        min_lat: float | None,
+        max_lat: float | None,
+        min_lon: float | None,
+        max_lon: float | None,
+        nearest_lat: float | None,
+        nearest_lon: float | None,
+        tolerance: str | None,
+        load: bool,
+    ) -> xr.DataArray | None:
+        """Slice the data.
+
+        This is the implementation of `.get` but without the caching mechanism.
+        Use `.get` directly.
         """
         ds = self._data
+
+        try:
+            # Forward fill so that we get the value from the past, not the future!
+            ds = ds.sel(
+                time=now - dt.timedelta(minutes=self._lag_minutes),
+                method="ffill",
+                tolerance=tolerance,  # type: ignore
+            )
+        except KeyError:
+            # This happens when no data matches the tolerance.
+            # Sanity check.
+            assert tolerance is not None
+            return None
 
         ds = _slice_on_lat_lon(
             ds,
@@ -314,18 +305,20 @@ class NwpDataSource:
             y_is_ascending=self._y_is_ascending,
         )
 
-        # Forward fill so that we get the value from the past, not the future!
-        ds = ds.sel(time=now - dt.timedelta(minutes=self._lag_minutes), method="ffill")
+        init_time = to_pydatetime(ds.time.values)
+
+        # How long after `time` do we need the predictions.
+        deltas = [t - init_time for t in timestamps]
+
+        # Get the nearest prediction to what we are interested in.
+        ds = ds.sel(step=deltas, method="nearest")
+
         da = ds[_VALUE]
 
         if load:
             da = da.load()
-        return _NwpDataSourceAtTimestamp(
-            da,
-            self._coordinate_transformer,
-            x_is_ascending=self._x_is_ascending,
-            y_is_ascending=self._y_is_ascending,
-        )
+
+        return da
 
     def __getstate__(self):
         d = self.__dict__.copy()
