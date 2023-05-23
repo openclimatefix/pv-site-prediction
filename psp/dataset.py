@@ -248,12 +248,14 @@ class DateSplits:
     num_test_days: int
 
 
-def auto_date_split(min_date: datetime, max_date: datetime, num_trainings: int = 1) -> DateSplits:
-    """Make a DateSplits object that trains on half the data between `min_date` and `max_date`,
-    tests on the other half, with `num_trainings` model retraining evenly distributed in the test
-    time range.
+def auto_date_split(
+    min_date: datetime, max_date: datetime, num_trainings: int = 1, train_ratio: float = 0.5
+) -> DateSplits:
+    """Make a DateSplits object that trains on `train_ratio` of the data between `min_date` and
+    `max_date`, tests on the other `1 - train_ratio`, with `num_trainings` model retraining evenly
+    distributed in the test time range.
     """
-    d0 = _floor_date(min_date + (max_date - min_date) // 2)
+    d0 = _floor_date(min_date + (max_date - min_date) * train_ratio)
     num_train_days = (d0 - min_date).days
     num_test_days = (max_date - d0).days
     train_dates = [
