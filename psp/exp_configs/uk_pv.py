@@ -5,7 +5,7 @@ import functools
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import DateSplits, PvSplits, auto_date_split, split_pvs
+from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
@@ -219,7 +219,9 @@ class ExpConfig(ExpConfigBase):
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
         return split_pvs(pv_data_source)
 
-    def get_date_splits(self) -> DateSplits:
+    def get_date_splits(self):
         return auto_date_split(
-            min_date=dt.datetime(2020, 1, 1), max_date=dt.datetime(2022, 1, 1), num_trainings=1
+            test_start_date=dt.datetime(2020, 1, 1),
+            test_end_date=dt.datetime(2021, 11, 8),
+            train_days=356 * 2,
         )

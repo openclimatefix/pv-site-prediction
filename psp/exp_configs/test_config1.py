@@ -6,7 +6,7 @@ import functools
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import DateSplits, PvSplits
+from psp.dataset import DateSplits, PvSplits, TestDateSplit, TrainDateSplit
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
@@ -57,7 +57,9 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self) -> DateSplits:
         return DateSplits(
-            train_dates=[dt.datetime(2020, 1, 7)],
-            num_train_days=6,
-            num_test_days=7,
+            train_date_splits=[TrainDateSplit(train_date=dt.datetime(2020, 1, 7), train_days=6)],
+            test_date_split=TestDateSplit(
+                start_date=dt.datetime(2020, 1, 8),
+                end_date=dt.datetime(2020, 1, 15),
+            ),
         )

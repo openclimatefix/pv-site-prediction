@@ -56,8 +56,9 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
     pv_data_source = exp_config.get_pv_data_source()
 
     # Those are the dates we trained models for.
-    dates_split = exp_config.get_date_splits()
-    train_dates = dates_split.train_dates
+    date_splits = exp_config.get_date_splits()
+    # train_dates = dates_split.train_dates
+    train_dates = [x.train_date for x in date_splits.train_date_splits]
 
     # Load the saved models.
     model_list = [
@@ -69,11 +70,6 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
 
     model.set_data_sources(**data_source_kwargs)
 
-    # We can start testing after the earliest one.
-    test_start = min(train_dates) + dt.timedelta(days=1)
-
-    test_end = test_start + dt.timedelta(days=dates_split.num_test_days)
-
     model_config = exp_config.get_model_config()
 
     # Setup the dataset.
@@ -83,7 +79,11 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
     pv_splits = exp_config.make_pv_splits(pv_data_source)
     pv_ids = getattr(pv_splits, split_name)
 
-    _log.info(f"Evaluating on split: {pv_list_to_short_str(pv_ids)}")
+    test_start = date_splits.test_date_split.start_date
+    test_end = date_splits.test_date_split.end_date
+
+    _log.info(f"Evaluating on PV split: {pv_list_to_short_str(pv_ids)}")
+    _log.info(f"Time range: [{test_start}, {test_end}]")
 
     random_state = np.random.RandomState(1234)
 

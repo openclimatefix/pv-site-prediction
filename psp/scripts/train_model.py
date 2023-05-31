@@ -132,8 +132,12 @@ def main(
     _log.info(f"Train PVs: {pv_list_to_short_str(pv_splits.train)}")
     _log.info(f"Valid PVs: {pv_list_to_short_str(pv_splits.valid)}")
 
-    for i, date in enumerate(date_splits.train_dates):
-        start_ts = date - dt.timedelta(days=date_splits.num_train_days)
+    for i, train_date_split in enumerate(date_splits.train_date_splits):
+        date = train_date_split.train_date
+        start_ts = max(
+            date - dt.timedelta(days=train_date_split.train_days),
+            pv_data_source.min_ts(),
+        )
         end_ts = date
         _log.info(f"Train time range: [{start_ts}, {end_ts}]")
 

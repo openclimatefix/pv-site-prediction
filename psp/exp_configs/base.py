@@ -2,6 +2,7 @@ import abc
 from typing import Any
 
 from psp.data.data_sources.pv import PvDataSource
+from psp.dataset import DateSplits
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 
 
@@ -36,5 +37,5 @@ class ExpConfigBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_date_splits(self):
+    def get_date_splits(self) -> DateSplits:
         pass

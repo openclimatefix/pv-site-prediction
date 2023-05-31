@@ -231,40 +231,64 @@ def split_pvs(
 
 
 @dataclasses.dataclass
-class DateSplits:
-    """The specification for a split in time for training and evaluating a model on some PV data.
+class TrainDateSplit:
+    """Train part of the `DateSplits` data class.
 
-    We assume that N models will be trained, one for each date in `train_dates`. Each model will be
-    trained using the `num_train_days` days before its date. The resulting models will be evaluated
-    on the `num_test_days` following the earliest of the `train_dates`. When evaluating, the
-    "latest" model *before* the sample date should be used.
+    train_date: The date at which we are training.
+    train_days: The maximum number of days to use, prior to `train_date`.
     """
 
-    # Dates at which the training is done.
-    train_dates: list[datetime]
-    # Number of days we will train on, for each train date.
-    num_train_days: int
-    # Number of total test days (the right model from the right train_date will be used).
-    num_test_days: int
+    train_date: datetime
+    train_days: int
+
+
+@dataclasses.dataclass
+class TestDateSplit:
+    """Test part of the `DateSplits` data class.
+
+    start_date: Start date of the test set.
+    end_date: End date of the test set.
+    """
+
+    start_date: datetime
+    end_date: datetime
+
+
+@dataclasses.dataclass
+class DateSplits:
+    """Defines the train/test scheme for training and evaluating."""
+
+    train_date_splits: list[TrainDateSplit]
+    test_date_split: TestDateSplit
 
 
 def auto_date_split(
-    min_date: datetime, max_date: datetime, num_trainings: int = 1, train_ratio: float = 0.5
+    test_start_date: datetime,
+    test_end_date: datetime,
+    *,
+    train_days: int,
+    num_trainings: int = 1,
 ) -> DateSplits:
-    """Make a DateSplits object that trains on `train_ratio` of the data between `min_date` and
-    `max_date`, tests on the other `1 - train_ratio`, with `num_trainings` model retraining evenly
-    distributed in the test time range.
+    """Make a `DateSplits` that tests on a given time range and trains
+    `num_trainings` times evenly spaced.
     """
-    d0 = _floor_date(min_date + (max_date - min_date) * train_ratio)
-    num_train_days = (d0 - min_date).days
-    num_test_days = (max_date - d0).days
-    train_dates = [
-        _floor_date(d0 + i * timedelta(days=num_test_days) / num_trainings)
+    train_splits: list[TrainDateSplit] = []
+
+    d0 = test_start_date - timedelta(days=1)
+    num_days_test = (test_end_date - d0).days
+
+    train_splits = [
+        TrainDateSplit(
+            train_date=d0 + timedelta(days=i * num_days_test // num_trainings),
+            train_days=train_days,
+        )
         for i in range(num_trainings)
     ]
 
     return DateSplits(
-        train_dates=train_dates,
-        num_train_days=num_train_days,
-        num_test_days=num_test_days,
+        train_date_splits=train_splits,
+        test_date_split=TestDateSplit(
+            start_date=test_start_date,
+            end_date=test_end_date,
+        ),
     )

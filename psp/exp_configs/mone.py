@@ -3,7 +3,7 @@ import functools
 
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import DateSplits, PvSplits, auto_date_split, split_pvs
+from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
@@ -63,16 +63,18 @@ class ExpConfig(ExpConfigBase):
             ],
             normalize_features=True,
             use_inferred_meta=False,
-            nwp_tolerance=None
+            nwp_tolerance="168h",
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
         return split_pvs(pv_data_source, pv_split=None)
 
-    def get_date_splits(self) -> DateSplits:
+    def get_date_splits(self):
         return auto_date_split(
-            min_date=dt.datetime(2021, 1, 1),
-            max_date=dt.datetime(2022, 12, 31),
+            test_start_date=dt.datetime(2022, 1, 1),
+            test_end_date=dt.datetime(2022, 12, 31),
+            # Using 3 trainings because the NWP data situation changes over time. When we have NWP
+            # data across the board, 1 training will probably be enough.
             num_trainings=3,
-            train_ratio=0.25,
+            train_days=365 * 2,
         )
