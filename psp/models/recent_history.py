@@ -297,10 +297,6 @@ class RecentHistoryModel(PvSiteModel):
                 tolerance=self._nwp_tolerance,
             )
 
-            # Loading here makes it faster, somehow!
-            if nwp_data_per_horizon is not None:
-                nwp_data_per_horizon = nwp_data_per_horizon.load()
-
             nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
 
             for variable in nwp_variables:
