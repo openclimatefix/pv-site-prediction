@@ -123,6 +123,7 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
 
             y_true = sample.y
             y_pred = model.predict_from_features(x=x, features=sample.features)
+            train_date = model.get_train_date(x.ts)
             for metric_name, metric in METRICS.items():
                 error = metric(y_true, y_pred)
                 # Error is a vector
@@ -137,6 +138,7 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
                             "horizon": horizon,
                             "y": y,
                             "pred": pred,
+                            "train_date": train_date,
                             **extra,
                         }
                     )

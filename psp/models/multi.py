@@ -45,3 +45,10 @@ class MultiPvSiteModel(PvSiteModel):
     def get_features_with_names(self, x: X) -> tuple[Features, dict[str, list[str]]]:
         model = self._get_model_for_ts(x.ts)
         return model.get_features_with_names(x)
+
+    def get_train_date(self, ts: dt.datetime) -> dt.datetime:
+        for date in reversed(self._models):
+            if ts > date:
+                return date
+        else:
+            raise ValueError(f"Date {ts} is before all the models")
