@@ -15,8 +15,13 @@ from psp.typings import Horizons
 # import multiprocessing
 # import xgboost as xgb
 
-PV_DATA_PATH = "data/5min.netcdf"
-NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
+PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min.nc"
+# NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
+NWP_DATA_PATH = (
+    "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
+    "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
+    "/UKV_intermediate_version_7.zarr"
+)
 
 # A list of SS_ID that don't contain enough data.
 # I just didn't want to calculate them everytime.

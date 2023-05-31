@@ -11,8 +11,10 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_TARGET_DATA_PATH = "data/island/data_hourly_MW_dstfix_clean_v2.nc"
-NWP_PATH = "data/island/nwp_v8.zarr"
+PV_TARGET_DATA_PATH = (
+    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/data_hourly_MW_dstfix_clean_v2.nc"
+)
+NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
 
 
 class ExpConfig(ExpConfigBase):

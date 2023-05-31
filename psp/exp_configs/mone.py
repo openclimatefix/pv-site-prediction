@@ -10,9 +10,14 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_DATA_PATH = "data/mone/pv.nc"
-PV_DATA_PATH_5MIN = "data/mone/pv_5min.nc"
-NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
+_PREFIX = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/mone"
+PV_DATA_PATH = _PREFIX + "/pv.nc"
+PV_DATA_PATH_5MIN = _PREFIX + "/pv_5min.nc"
+NWP_DATA_PATH = (
+    "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
+    "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
+    "/UKV_intermediate_version_7.zarr"
+)
 
 
 class ExpConfig(ExpConfigBase):
@@ -71,10 +76,10 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2022, 1, 1),
+            test_start_date=dt.datetime(2021, 7, 1),
             test_end_date=dt.datetime(2022, 12, 31),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
             num_trainings=3,
-            train_days=365 * 2,
+            train_days=30 * 6,
         )
