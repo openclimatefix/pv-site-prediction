@@ -24,9 +24,11 @@ Different scripts for the library. For instance:
 
     poetry run python psp/scripts/train_model.py --help
 
-[`/psp/tests`](./psp/tests)
 
-Unit tests.
+## Prerequisites
+
+* [poetry][poetry]
+
 
 ## Development
 
@@ -44,3 +46,5 @@ Unit tests.
 
     # Starting the jupyter notebooks.
     make notebook
+
+[poetry]: https://python-poetry.org/docs/#installation
