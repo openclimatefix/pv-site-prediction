@@ -70,6 +70,9 @@ def main():
     # Save!
     ds.to_netcdf(args.output)
 
+    # If you need a 5 minutely version of the data, here is how to do it:
+    # ds5 = ds.resample(ts='5min', loffset=dt.timedelta(seconds=60 * 2.5)).mean()
+
 
 if __name__ == "__main__":
     main()
