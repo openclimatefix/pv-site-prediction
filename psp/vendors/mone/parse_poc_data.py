@@ -46,15 +46,15 @@ def main():
     # Add the lat/lon that we googled for each location in the provided Location.txt.
     city = pd.DataFrame(index=names, columns=["lat", "lon"])
 
-    city.loc["16008274"][["lat", "lon"]] = (51.2869, 0.7526)
+    city.loc["16008274"][["lat", "lon"]] = (51.2869, -0.7526)
     city.loc["12058624"][["lat", "lon"]] = (51.5072, 0.1276)
     city.loc["12078299"][["lat", "lon"]] = (52.6383, 1.5506)
     city.loc["12084263"][["lat", "lon"]] = (52.3024, 0.6940)
-    city.loc["12037687"][["lat", "lon"]] = (55.7832, 3.9811)
-    city.loc["16031157"][["lat", "lon"]] = (53.8008, 1.5491)
+    city.loc["12037687"][["lat", "lon"]] = (55.7832, -3.9811)
+    city.loc["16031157"][["lat", "lon"]] = (53.8008, -1.5491)
     # This one we are less sure about.
     city.loc["16000872"][["lat", "lon"]] = (51.45000076, -1.72939467)
-    city.loc["16042597"][["lat", "lon"]] = (50.8376, 0.7749)
+    city.loc["16042597"][["lat", "lon"]] = (50.8376, -0.7749)
 
     # Make lists of lat and lon that matches the order of pv_id in the data array.
     lat = [city.loc[pv_id, "lat"] for pv_id in list(da.coords["pv_id"].values)]
