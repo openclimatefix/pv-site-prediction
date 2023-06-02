@@ -13,11 +13,17 @@ from psp.typings import Horizons
 _PREFIX = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/mone"
 PV_DATA_PATH = _PREFIX + "/pv_v3.nc"
 PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
-NWP_DATA_PATH = (
-    "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
-    "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
-    "/UKV_intermediate_version_7.zarr"
-)
+NWP_DATA_PATHS = [
+    (
+        "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
+        "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
+        "/UKV_intermediate_version_7.zarr"
+    ),
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
+        "/UK_Met_Office/UKV/zarr/UKV_2022_NWP_v2.zarr"
+    ),
+]
 
 
 class ExpConfig(ExpConfigBase):
@@ -32,7 +38,7 @@ class ExpConfig(ExpConfigBase):
         return dict(
             pv_data_source=NetcdfPvDataSource(PV_DATA_PATH_5MIN),
             nwp_data_source=NwpDataSource(
-                NWP_DATA_PATH,
+                NWP_DATA_PATHS,
                 coord_system=27700,
                 time_dim_name="init_time",
                 value_name="UKV",

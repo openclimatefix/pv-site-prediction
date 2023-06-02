@@ -76,7 +76,7 @@ class NwpDataSource:
 
     def __init__(
         self,
-        path: str,
+        paths: str | list[str],
         *,
         coord_system: int,
         x_dim_name: str = _X,
@@ -93,7 +93,7 @@ class NwpDataSource:
         """
         Arguments:
         ---------
-        path: Path to the .zarr data.
+        paths: Path to the .zarr data or list of paths to different .zarr data.
         coord_system: Integer representing the coordinate system for the position dimensions. 4326
             for (latitude, longitude), 27700 for OSGB, etc.
         *_dim_name: The 5 names of thedimensions in the data at `path`.
@@ -109,7 +109,10 @@ class NwpDataSource:
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
             this to `False`.
         """
-        self._path = path
+        if isinstance(paths, str):
+            paths = [paths]
+
+        self._paths = paths
         # We'll have to transform the lat/lon coordinates to the internal dataset's coordinate
         # system.
         self._coordinate_transformer = CoordinateTransformer(4326, coord_system)
@@ -133,11 +136,9 @@ class NwpDataSource:
             self._cache_dir.mkdir(exist_ok=True)
 
     def _open(self):
-        data = xr.open_dataset(
-            self._path,
+        data = xr.open_mfdataset(
+            self._paths,
             engine="zarr",
-            consolidated=True,
-            mode="r",
         )
 
         # Rename the dimensions.
@@ -225,7 +226,7 @@ class NwpDataSource:
                 now,
                 nearest_lat,
                 nearest_lon,
-                self._path,
+                self._paths,
                 self._lag_minutes,
                 tolerance,
                 *timestamps,
