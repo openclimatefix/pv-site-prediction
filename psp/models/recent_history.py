@@ -94,18 +94,21 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 6
+_VERSION = 7
 
 
 class RecentHistoryModel(PvSiteModel):
     def __init__(
         self,
         config: PvSiteModelConfig,
+        *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None,
         regressor: Regressor,
+        random_state: np.random.RandomState | None = None,
         use_nwp: bool = True,
         nwp_variables: list[str] | None = None,
+        nwp_dropout: float = 0.0,
         normalize_features: bool = True,
         use_inferred_meta: bool = False,
         use_data_capacity: bool = False,
@@ -113,9 +116,17 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_tolerance: str | None = None,
     ):
+        # Validate some options.
+        if nwp_dropout > 0.0:
+            assert random_state is not None
+
+        if use_nwp:
+            assert nwp_data_source is not None
+
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
         self._regressor = regressor
+        self._random_state = random_state
         self._use_nwp = use_nwp
         self._nwp_variables = nwp_variables
         self._normalize_features = normalize_features
@@ -124,14 +135,12 @@ class RecentHistoryModel(PvSiteModel):
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
         self._nwp_tolerance = nwp_tolerance
+        self._nwp_dropout = nwp_dropout
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_source=nwp_data_source,
         )
-
-        if use_nwp:
-            assert self._nwp_data_source is not None
 
         # We bump this when we make backward-incompatible changes in the code, to support old
         # serialized models.
@@ -155,17 +164,17 @@ class RecentHistoryModel(PvSiteModel):
         return y
 
     def get_features_with_names(self, x: X) -> Tuple[Features, dict[str, list[str]]]:
-        features_with_names = self._get_features(x, with_names=True)
+        features_with_names = self._get_features(x, with_names=True, is_training=False)
         assert isinstance(features_with_names, tuple)
         return features_with_names
 
-    def get_features(self, x: X) -> Features:
-        features = self._get_features(x, with_names=False)
+    def get_features(self, x: X, is_training: bool = False) -> Features:
+        features = self._get_features(x, with_names=False, is_training=is_training)
         assert not isinstance(features, tuple)
         return features
 
     def _get_features(
-        self, x: X, with_names: bool
+        self, x: X, with_names: bool, is_training: bool
     ) -> Features | Tuple[Features, dict[str, list[str]]]:
         features: Features = dict()
         data_source = self._pv_data_source.as_available_at(x.ts)
@@ -289,13 +298,24 @@ class RecentHistoryModel(PvSiteModel):
         # Consider the NWP data in a small region around around our PV.
         if self._use_nwp:
             assert self._nwp_data_source is not None
-            nwp_data_per_horizon = self._nwp_data_source.get(
-                now=x.ts,
-                timestamps=horizon_timestamps,
-                nearest_lat=lat,
-                nearest_lon=lon,
-                tolerance=self._nwp_tolerance,
-            )
+
+            # We might want to add some dropout on the NWP, *only during training*.
+            if (
+                is_training
+                and self._nwp_dropout > 0
+                # This one is for mypy.
+                and self._random_state is not None
+                and self._random_state.random() < self._nwp_dropout
+            ):
+                nwp_data_per_horizon = None
+            else:
+                nwp_data_per_horizon = self._nwp_data_source.get(
+                    now=x.ts,
+                    timestamps=horizon_timestamps,
+                    nearest_lat=lat,
+                    nearest_lon=lon,
+                    tolerance=self._nwp_tolerance,
+                )
 
             nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
 
@@ -389,5 +409,7 @@ class RecentHistoryModel(PvSiteModel):
             state["_num_days_history"] = 7
         if state["_version"] < 6:
             state["_nwp_tolerance"] = None
+        if state["_version"] < 7:
+            state["_nwp_dropout"] = 0.0
 
         super().set_state(state)

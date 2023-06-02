@@ -1,7 +1,6 @@
 """Config used in tests."""
 
 import datetime as dt
-import functools
 
 from sklearn.ensemble import HistGradientBoostingRegressor
 
@@ -17,7 +16,6 @@ PV_DATA_PATH = "psp/tests/fixtures/pv_data.netcdf"
 
 
 class ExpConfig(ExpConfigBase):
-    @functools.cache
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
@@ -26,16 +24,13 @@ class ExpConfig(ExpConfigBase):
             rename={"generation_wh": "power"},
         )
 
-    @functools.cache
     def get_data_source_kwargs(self):
         return dict(pv_data_source=self.get_pv_data_source(), nwp_data_source=None)
 
-    @functools.cache
     def get_model_config(self):
         return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=5))
 
-    @functools.cache
-    def get_model(self) -> PvSiteModel:
+    def get_model(self, **kwargs) -> PvSiteModel:
         return RecentHistoryModel(
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),

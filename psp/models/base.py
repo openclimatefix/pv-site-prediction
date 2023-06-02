@@ -38,10 +38,16 @@ class PvSiteModel(abc.ABC):
         return self.predict_from_features(x, features)
 
     @abc.abstractmethod
-    def get_features(self, x: X) -> Features:
+    def get_features(self, x: X, is_training: bool = False) -> Features:
         """Compute features for the model.
 
         This step will be run in parallel by our data pipelines.
+
+        Arguments:
+        ---------
+            x: The input
+            is_training: Indicate if we are training or not. This is useful for models
+                that need a different behaviour in training VS testing, such as dropout.
         """
         pass
 

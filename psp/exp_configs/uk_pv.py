@@ -181,7 +181,7 @@ class ExpConfig(ExpConfigBase):
     def get_model_config(self) -> PvSiteModelConfig:
         return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4))
 
-    def get_model(self) -> PvSiteModel:
+    def get_model(self, **kwargs) -> PvSiteModel:
         return RecentHistoryModel(
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),

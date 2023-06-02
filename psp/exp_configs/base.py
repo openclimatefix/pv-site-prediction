@@ -1,6 +1,8 @@
 import abc
 from typing import Any
 
+import numpy as np
+
 from psp.data.data_sources.pv import PvDataSource
 from psp.dataset import DateSplits
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -27,7 +29,7 @@ class ExpConfigBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_model(self) -> PvSiteModel:
+    def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         """Get the model"""
         pass
 

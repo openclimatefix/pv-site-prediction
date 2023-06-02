@@ -21,9 +21,9 @@ class MultiPvSiteModel(PvSiteModel):
         model = self._get_model_for_ts(x.ts)
         return model.predict_from_features(x, features)
 
-    def get_features(self, x: X) -> Features:
+    def get_features(self, x: X, is_training: bool = False) -> Features:
         model = self._get_model_for_ts(x.ts)
-        return model.get_features(x)
+        return model.get_features(x, is_training=is_training)
 
     def _get_model_for_ts(self, ts: dt.datetime) -> PvSiteModel:
         # Use the most recent model whose train date is *before* `x.ts`. This was the most recent

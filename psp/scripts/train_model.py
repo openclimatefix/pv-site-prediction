@@ -120,7 +120,7 @@ def main(
     shutil.copy(f"./psp/exp_configs/{exp_config_name}.py", output_dir / "config.py")
 
     # Load the model.
-    model = exp_config.get_model()
+    model = exp_config.get_model(random_state=np.random.RandomState(2023))
 
     pv_data_source = exp_config.get_pv_data_source()
 
@@ -144,7 +144,6 @@ def main(
         data_loader_kwargs = dict(
             data_source=pv_data_source,
             horizons=model.config.horizons,
-            get_features=model.get_features,
             num_workers=num_workers,
             shuffle=True,
             start_ts=start_ts,
@@ -153,6 +152,7 @@ def main(
 
         train_data_loader = make_data_loader(
             **data_loader_kwargs,
+            get_features=lambda x: model.get_features(x, is_training=True),
             batch_size=batch_size,
             pv_ids=pv_splits.train,
             random_state=np.random.RandomState(SEED_TRAIN),
@@ -166,6 +166,7 @@ def main(
 
         valid_data_loader = make_data_loader(
             **data_loader_kwargs,
+            get_features=lambda x: model.get_features(x, is_training=False),
             pv_ids=pv_splits.valid,
             batch_size=batch_size,
             random_state=np.random.RandomState(SEED_VALID),
@@ -184,6 +185,7 @@ def main(
             _log.info("Error on the train set")
             train_data_loader2 = make_data_loader(
                 **data_loader_kwargs,
+                get_features=lambda x: model.get_features(x, is_training=True),
                 batch_size=None,
                 pv_ids=pv_splits.train,
                 limit=num_test_samples,
@@ -194,6 +196,7 @@ def main(
             _log.info("Error on the valid set")
             valid_data_loader2 = make_data_loader(
                 **data_loader_kwargs,
+                get_features=lambda x: model.get_features(x, is_training=False),
                 batch_size=None,
                 pv_ids=pv_splits.valid,
                 limit=num_test_samples,

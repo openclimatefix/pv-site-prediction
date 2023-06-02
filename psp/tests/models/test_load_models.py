@@ -7,7 +7,7 @@ from psp.serialization import load_model
 from psp.typings import X
 
 # We ran the test once to get the results and pasted here the results.
-# This way we can make sure the output doens't change.
+# This way we can make sure the output of previous models doesn't change.
 EXPECTED_OUTPUT = {
     "model_v1": [1.0220418, 1.03555466, 1.04443434, 1.04860107, 1.04799241],
     "model_v2": [0.447506, 0.448072, 0.446772, 0.443611, 0.438599],
@@ -15,6 +15,7 @@ EXPECTED_OUTPUT = {
     "model_v4": [0.498424, 0.499054, 0.497606, 0.494085, 0.488503],
     "model_v5": [0.484041, 0.484653, 0.483247, 0.479827, 0.474406],
     "model_v6": [0.484041, 0.484653, 0.483247, 0.479827, 0.474406],
+    "model_v7": [0.614103, 0.61488, 0.613096, 0.608757, 0.60188],
 }
 
 

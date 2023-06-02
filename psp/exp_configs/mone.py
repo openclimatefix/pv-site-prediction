@@ -1,6 +1,8 @@
 import datetime as dt
 import functools
 
+import numpy as np
+
 from psp.data.data_sources.nwp import NwpDataSource
 from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
@@ -49,15 +51,17 @@ class ExpConfig(ExpConfigBase):
     def get_model_config(self) -> PvSiteModelConfig:
         return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=48))
 
-    def get_model(self) -> PvSiteModel:
+    def get_model(self, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         return RecentHistoryModel(
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=1024,
+                num_train_samples=2048,
                 normalize_targets=True,
             ),
+            random_state=random_state,
             use_nwp=True,
+            nwp_dropout=0.1,
             # Those are the variables available in our prod environment.
             nwp_variables=[
                 "si10",

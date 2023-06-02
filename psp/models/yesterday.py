@@ -24,7 +24,7 @@ class YesterdayPvSiteModel(PvSiteModel):
         assert isinstance(powers, np.ndarray)
         return Y(powers=powers)
 
-    def get_features(self, x: X) -> Features:
+    def get_features(self, x: X, is_training: bool = False) -> Features:
         data_source = self._pv_data_source.as_available_at(x.ts)
         max_minutes = max(x[1] for x in self.config.horizons)
 

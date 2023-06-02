@@ -58,7 +58,7 @@ class ExpConfig(ExpConfigBase):
             )
         )
 
-    def get_model(self) -> PvSiteModel:
+    def get_model(self, **kwargs) -> PvSiteModel:
         return RecentHistoryModel(
             self.get_model_config(),
             **self.get_data_source_kwargs(),
