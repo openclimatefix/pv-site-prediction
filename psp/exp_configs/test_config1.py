@@ -10,6 +10,7 @@ from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
+from psp.testing import make_test_nwp_data_source
 from psp.typings import Horizons
 
 PV_DATA_PATH = "psp/tests/fixtures/pv_data.netcdf"
@@ -25,7 +26,10 @@ class ExpConfig(ExpConfigBase):
         )
 
     def get_data_source_kwargs(self):
-        return dict(pv_data_source=self.get_pv_data_source(), nwp_data_source=None)
+        return dict(
+            pv_data_source=self.get_pv_data_source(),
+            nwp_data_source=make_test_nwp_data_source(),
+        )
 
     def get_model_config(self):
         return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=5))
@@ -35,12 +39,12 @@ class ExpConfig(ExpConfigBase):
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=10,
+                num_train_samples=20,
                 sklearn_regressor=HistGradientBoostingRegressor(
                     max_iter=2,
                 ),
             ),
-            use_nwp=False,
+            use_nwp=True,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
