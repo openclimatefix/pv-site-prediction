@@ -76,9 +76,9 @@ class NwpDataSource:
 
     def __init__(
         self,
-        paths: str | list[str],
+        paths_or_data: str | list[str] | xr.Dataset,
         *,
-        coord_system: int,
+        coord_system: int = 4326,
         x_dim_name: str = _X,
         y_dim_name: str = _Y,
         time_dim_name: str = _TIME,
@@ -93,7 +93,8 @@ class NwpDataSource:
         """
         Arguments:
         ---------
-        paths: Path to the .zarr data or list of paths to different .zarr data.
+        paths_or_data: Path to the .zarr data or list of paths to different .zarr data or
+            xarray dataset directly.
         coord_system: Integer representing the coordinate system for the position dimensions. 4326
             for (latitude, longitude), 27700 for OSGB, etc.
         *_dim_name: The 5 names of thedimensions in the data at `path`.
@@ -109,10 +110,15 @@ class NwpDataSource:
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
             this to `False`.
         """
-        if isinstance(paths, str):
-            paths = [paths]
+        if isinstance(paths_or_data, str):
+            paths_or_data = [paths_or_data]
 
-        self._paths = paths
+        if isinstance(paths_or_data, xr.Dataset):
+            self._paths = None
+            raw_data = paths_or_data
+        else:
+            self._paths = paths_or_data
+            raw_data = self._open(paths_or_data)
         # We'll have to transform the lat/lon coordinates to the internal dataset's coordinate
         # system.
         self._coordinate_transformer = CoordinateTransformer(4326, coord_system)
@@ -128,19 +134,20 @@ class NwpDataSource:
 
         self._lag_minutes = lag_minutes
 
-        self._open()
+        self._data = self._prepare_data(raw_data)
 
         self._cache_dir = pathlib.Path(cache_dir) if cache_dir else None
 
         if self._cache_dir:
             self._cache_dir.mkdir(exist_ok=True)
 
-    def _open(self):
-        data = xr.open_mfdataset(
-            self._paths,
+    def _open(self, paths: list[str]) -> xr.Dataset:
+        return xr.open_mfdataset(
+            paths,
             engine="zarr",
         )
 
+    def _prepare_data(self, data: xr.Dataset) -> xr.Dataset:
         # Rename the dimensions.
         rename_map: dict[str, str] = {}
         for old, new in zip(
@@ -159,7 +166,7 @@ class NwpDataSource:
 
         data = data.rename(rename_map)
 
-        self._data = data
+        return data
 
     def list_variables(self) -> list[str]:
         return list(self._data.coords[_VARIABLE].values)
@@ -322,6 +329,12 @@ class NwpDataSource:
         return da
 
     def __getstate__(self):
+        # Prevent pickling (potentially big) data sources when we don't have a path. Having a path
+        # means we don't need to save the data itself.
+        if self._paths is None:
+            raise RuntimeError(
+                "You can only pickle `NwpDataSource`s that were constructed using paths"
+            )
         d = self.__dict__.copy()
         # I'm not sure of the state contained in a `Dataset` object, so I make sure we don't save
         # it.
@@ -331,4 +344,5 @@ class NwpDataSource:
     def __setstate__(self, state):
         for key, value in state.items():
             setattr(self, key, value)
-        self._open()
+        assert self._paths is not None
+        self._data = self._prepare_data(self._open(self._paths))
