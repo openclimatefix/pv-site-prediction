@@ -103,8 +103,12 @@ def _make_pv_timeseries_chart(
     height: int = 200,
     normalize: bool = False,
     colors: list[str] | None = None,
+    resample_pv: bool = False,
 ) -> alt.Chart:
-    """Make a timeseries chart for the PV data."""
+    """Make a timeseries chart for the PV data.
+
+    resample_pv: Resample PV data to match the horizons.
+    """
     # Get the ground truth PV data.
     raw_data = pv_data_source.get(
         pv_ids=x.pv_id,
@@ -121,6 +125,14 @@ def _make_pv_timeseries_chart(
     # Extract the meta data for the PV.
     lat = raw_data.coords["latitude"].values
     lon = raw_data.coords["longitude"].values
+
+    # Optinally resample the PV data to the same frequency as our horizons.
+    if resample_pv:
+        raw_data = raw_data.resample(
+            ts=f"{horizons.duration}min",
+            loffset=dt.timedelta(minutes=horizons.duration / 2),
+            origin="start_day",
+        ).mean()
 
     # Reshape as a pandas dataframe.
     pv_data = raw_data.to_dataframe()[["power"]].reset_index().rename(columns={"ts": "timestamp"})
@@ -179,6 +191,7 @@ def _make_pv_timeseries_chart(
             # size=14, opacity=0.8
             # opacity=0.8,
             # width=3,
+            size=3,
             point=alt.OverlayMarkDef(size=10, opacity=1),
         )
         .encode(
@@ -313,6 +326,7 @@ def plot_sample(
     metric: Metric | None = None,
     normalize: bool = False,
     colors: list[str] | None = None,
+    resample_pv: bool = False,
 ):
     """Plot a sample and relevant information
 
@@ -326,7 +340,7 @@ def plot_sample(
 
     # We assume that all the horizons are the same
     horizon = horizons[horizon_idx]
-    pred_ts = ts + dt.timedelta(minutes=horizon[0] + (horizon[1] - horizon[0]) / 2)
+    pred_ts = ts + dt.timedelta(minutes=(horizon[1] + horizon[0]) / 2)
 
     all_y: dict[str, Y] = {}
 
@@ -377,9 +391,10 @@ def plot_sample(
                 horizon_idx=horizon_idx,
                 pv_data_source=pv_data_source,
                 padding_hours=3 * 24,
-                height=100,
+                height=300,
                 normalize=normalize,
                 colors=colors,
+                resample_pv=resample_pv,
             )
         )
 
@@ -391,10 +406,11 @@ def plot_sample(
                 horizons=horizons,
                 horizon_idx=horizon_idx,
                 pv_data_source=pv_data_source,
-                height=100,
+                height=300,
                 padding_hours=12,
                 normalize=normalize,
                 colors=colors,
+                resample_pv=resample_pv,
             )
         )
 
