@@ -3,7 +3,7 @@ from datetime import timedelta
 import numpy as np
 import xarray as xr
 
-from psp.data.data_sources.pv import PvDataSource
+from psp.data_sources.pv import PvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.typings import Features, Timestamp, X, Y
 

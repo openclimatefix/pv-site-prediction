@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from psp.data.data_sources.pv import NetcdfPvDataSource
+from psp.data_sources.pv import NetcdfPvDataSource
 
 
 def _make_pv_data_xarray() -> xr.Dataset:

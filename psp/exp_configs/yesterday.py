@@ -1,6 +1,6 @@
 import functools
 
-from psp.data.data_sources.pv import NetcdfPvDataSource
+from psp.data_sources.pv import NetcdfPvDataSource
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.yesterday import YesterdayPvSiteModel

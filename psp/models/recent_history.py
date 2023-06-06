@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from psp.data.data_sources.nwp import NwpDataSource
-from psp.data.data_sources.pv import PvDataSource
+from psp.data_sources.nwp import NwpDataSource
+from psp.data_sources.pv import PvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance

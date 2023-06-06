@@ -5,7 +5,7 @@ import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
 
-from psp.data.data_sources.nwp import NwpDataSource
+from psp.data_sources.nwp import NwpDataSource
 from psp.gis import CoordinateTransformer
 from psp.utils.dates import to_pydatetime
 

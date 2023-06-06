@@ -4,7 +4,7 @@ import datetime as dt
 
 from sklearn.ensemble import HistGradientBoostingRegressor
 
-from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import DateSplits, PvSplits, TestDateSplit, TrainDateSplit
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig

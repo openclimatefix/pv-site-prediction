@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from torchdata.datapipes.iter import IterDataPipe
 
-from psp.data.data_sources.pv import PvDataSource
+from psp.data_sources.pv import PvDataSource
 from psp.typings import Horizons, PvId, Timestamp, X, Y
 from psp.utils.hashing import naive_hash
 

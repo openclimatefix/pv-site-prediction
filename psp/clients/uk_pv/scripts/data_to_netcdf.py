@@ -2,7 +2,7 @@ import click
 import pandas as pd
 import xarray as xr
 
-from psp.data.uk_pv import C
+from psp.clients.uk_pv.data import C
 
 
 @click.command()

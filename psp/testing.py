@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 from click.testing import CliRunner
 
-from psp.data.data_sources.nwp import NwpDataSource
+from psp.data_sources.nwp import NwpDataSource
 
 
 def run_click_command(main_func, cmd_args: list[str]):

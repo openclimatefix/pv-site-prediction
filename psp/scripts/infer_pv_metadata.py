@@ -1,6 +1,7 @@
 """Infer the orientation and tilt of pv panels from their data.
 
 NOTE: We are assuming that the data is in Wh/5min.
+NOTE: This is still somewhat specific to the uk_pv dataset but it could be generalized.
 """
 # TODO Fix the assumption above: we should probably treat everything in kW.
 
@@ -12,7 +13,7 @@ import pandas as pd
 import scipy
 import tqdm
 
-from psp.data.uk_pv import C, get_max_power_for_time_of_day
+from psp.clients.uk_pv.data import C, get_max_power_for_time_of_day
 from psp.pv import get_irradiance
 
 

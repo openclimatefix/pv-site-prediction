@@ -1,6 +1,6 @@
 import pytest
 
-from psp.data.data_sources.pv import NetcdfPvDataSource
+from psp.data_sources.pv import NetcdfPvDataSource
 
 
 @pytest.fixture

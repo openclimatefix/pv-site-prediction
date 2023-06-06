@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from psp.data.data_sources.pv import PvDataSource
+from psp.data_sources.pv import PvDataSource
 from psp.dataset import DateSplits
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 

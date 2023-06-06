@@ -9,8 +9,8 @@ import pandas as pd
 import shap
 from IPython.display import display
 
-from psp.data.data_sources.nwp import NwpDataSource
-from psp.data.data_sources.pv import PvDataSource
+from psp.data_sources.nwp import NwpDataSource
+from psp.data_sources.pv import PvDataSource
 from psp.dataset import get_y_from_x
 from psp.gis import approx_add_meters_to_lat_lon
 from psp.metrics import Metric, mean_absolute_error

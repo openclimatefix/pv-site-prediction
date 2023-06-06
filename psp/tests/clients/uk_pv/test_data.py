@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from psp.data.uk_pv import C, get_max_power_for_time_of_day
+from psp.clients.uk_pv.data import C, get_max_power_for_time_of_day
 
 
 def _ts(d, h):

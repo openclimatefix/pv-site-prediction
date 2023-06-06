@@ -3,8 +3,8 @@
 import datetime as dt
 import functools
 
-from psp.data.data_sources.nwp import NwpDataSource
-from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.nwp import NwpDataSource
+from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
