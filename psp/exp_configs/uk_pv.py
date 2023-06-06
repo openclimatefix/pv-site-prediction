@@ -17,11 +17,13 @@ from psp.typings import Horizons
 
 PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min.nc"
 # NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
-NWP_DATA_PATH = (
-    "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
-    "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
-    "/UKV_intermediate_version_7.zarr"
-)
+NWP_DATA_PATHS = [
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
+        f"/UK_Met_Office/UKV/zarr/UKV_{year}_NWP.zarr"
+    )
+    for year in range(2018, 2022)
+]
 
 # A list of SS_ID that don't contain enough data.
 # I just didn't want to calculate them everytime.
@@ -169,13 +171,12 @@ class ExpConfig(ExpConfigBase):
         return dict(
             pv_data_source=self.get_pv_data_source(),
             nwp_data_source=NwpDataSource(
-                NWP_DATA_PATH,
+                NWP_DATA_PATHS,
                 coord_system=27700,
                 time_dim_name="init_time",
                 value_name="UKV",
                 y_is_ascending=False,
-            )  # , cache_dir=".nwp_cache"),
-            # nwp_data_source=None,
+            ),
         )
 
     def get_model_config(self) -> PvSiteModelConfig:
