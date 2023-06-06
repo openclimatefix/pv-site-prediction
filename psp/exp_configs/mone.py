@@ -17,14 +17,10 @@ PV_DATA_PATH = _PREFIX + "/pv_v3.nc"
 PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
 NWP_DATA_PATHS = [
     (
-        "/mnt/storage_ssd_8tb/data/ocf/solar_pv_nowcasting"
-        "/nowcasting_dataset_pipeline/NWP/UK_Met_Office/UKV/zarr"
-        "/UKV_intermediate_version_7.zarr"
-    ),
-    (
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
-        "/UK_Met_Office/UKV/zarr/UKV_2022_NWP_v2.zarr"
-    ),
+        f"/UK_Met_Office/UKV/zarr/UKV_{year}_NWP.zarr"
+    )
+    for year in [2021, 2022]
 ]
 
 
@@ -90,6 +86,6 @@ class ExpConfig(ExpConfigBase):
             test_end_date=dt.datetime(2022, 12, 31),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
-            num_trainings=3,
-            train_days=30 * 6,
+            num_trainings=3 * 6,
+            train_days=365,
         )
