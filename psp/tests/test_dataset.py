@@ -2,7 +2,8 @@ import datetime as dt
 
 import pytest
 
-from psp.dataset import DateSplits, TestDateSplit, TrainDateSplit, auto_date_split
+from psp.dataset import DateSplits, TrainDateSplit, auto_date_split
+from psp.dataset import TestDateSplit as _TestDateSplit
 
 # Default split dates for our PV data source fixture.
 D0 = dt.datetime(2020, 1, 1)
@@ -26,5 +27,5 @@ def test_auto_date_split(num_trainings, expected_train_dates):
         train_date_splits=[
             TrainDateSplit(train_date=d, train_days=train_days) for d in expected_train_dates
         ],
-        test_date_split=TestDateSplit(start_date=D0, end_date=D1),
+        test_date_split=_TestDateSplit(start_date=D0, end_date=D1),
     )
