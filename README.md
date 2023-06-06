@@ -2,27 +2,24 @@
 
 ## Organisation of the repo
 
-[`/data`](./data)
+```
+.
+├── exp_reports         # Experiment reports
+├── exp_results         # Default experiment result dir
+├── notebooks           # Diverse notebooks
+└── psp                 # Main python package
+    ├── clients         # Client specific code
+    ├── data_sources    # Data sources (PV, NWP, etc.)
+    ├── exp_configs     # Experimentation configs
+    ├── models          # Modelling code
+    ├── scripts         # Scripts (entry points)
+    └── tests           # Unit tests
+```
 
-Placeholder for data files we don't want to revision.
-
-[`/exp_results`](./exp_results)
-
-Placeholder for experimentation results (by default training scripts write here).
-
-[`/notebooks`](./notebooks)
-
-Jupyter notebooks, mostly for data exploration and experimentation analysis.
-
-[`/psp`](./psp)
-
-The python package defined in this repo. The bulk of the content is in here.
-
-[`/psp/scripts`](./psp/scripts)
-
-Different scripts for the library. For instance:
+## Training and evaluating a model
 
     poetry run python psp/scripts/train_model.py --help
+    poetry run python psp/scripts/eval_model.py --help
 
 
 ## Prerequisites
