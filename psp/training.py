@@ -76,7 +76,6 @@ def make_data_loader(
     start_ts: dt.datetime,
     end_ts: dt.datetime,
     get_features: Callable[[X], Features],
-    prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
     batch_size: None = None,
     num_workers: int = 0,
@@ -96,7 +95,6 @@ def make_data_loader(
     start_ts: dt.datetime,
     end_ts: dt.datetime,
     get_features: Callable[[X], Features],
-    prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
     batch_size: int,
     num_workers: int = 0,
@@ -115,7 +113,6 @@ def make_data_loader(
     start_ts: dt.datetime,
     end_ts: dt.datetime,
     get_features: Callable[[X], Features],
-    prob_keep_sample: float = 1.0,
     random_state: np.random.RandomState | None = None,
     batch_size: int | None = None,
     num_workers: int = 0,
@@ -130,9 +127,6 @@ def make_data_loader(
         step: Step in minutes for the timestamps.
         limit: return only this number of samples.
     """
-    if prob_keep_sample < 1 and random_state is None:
-        raise ValueError("You must provide a random state when sampling")
-
     pvx_datapipe: PvXDataPipe
     if shuffle:
         assert random_state is not None
@@ -153,14 +147,6 @@ def make_data_loader(
             start_ts=start_ts,
             end_ts=end_ts,
             step=step,
-        )
-
-    if prob_keep_sample < 1:
-        assert random_state is not None
-        pvx_datapipe = _RandomSkip(
-            datapipe=pvx_datapipe,
-            prob_keep=prob_keep_sample,
-            random_state=random_state,
         )
 
     # This has to be as early as possible to be efficient!

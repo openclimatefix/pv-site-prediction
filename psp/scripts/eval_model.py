@@ -114,7 +114,6 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
         end_ts=test_end,
         batch_size=None,
         random_state=random_state,
-        prob_keep_sample=1.0,
         get_features=model.get_features,
         num_workers=num_workers,
         shuffle=True,
