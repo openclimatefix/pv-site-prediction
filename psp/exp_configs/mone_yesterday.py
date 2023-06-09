@@ -1,6 +1,6 @@
 import datetime as dt
 
-from psp.data.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -22,7 +22,7 @@ class ExpConfig(ExpConfigBase):
         )
 
     def get_model_config(self) -> PvSiteModelConfig:
-        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=48))
+        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=36 * 2))
 
     def get_model(self, **kwargs) -> PvSiteModel:
         return YesterdayPvSiteModel(

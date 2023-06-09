@@ -45,7 +45,7 @@ class ExpConfig(ExpConfigBase):
         )
 
     def get_model_config(self) -> PvSiteModelConfig:
-        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=48))
+        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=36 * 2))
 
     def get_model(self, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         return RecentHistoryModel(
@@ -85,6 +85,6 @@ class ExpConfig(ExpConfigBase):
             test_end_date=dt.datetime(2022, 12, 31),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
-            num_trainings=3 * 6,
+            num_trainings=3,
             train_days=365,
         )
