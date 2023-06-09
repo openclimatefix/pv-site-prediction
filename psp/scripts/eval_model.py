@@ -34,28 +34,67 @@ _log = logging.getLogger(__name__)
     "-l",
     "--limit",
     type=int,
-    default=1000,
-    help="Maximum number of samples to consider.",
+    show_default=True,
+    help="Maximum number of samples to consider."
+    'Defaults to 1000 if no --frequency-minutes is provided; otherwise defaults to "no limit."',
 )
 @click.option(
-    "--split", "split_name", type=str, default="test", help="split of the data to use: train | test"
+    "--frequency-minutes",
+    type=int,
+    help="Frequency at which to generate forecasts."
+    "If this is not specified, the samples will be chosen at random.",
 )
 @click.option(
     "--eval-config",
-    help='Use another config than the training one. e.g. "psp.exp_configs.some_config"',
+    help='Use another config than the training one. e.g. "psp.exp_configs.some_config".',
 )
 @click.option(
     "--new-exp-name",
     help="Name of the experiment directory to save the results to."
     "Useful in combination with --eval-config.",
 )
-def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_config, new_exp_name):
+@click.option(
+    "--split",
+    "split_name",
+    type=str,
+    default="test",
+    help="Split of the data to use: train | test.",
+    show_default=True,
+)
+@click.option(
+    "--test-start",
+    type=click.DateTime(),
+    help="Start date for the test set. Defaults to the start date specified in the config.",
+)
+@click.option(
+    "--test-end",
+    type=click.DateTime(),
+    help="End date for the test set. Defaults to the end date specified in the config.",
+)
+def main(
+    exp_root,
+    exp_name,
+    num_workers,
+    limit,
+    split_name,
+    log_level,
+    eval_config,
+    new_exp_name,
+    frequency_minutes,
+    test_start,
+    test_end,
+):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     if eval_config is not None:
         assert new_exp_name is not None
 
     assert split_name in ["train", "test"]
+
+    # Add some default in non-random mode.
+    if limit is None and frequency_minutes is None:
+        limit = 1000
+
     # This fixes problems when loading files in parallel on GCP.
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
     # https://github.com/fsspec/gcsfs/issues/379
@@ -97,13 +136,15 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
     pv_splits = exp_config.make_pv_splits(pv_data_source)
     pv_ids = getattr(pv_splits, split_name)
 
-    test_start = date_splits.test_date_split.start_date
-    test_end = date_splits.test_date_split.end_date
+    test_start = test_start or date_splits.test_date_split.start_date
+    test_end = test_end or date_splits.test_date_split.end_date
 
     _log.info(f"Evaluating on PV split: {pv_list_to_short_str(pv_ids)}")
     _log.info(f"Time range: [{test_start}, {test_end}]")
 
     random_state = np.random.RandomState(1234)
+
+    step = frequency_minutes if frequency_minutes is not None else 1
 
     # Use a torch DataLoader to create samples efficiently.
     data_loader = make_data_loader(
@@ -116,8 +157,8 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
         random_state=random_state,
         get_features=model.get_features,
         num_workers=num_workers,
-        shuffle=True,
-        step=15,
+        shuffle=frequency_minutes is None,
+        step=step,
         limit=limit,
     )
 
@@ -127,7 +168,11 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
     pv_data_has_capacity = "capacity" in pv_data_source.list_data_variables()
 
     with continue_on_interupt(prompt=False):
-        for i, sample in tqdm.tqdm(enumerate(data_loader), total=limit):
+        for i, sample in tqdm.tqdm(
+            enumerate(data_loader),
+            # Use rule of thumb when we don't have a `limit`.
+            total=limit or ((test_end - test_start).total_seconds() / 60.0) // step * len(pv_ids),
+        ):
             x = sample.x
 
             extra = {}
@@ -145,14 +190,16 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
                 error = metric(y_true, y_pred)
                 # Error is a vector
                 for i, (err_value, y, pred) in enumerate(zip(error, y_true.powers, y_pred.powers)):
-                    horizon = model_config.horizons[i][0]
+                    horizon = model_config.horizons[i]
                     error_rows.append(
                         {
                             "pv_id": x.pv_id,
                             "ts": x.ts,
+                            "ts_start": x.ts + dt.timedelta(minutes=horizon[0]),
+                            "ts_end": x.ts + dt.timedelta(minutes=horizon[1]),
                             "metric": metric_name,
                             "error": err_value,
-                            "horizon": horizon,
+                            "horizon": horizon[0],
                             "y": y,
                             "pred": pred,
                             "train_date": train_date,
@@ -167,7 +214,7 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_con
     output_dir = exp_root / (new_exp_name or exp_name)
     print(f"Saving results to {output_dir}")
     output_dir.mkdir(exist_ok=True)
-    df.to_csv(output_dir / f"{split_name}_errors.csv")
+    df.to_csv(output_dir / f"{split_name}_errors.csv", index=False)
 
 
 if __name__ == "__main__":

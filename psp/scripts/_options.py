@@ -30,6 +30,7 @@ num_workers_opt = click.option(
     "--num-workers",
     type=int,
     default=0,
+    show_default=True,
     help="Number of workers for data pre-processing. Defaults to no parallelism.",
 )
 
