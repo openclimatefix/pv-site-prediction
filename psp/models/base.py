@@ -18,6 +18,10 @@ class PvSiteModel(abc.ABC):
     """Abstract interface for our models."""
 
     def __init__(self, config: PvSiteModelConfig):
+        """Initialize.
+
+        Don't forget to call `super().__init__(config)` in the children classes.
+        """
         self._config = config
 
     @abc.abstractmethod

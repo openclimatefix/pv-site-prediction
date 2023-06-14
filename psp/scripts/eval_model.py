@@ -9,7 +9,7 @@ import torch
 import tqdm
 
 from psp.dataset import pv_list_to_short_str
-from psp.exp_configs.base import ExpConfigBase
+from psp.exp_configs.base import EvalConfigBase
 from psp.metrics import Metric, mean_absolute_error
 from psp.models.multi import MultiPvSiteModel
 from psp.scripts._options import exp_name_opt, exp_root_opt, log_level_opt, num_workers_opt
@@ -40,8 +40,20 @@ _log = logging.getLogger(__name__)
 @click.option(
     "--split", "split_name", type=str, default="test", help="split of the data to use: train | test"
 )
-def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
+@click.option(
+    "--eval-config",
+    help='Use another config than the training one. e.g. "psp.exp_configs.some_config"',
+)
+@click.option(
+    "--new-exp-name",
+    help="Name of the experiment directory to save the results to."
+    "Useful in combination with --eval-config.",
+)
+def main(exp_root, exp_name, num_workers, limit, split_name, log_level, eval_config, new_exp_name):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
+
+    if eval_config is not None:
+        assert new_exp_name is not None
 
     assert split_name in ["train", "test"]
     # This fixes problems when loading files in parallel on GCP.
@@ -49,8 +61,14 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
     # https://github.com/fsspec/gcsfs/issues/379
     torch.multiprocessing.set_start_method("spawn")
 
-    exp_config_module = importlib.import_module(".config", f"{exp_root}.{exp_name}")
-    exp_config: ExpConfigBase = exp_config_module.ExpConfig()
+    if eval_config is not None:
+        print("Loading config from ", eval_config)
+        exp_config_module = importlib.import_module(eval_config)
+    else:
+        print("Loading config from ", f"{exp_root}.{exp_name}.config")
+        exp_config_module = importlib.import_module(".config", f"{exp_root}.{exp_name}")
+
+    exp_config: EvalConfigBase = exp_config_module.ExpConfig()
 
     data_source_kwargs = exp_config.get_data_source_kwargs()
     pv_data_source = exp_config.get_pv_data_source()
@@ -70,7 +88,7 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
 
     model.set_data_sources(**data_source_kwargs)
 
-    model_config = exp_config.get_model_config()
+    model_config = model.config
 
     # Setup the dataset.
 
@@ -147,7 +165,7 @@ def main(exp_root, exp_name, num_workers, limit, split_name, log_level):
 
     exp_name = exp_name or dt.datetime.now().isoformat()
 
-    output_dir = exp_root / exp_name
+    output_dir = exp_root / (new_exp_name or exp_name)
     print(f"Saving results to {output_dir}")
     output_dir.mkdir(exist_ok=True)
     df.to_csv(output_dir / f"{split_name}_errors.csv")

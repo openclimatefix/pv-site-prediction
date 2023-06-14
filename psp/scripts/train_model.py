@@ -11,7 +11,7 @@ import tqdm
 from torch.utils.data import DataLoader
 
 from psp.dataset import pv_list_to_short_str
-from psp.exp_configs.base import ExpConfigBase
+from psp.exp_configs.base import TrainConfigBase
 from psp.metrics import mean_absolute_error
 from psp.models.base import PvSiteModel
 from psp.scripts._options import (
@@ -108,7 +108,7 @@ def main(
         torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
-    exp_config: ExpConfigBase = exp_config_module.ExpConfig()
+    exp_config: TrainConfigBase = exp_config_module.ExpConfig()
 
     output_dir = exp_root / exp_name
     if not output_dir.exists() or force:

@@ -73,7 +73,6 @@ class ExpConfig(ExpConfigBase):
                 "lcc",
             ],
             normalize_features=True,
-            use_inferred_meta=False,
             nwp_tolerance="168h",
         )
 

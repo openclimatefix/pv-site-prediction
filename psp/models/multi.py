@@ -52,3 +52,8 @@ class MultiPvSiteModel(PvSiteModel):
                 return date
         else:
             raise ValueError(f"Date {ts} is before all the models")
+
+    @property
+    def config(self):
+        # Assume all the configs are the same and return the first one.
+        return next(iter(self._models.values())).config

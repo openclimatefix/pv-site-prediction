@@ -2,7 +2,7 @@ import logging
 import math
 import warnings
 from datetime import datetime, timedelta
-from typing import Iterable, Tuple
+from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
@@ -94,7 +94,23 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 7
+_VERSION = 8
+
+# To get the metadata (tilt, orientation, capacity), we need a function that takes in
+# the recent PV history and returns the value.
+_MetaGetter = Callable[[xr.Dataset], float]
+
+
+def _default_get_tilt(*kwargs):
+    return 35.0
+
+
+def _default_get_orientation(*kwargs):
+    return 180.0
+
+
+def _default_get_capacity(d: xr.Dataset) -> float:
+    return float(d["power"].quantile(0.99))
 
 
 class RecentHistoryModel(PvSiteModel):
@@ -109,15 +125,18 @@ class RecentHistoryModel(PvSiteModel):
         use_nwp: bool = True,
         nwp_variables: list[str] | None = None,
         nwp_dropout: float = 0.0,
+        pv_dropout: float = 0.0,
         normalize_features: bool = True,
-        use_inferred_meta: bool = False,
-        use_data_capacity: bool = False,
+        tilt_getter: _MetaGetter | None = None,
+        orientation_getter: _MetaGetter | None = None,
+        capacity_getter: _MetaGetter | None = None,
         use_capacity_as_feature: bool = True,
         num_days_history: int = 7,
         nwp_tolerance: str | None = None,
     ):
+        super().__init__(config)
         # Validate some options.
-        if nwp_dropout > 0.0:
+        if nwp_dropout > 0.0 or pv_dropout > 0.0:
             assert random_state is not None
 
         if use_nwp:
@@ -130,8 +149,17 @@ class RecentHistoryModel(PvSiteModel):
         self._use_nwp = use_nwp
         self._nwp_variables = nwp_variables
         self._normalize_features = normalize_features
-        self._use_inferred_meta = use_inferred_meta
-        self._use_data_capacity = use_data_capacity
+
+        self._pv_dropout = pv_dropout
+
+        self._capacity_getter = capacity_getter or _default_get_capacity
+        self._tilt_getter = tilt_getter or _default_get_tilt
+        self._orientation_getter = orientation_getter or _default_get_orientation
+
+        # Deprecated - keeping for backward compatibility and mypy.
+        self._use_inferred_meta = None
+        self._use_data_capacity = None
+
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
         self._nwp_tolerance = nwp_tolerance
@@ -149,7 +177,10 @@ class RecentHistoryModel(PvSiteModel):
         super().__init__(config)
 
     def set_data_sources(
-        self, *, pv_data_source: PvDataSource, nwp_data_source: NwpDataSource | None = None
+        self,
+        *,
+        pv_data_source: PvDataSource,
+        nwp_data_source: NwpDataSource | None = None,
     ):
         """Set the data sources.
 
@@ -163,7 +194,7 @@ class RecentHistoryModel(PvSiteModel):
         y = Y(powers=powers)
         return y
 
-    def get_features_with_names(self, x: X) -> Tuple[Features, dict[str, list[str]]]:
+    def get_features_with_names(self, x: X) -> tuple[Features, dict[str, list[str]]]:
         features_with_names = self._get_features(x, with_names=True, is_training=False)
         assert isinstance(features_with_names, tuple)
         return features_with_names
@@ -175,7 +206,7 @@ class RecentHistoryModel(PvSiteModel):
 
     def _get_features(
         self, x: X, with_names: bool, is_training: bool
-    ) -> Features | Tuple[Features, dict[str, list[str]]]:
+    ) -> Features | tuple[Features, dict[str, list[str]]]:
         features: Features = dict()
         data_source = self._pv_data_source.as_available_at(x.ts)
 
@@ -189,37 +220,34 @@ class RecentHistoryModel(PvSiteModel):
             end_ts=x.ts,
         )
 
+        # When there is no power value in our data (which happens mainly when we
+        # explicitely make tests without power data), we make up one with NaN values.
+        if "power" not in _data:
+            shape = tuple(_data.dims.values())
+            _data["power"] = xr.DataArray(np.empty(shape) * np.nan, dims=tuple(_data.dims))
+
         data = _data["power"]
+
+        # PV data dropout.
+        if (
+            # Dropout makes sense only during training.
+            is_training
+            and self._pv_dropout > 0
+            # This one is for mypy.
+            and self._random_state is not None
+            and self._random_state.random() < self._pv_dropout
+        ):
+            data *= np.nan
 
         coords = _data.coords
 
         lat = float(coords["latitude"].values)
         lon = float(coords["longitude"].values)
 
-        if self._use_inferred_meta:
-            tilt = float(coords["tilt"].values)
-            orientation = float(coords["orientation"].values)
-            capacity = float(coords["factor"].values)
-        else:
-            # We hard-code the `tilt` and `orientation` to standard values for the UK.
-            # This means that our normalization won't be perfect, but in practice the model is able
-            # to cope for that.
-            tilt = 35
-            orientation = 180
-            # We define the capacity as the 99% quantile over the last week of data.
-            # In practice this seems to work well.
-            try:
-                # If there is a `capacity` variable in our data, we use that.
-                if self._use_data_capacity:
-                    # Take the first value, assuming the capacity doesn't change that rapidly.
-                    capacity = _data["capacity"].values[0]
-                else:
-                    # Otherwise use some heuristic as capacity.
-                    capacity = float(data.quantile(0.99))
-            except Exception as e:
-                _log.warning("Error while calculating capacity")
-                _log.exception(e)
-                capacity = np.nan
+        # Get the metadata from the PV data.
+        tilt = self._tilt_getter(_data)
+        orientation = self._orientation_getter(_data)
+        capacity = self._capacity_getter(_data)
 
         # Drop every coordinate except `ts`.
         extra_var = set(data.coords).difference(["ts"])
@@ -377,6 +405,47 @@ class RecentHistoryModel(PvSiteModel):
         explanation = self._regressor.explain(features, feature_names)
         return explanation
 
+    def _v7_get_capacity(self, dataset: xr.Dataset) -> float:
+        """Get capacity as it was with v7.
+
+        Only here for backward compatibility, do not call directly.
+        """
+        if self._use_inferred_meta:
+            return float(dataset.coords["factor"].values)
+        else:
+            try:
+                # If there is a `capacity` variable in our data, we use that.
+                if self._use_data_capacity:
+                    # Take the first value, assuming the capacity doesn't change that rapidly.
+                    return dataset["capacity"].values[0]
+                else:
+                    # Otherwise use some heuristic as capacity.
+                    return float(dataset["power"].quantile(0.99))
+            except Exception as e:
+                _log.warning("Error while calculating capacity")
+                _log.exception(e)
+                return np.nan
+
+    def _v7_get_tilt(self, dataset: xr.Dataset) -> float:
+        """Get tilt as it was with v7.
+
+        Only here for backward compatibility, do not call directly.
+        """
+        if self._use_inferred_meta:
+            return float(dataset.coords["tilt"].values)
+        else:
+            return 35
+
+    def _v7_get_orientation(self, dataset: xr.Dataset) -> float:
+        """Get orientation as it was with v7.
+
+        Only here for backward compatibility, do not call directly.
+        """
+        if self._use_inferred_meta:
+            return float(dataset.coords["orientation"].values)
+        else:
+            return 180
+
     def get_state(self):
         state = self.__dict__.copy()
         # Do not save the data sources. Those should be set when loading the model using the `setup`
@@ -411,5 +480,10 @@ class RecentHistoryModel(PvSiteModel):
             state["_nwp_tolerance"] = None
         if state["_version"] < 7:
             state["_nwp_dropout"] = 0.0
+        if state["_version"] < 8:
+            state["_capacity_getter"] = self._v7_get_capacity
+            state["_tilt_getter"] = self._v7_get_tilt
+            state["_orientation_getter"] = self._v7_get_orientation
+            state["_pv_dropout"] = 0.0
 
         super().set_state(state)

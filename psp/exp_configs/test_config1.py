@@ -2,6 +2,7 @@
 
 import datetime as dt
 
+import numpy as np
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
@@ -34,7 +35,7 @@ class ExpConfig(ExpConfigBase):
     def get_model_config(self):
         return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=5))
 
-    def get_model(self, **kwargs) -> PvSiteModel:
+    def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         return RecentHistoryModel(
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
@@ -44,7 +45,9 @@ class ExpConfig(ExpConfigBase):
                     max_iter=2,
                 ),
             ),
+            random_state=random_state,
             use_nwp=True,
+            pv_dropout=0.5
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:

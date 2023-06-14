@@ -2,6 +2,8 @@
 
 import datetime as dt
 
+import xarray as xr
+
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
@@ -15,6 +17,13 @@ PV_TARGET_DATA_PATH = (
     "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/data_hourly_MW_dstfix_clean_v2.nc"
 )
 NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
+
+
+def _get_capacity(data: xr.Dataset) -> float:
+    # Use the "capacity" data variable.
+    # There is one capacity per timestamp, let's take the first one arbitrarily; hopefully there
+    # is not a big variation of capacity in our history of a few days!
+    return float(data["capacity"].values[0])
 
 
 class ExpConfig(ExpConfigBase):
@@ -68,8 +77,7 @@ class ExpConfig(ExpConfigBase):
             ),
             use_nwp=True,
             normalize_features=True,
-            use_inferred_meta=False,
-            use_data_capacity=True,
+            capacity_getter=_get_capacity,
             use_capacity_as_feature=False,
             num_days_history=12,
         )

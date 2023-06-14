@@ -58,7 +58,7 @@ def main(input, output, meta, power_conversion_factor: float):
     ds = ds.sel(ss_id=ss_ids)
 
     print("Add coords to dataset")
-    columns = {"orientation", "tilt", "factor", "latitude", "longitude"}
+    columns = {"orientation", "tilt", "factor", "latitude", "longitude", "kwp"}
 
     for meta in metas:
         ds = ds.assign_coords(

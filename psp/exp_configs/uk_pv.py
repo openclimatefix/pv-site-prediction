@@ -1,7 +1,8 @@
 """Config used to train a model based on the `uk_pv` dataset."""
 
 import datetime as dt
-import functools
+
+import numpy as np
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
@@ -15,7 +16,7 @@ from psp.typings import Horizons
 # import multiprocessing
 # import xgboost as xgb
 
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min.nc"
+PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min_v3.nc"
 # NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
 NWP_DATA_PATHS = [
     (
@@ -155,18 +156,25 @@ SKIP_SS_IDS = [
 ]
 
 
+def _get_capacity(d):
+    # Use 0.99 quantile over the history window, fallback on the capacity as defined
+    # in the metadata.
+    value = float(d["power"].quantile(0.99))
+    if not np.isfinite(value):
+        value = float(d.coords["capacity"].values)
+    return value
+
+
 class ExpConfig(ExpConfigBase):
-    @functools.cache
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
             id_dim_name="ss_id",
             timestamp_dim_name="timestamp",
-            rename={"generation_wh": "power"},
+            rename={"generation_wh": "power", "kwp": "capacity"},
             ignore_pv_ids=SKIP_SS_IDS,
         )
 
-    @functools.cache
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
@@ -176,16 +184,18 @@ class ExpConfig(ExpConfigBase):
                 time_dim_name="init_time",
                 value_name="UKV",
                 y_is_ascending=False,
+                # cache_dir=".nwp_cache",
             ),
         )
 
-    def get_model_config(self) -> PvSiteModelConfig:
+    def _get_model_config(self) -> PvSiteModelConfig:
         return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4))
 
-    def get_model(self, **kwargs) -> PvSiteModel:
+    def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
+        kwargs = self.get_data_source_kwargs()
         return RecentHistoryModel(
-            config=self.get_model_config(),
-            **self.get_data_source_kwargs(),
+            config=self._get_model_config(),
+            **kwargs,
             regressor=SklearnRegressor(
                 num_train_samples=4096,
                 normalize_targets=True,
@@ -203,6 +213,7 @@ class ExpConfig(ExpConfigBase):
                 #     n_jobs=multiprocessing.cpu_count() // 2,
                 # ),
             ),
+            random_state=random_state,
             use_nwp=True,
             # Those are the variables available in our prod environment.
             nwp_variables=[
@@ -219,7 +230,8 @@ class ExpConfig(ExpConfigBase):
                 "lcc",
             ],
             normalize_features=True,
-            use_inferred_meta=False,
+            capacity_getter=_get_capacity,
+            pv_dropout=0.1,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
