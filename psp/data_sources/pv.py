@@ -163,6 +163,14 @@ class NetcdfPvDataSource(PvDataSource):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
+        # print("LOOOK AT ME")
+        # print(self._data)
+        # print(self._max_ts)
+        # print(start_ts)
+        # print(end_ts)
+
+        # breakpoint()
+
         end_ts = min_timestamp(self._max_ts, end_ts)
         return self._data.sel(pv_id=pv_ids, ts=slice(start_ts, end_ts))
 
