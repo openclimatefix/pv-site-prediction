@@ -3,14 +3,12 @@ import importlib
 import logging
 import shutil
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import click
 import numpy as np
-import torch
 import tqdm
-from torch.utils.data import DataLoader
 
-from psp.dataset import pv_list_to_short_str
 from psp.exp_configs.base import TrainConfigBase
 from psp.metrics import mean_absolute_error
 from psp.models.base import PvSiteModel
@@ -22,8 +20,11 @@ from psp.scripts._options import (
     num_workers_opt,
 )
 from psp.serialization import save_model
-from psp.training import make_data_loader
 from psp.typings import Sample
+from psp.utils.printing import pv_list_to_short_str
+
+if TYPE_CHECKING:
+    from torch.utils.data import DataLoader
 
 _log = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def _err(x):
     return 1.96 * np.nanstd(x) / np.sqrt(_count(x))
 
 
-def _eval_model(model: PvSiteModel, dataloader: DataLoader[Sample]) -> None:
+def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     """Evaluate a `model` on samples from a `dataloader` and log the error."""
     horizon_buckets = 8 * 60
     errors_per_bucket = defaultdict(list)
@@ -105,6 +106,9 @@ def main(
     # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
     # https://github.com/fsspec/gcsfs/issues/379
     if num_workers > 0:
+        # Import `torch` only if needed because it is slow to import.
+        import torch
+
         torch.multiprocessing.set_start_method("spawn")
 
     exp_config_module = importlib.import_module("." + exp_config_name, "psp.exp_configs")
@@ -149,6 +153,9 @@ def main(
             start_ts=start_ts,
             end_ts=end_ts,
         )
+
+        # Delay this slow import here (because of pytorch).
+        from psp.training import make_data_loader
 
         train_data_loader = make_data_loader(
             **data_loader_kwargs,

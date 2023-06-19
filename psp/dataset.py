@@ -1,146 +1,9 @@
 import dataclasses
 from datetime import datetime, timedelta
-from typing import Iterator
-
-import numpy as np
-import pandas as pd
-from torchdata.datapipes.iter import IterDataPipe
 
 from psp.data_sources.pv import PvDataSource
-from psp.typings import Horizons, PvId, Timestamp, X, Y
+from psp.typings import PvId
 from psp.utils.hashing import naive_hash
-
-
-class PvXDataPipe(IterDataPipe[X]):
-    """IterDataPipe that yields model inputs."""
-
-    def __init__(
-        self,
-        data_source: PvDataSource,
-        horizons: Horizons,
-        pv_ids: list[PvId] | None = None,
-        start_ts: Timestamp | None = None,
-        end_ts: Timestamp | None = None,
-        step: int = 15,
-    ):
-        """
-        Arguments:
-        ---------
-            pv_ids: If provided, will only pick from those pv_ids.
-            start_ts: If provided, wll only pick dates after this date.
-            end_ts: If provided, wll only pick dates before this date.
-            step: Step used to make samples in time (in minutes).
-        """
-        self._data_source = data_source
-        self._horizons = horizons
-        self._pv_ids = pv_ids or self._data_source.list_pv_ids()
-        self._start_ts = start_ts or self._data_source.min_ts()
-        self._end_ts = end_ts or self._data_source.max_ts()
-        self._step = step
-
-        # Sanity checks.
-        assert len(self._pv_ids) > 0
-        assert self._end_ts > self._start_ts
-
-    def __iter__(self) -> Iterator[X]:
-        step = timedelta(minutes=self._step)
-
-        for pv_id in self._pv_ids:
-            ts = self._start_ts
-            minute = ts.minute
-            ts = ts.replace(minute=round_to(minute, self._step), second=0, microsecond=0)
-            while ts < self._end_ts:
-                x = X(pv_id=pv_id, ts=ts)
-                yield x
-                ts = ts + step
-
-
-def round_to(x, to=1):
-    return round(x / to) * to
-
-
-# We inherit from PvSamplesGenerator to save some code even though it's not super sound.
-class RandomPvXDataPipe(PvXDataPipe):
-    """Infinite loop iterator of random PV data points."""
-
-    def __init__(
-        self,
-        data_source: PvDataSource,
-        horizons: Horizons,
-        random_state: np.random.RandomState,
-        pv_ids: list[PvId] | None = None,
-        start_ts: Timestamp | None = None,
-        end_ts: Timestamp | None = None,
-        step: int = 1,
-    ):
-        """
-        Arguments:
-        ---------
-            step: Round the timestamp to this many minutes (with 0 seconds and 0 microseconds).
-        """
-        self._random_state = random_state
-        super().__init__(data_source, horizons, pv_ids, start_ts, end_ts, step)
-
-    def __iter__(self) -> Iterator[X]:
-        num_seconds = (self._end_ts - self._start_ts).total_seconds()
-
-        while True:
-            # Random PV.
-            pv_id = self._random_state.choice(self._pv_ids)
-
-            # Random timestamp
-            delta_seconds = self._random_state.random() * num_seconds
-            ts = self._start_ts + timedelta(seconds=delta_seconds)
-
-            # Round the minutes to a multiple of `steps`. This is particularly useful when testing,
-            # where we might not want something as granualar as every minute, but want to be able
-            # to aggregate many values for the *same* hour of day.
-            minute = round_to(ts.minute, self._step)
-            if minute > 59:
-                minute = 0
-
-            ts = ts.replace(minute=minute, second=0, microsecond=0)
-
-            yield X(pv_id=pv_id, ts=ts)
-
-
-def get_y_from_x(x: X, *, horizons: Horizons, data_source: PvDataSource) -> Y | None:
-    """Given an input, compute the output.
-
-    Return `None` if there is not output - it's simpler to filter those later.
-    """
-    min_horizon = min(i[0] for i in horizons)
-    max_horizon = max(i[1] for i in horizons)
-    data = data_source.get(
-        x.pv_id,
-        x.ts + timedelta(minutes=min_horizon),
-        x.ts + timedelta(minutes=max_horizon),
-    )["power"]
-
-    if data.size == 0:
-        return None
-
-    # Find the targets for that pv/ts.
-    # TODO Find a way to vectorize this.
-    powers = []
-    for start, end in horizons:
-        ts0 = pd.Timestamp(x.ts + timedelta(minutes=start))
-        ts1 = pd.Timestamp(x.ts + timedelta(minutes=end)) - timedelta(seconds=1)
-
-        power_values = data.sel(ts=slice(ts0, ts1))
-
-        if power_values.size == 0:
-            powers.append(np.nan)
-        else:
-            power = float(power_values.mean())
-            powers.append(power)
-
-    powers_arr = np.array(powers)
-
-    if np.all(np.isnan(powers_arr)):
-        return None
-
-    return Y(powers=powers_arr)
 
 
 @dataclasses.dataclass
@@ -148,14 +11,6 @@ class PvSplits:
     train: list[PvId]
     valid: list[PvId]
     test: list[PvId]
-
-
-def pv_list_to_short_str(x: list[PvId]) -> str:
-    """Util to format a list of PV ids into a small string."""
-    if len(x) < 4:
-        return str(x)
-    else:
-        return f"[{repr(x[0])}, {repr(x[1])}, ..., {repr(x[-1])}]"
 
 
 def _floor_date(date: datetime) -> datetime:

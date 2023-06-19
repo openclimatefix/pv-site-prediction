@@ -5,30 +5,31 @@ config that satisfies both interfaces.
 """
 
 import abc
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from psp.data_sources.pv import PvDataSource
-from psp.dataset import DateSplits
-from psp.models.base import PvSiteModel
+if TYPE_CHECKING:
+    from psp.data_sources.pv import PvDataSource
+    from psp.dataset import DateSplits
+    from psp.models.base import PvSiteModel
 
 
 class _ConfigBaseCommon(abc.ABC):
     @abc.abstractmethod
-    def get_pv_data_source(self) -> PvDataSource:
+    def get_pv_data_source(self) -> "PvDataSource":
         """Get the PV data source used for the targets."""
         pass
 
     # TODO This comprises training and evaluation and should probably be split in two.
     @abc.abstractmethod
-    def make_pv_splits(self, pv_data_source: PvDataSource):
+    def make_pv_splits(self, pv_data_source: "PvDataSource"):
         """Make the dataset splits from the pv data source."""
         pass
 
     # TODO This comprises training and evaluation and should probably be split in two.
     @abc.abstractmethod
-    def get_date_splits(self) -> DateSplits:
+    def get_date_splits(self) -> "DateSplits":
         pass
 
 
@@ -36,7 +37,7 @@ class TrainConfigBase(_ConfigBaseCommon, abc.ABC):
     """Defines the interface of an training config."""
 
     @abc.abstractmethod
-    def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
+    def get_model(self, *, random_state: np.random.RandomState | None = None) -> "PvSiteModel":
         """Get the model"""
         pass
 

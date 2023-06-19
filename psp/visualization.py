@@ -11,11 +11,11 @@ from IPython.display import display
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
-from psp.dataset import get_y_from_x
 from psp.gis import approx_add_meters_to_lat_lon
 from psp.metrics import Metric, mean_absolute_error
 from psp.models.base import PvSiteModel
 from psp.pv import get_irradiance
+from psp.training import get_y_from_x
 from psp.typings import Horizons, Timestamp, X, Y
 from psp.utils.maths import safe_div
 

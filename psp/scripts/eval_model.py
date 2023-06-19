@@ -5,17 +5,15 @@ import logging
 import click
 import numpy as np
 import pandas as pd
-import torch
 import tqdm
 
-from psp.dataset import pv_list_to_short_str
 from psp.exp_configs.base import EvalConfigBase
 from psp.metrics import Metric, mean_absolute_error
 from psp.models.multi import MultiPvSiteModel
 from psp.scripts._options import exp_name_opt, exp_root_opt, log_level_opt, num_workers_opt
 from psp.serialization import load_model
-from psp.training import make_data_loader
 from psp.utils.interupting import continue_on_interupt
+from psp.utils.printing import pv_list_to_short_str
 
 METRICS: dict[str, Metric] = {
     # "mre_cap=1": MeanRelativeError(cap=1),
@@ -95,10 +93,14 @@ def main(
     if limit is None and frequency_minutes is None:
         limit = 1000
 
-    # This fixes problems when loading files in parallel on GCP.
-    # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
-    # https://github.com/fsspec/gcsfs/issues/379
-    torch.multiprocessing.set_start_method("spawn")
+    if num_workers > 0:
+        # Only import torch here because it's a slow import.
+        import torch
+
+        # This fixes problems when loading files in parallel on GCP.
+        # https://pytorch.org/docs/stable/notes/multiprocessing.html#cuda-in-multiprocessing
+        # https://github.com/fsspec/gcsfs/issues/379
+        torch.multiprocessing.set_start_method("spawn")
 
     if eval_config is not None:
         print("Loading config from ", eval_config)
@@ -146,7 +148,9 @@ def main(
 
     step = frequency_minutes if frequency_minutes is not None else 1
 
-    # Use a torch DataLoader to create samples efficiently.
+    # Delay this import because it itself imports pytorch which is slow.
+    from psp.training import make_data_loader
+
     data_loader = make_data_loader(
         data_source=pv_data_source,
         horizons=model_config.horizons,
