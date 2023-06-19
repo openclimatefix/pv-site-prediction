@@ -6,7 +6,13 @@ import numpy as np
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.dataset import PvSplits, auto_date_split, split_pvs
+from psp.dataset import (
+    DateSplits,
+    PvSplits,
+    TestDateSplit,
+    TrainDateSplit,
+    split_pvs,
+)
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
@@ -238,8 +244,22 @@ class ExpConfig(ExpConfigBase):
         return split_pvs(pv_data_source)
 
     def get_date_splits(self):
-        return auto_date_split(
-            test_start_date=dt.datetime(2020, 1, 1),
-            test_end_date=dt.datetime(2021, 11, 8),
-            train_days=356 * 2,
+        train_days = 365 * 2
+        return DateSplits(
+            train_date_splits=[
+                # One model to get many months to look at the error.
+                TrainDateSplit(
+                    train_date=dt.datetime(2020, 1, 1),
+                    train_days=train_days,
+                ),
+                # One model for prod (more recently trained).
+                TrainDateSplit(
+                    train_date=dt.datetime(2021, 10, 8),
+                    train_days=train_days,
+                ),
+            ],
+            test_date_split=TestDateSplit(
+                start_date=dt.datetime(2020, 1, 1),
+                end_date=dt.datetime(2021, 11, 8),
+            ),
         )
