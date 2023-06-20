@@ -69,7 +69,9 @@ class Y:
     powers: np.ndarray
 
 
-Features = dict[str, np.ndarray | float | int]
+# At the moment we assume that each feature is a 1D array of shape `(num_horizons,)`.
+# This could be generalized if we need features with other shapes.
+Features = dict[str, np.ndarray]
 
 
 @dataclasses.dataclass

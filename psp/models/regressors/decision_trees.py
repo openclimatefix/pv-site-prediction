@@ -2,7 +2,7 @@
 
 import logging
 from itertools import islice
-from typing import Any, Iterable, Tuple, overload
+from typing import Any, Iterable
 
 import numpy as np
 import tqdm
@@ -46,21 +46,7 @@ class SklearnRegressor(Regressor):
 
         self._version = _VERSION
 
-    @overload
-    def _prepare_features(self, features: BatchedFeatures) -> np.ndarray:
-        ...
-
-    @overload
-    def _prepare_features(
-        self, features: BatchedFeatures, feature_names: dict[str, list[str]]
-    ) -> Tuple[np.ndarray, list[str]]:
-        ...
-
-    def _prepare_features(
-        self,
-        features: BatchedFeatures,
-        feature_names: dict[str, list[str]] | None = None,
-    ) -> np.ndarray | Tuple[np.ndarray, list[str]]:
+    def _prepare_features(self, features: BatchedFeatures) -> tuple[np.ndarray, list[str]]:
         """Build a (sample, feature)-shaped matrix from (batched) features.
 
         Optionally also build a list of feature names that match the columns.
@@ -70,18 +56,13 @@ class SklearnRegressor(Regressor):
             A numpy array (rows=sample, columns=features) and the name of the columns as a list of
             string.
         """
-        per_horizon = features["per_horizon"]
-        common = features["common"]
-
-        # Start with `per_horizon`, to which we will add all the other features.
-        new_features = per_horizon
+        # Ignore the features that start with an underscore.
+        feature_names = list([n for n in features if not n.startswith("_")])
+        # Stack all the features together
+        new_features = np.stack([features[n] for n in feature_names], axis=-1)
 
         n_batch, n_horizon, n_features = new_features.shape
-        (n_batch2, n_common_features) = common.shape
-        assert n_batch == n_batch2
-
-        if feature_names:
-            col_names = feature_names["per_horizon"]
+        assert n_features == len(feature_names)
 
         # Add the horizon index as a feature.
         horizon_idx = np.broadcast_to(
@@ -91,34 +72,22 @@ class SklearnRegressor(Regressor):
         # (batch * horizon, features + 1)
         new_features = np.concatenate([new_features, horizon_idx], axis=2)
 
-        if feature_names:
-            col_names.append("horizon_idx")
+        n_features += 1
 
-        common = np.broadcast_to(
-            common.reshape(n_batch, 1, common.shape[1]),
-            (n_batch, n_horizon, common.shape[1]),
-        )
-
-        new_features = np.concatenate([new_features, common], axis=2)
-
-        if feature_names:
-            col_names.extend(feature_names["common"])
+        feature_names.append("horizon_idx")
 
         assert new_features.shape == (
             n_batch,
             n_horizon,
-            n_features + 1 + n_common_features,
+            n_features,
         )
-        if feature_names:
-            assert len(col_names) == n_features + 1 + n_common_features
+
+        assert len(feature_names) == n_features
 
         # Finally we flatten the horizons.
-        new_features = new_features.reshape(n_batch * n_horizon, n_features + 1 + n_common_features)
+        new_features = new_features.reshape(n_batch * n_horizon, n_features)
 
-        if feature_names:
-            return new_features, col_names
-        else:
-            return new_features
+        return new_features, feature_names
 
     def train(
         self,
@@ -137,18 +106,17 @@ class SklearnRegressor(Regressor):
         batch = concat_batches(batches)
 
         # Make it into a (sample, features)-shaped matrix.
-        xs = self._prepare_features(batch.features)
+        xs, _ = self._prepare_features(batch.features)
 
         # (batch, horizon)
-        poa = batch.features["poa_global"]
+        poa = batch.features["_poa_global"]
         assert len(poa.shape) == 2
 
         # (batch, horizon)
         ys = batch.y.powers
 
-        # (batch, 1)
-        capacity = np.array(batch.features["capacity"]).reshape(-1, 1)
-        assert capacity.shape[0] == poa.shape[0]
+        capacity = batch.features["_capacity"]
+        assert capacity.shape == poa.shape
 
         # We can ignore the division by zeros, we treat the nan/inf later.
         with np.errstate(divide="ignore"):
@@ -178,19 +146,17 @@ class SklearnRegressor(Regressor):
         self._regressor.fit(xs, ys, sample_weight=sample_weight)
 
     def predict(self, features: Features):
-        new_features = self._prepare_features(batch_features([features]))
+        new_features, _ = self._prepare_features(batch_features([features]))
         pred = self._regressor.predict(new_features)
         assert len(pred.shape) == 1
 
         if self._normalize_targets:
-            return pred * features["capacity"] * features["poa_global"]
+            return pred * features["_capacity"] * features["_poa_global"]
         else:
             # Return 0. when poa_global is 0., otherwise the value.
             return pred * ((features["poa_global"] > 0) * 1.0)
 
-    def explain(
-        self, features: Features, feature_names: dict[str, list[str]]
-    ) -> Tuple[Any, list[str]]:
+    def explain(self, features: Features) -> tuple[Any, list[str]]:
         """Return the `shap` values for our sample, alonside the names of the features.
 
         We return a `shap` object that contains as many values as we have horizons for the sample
@@ -204,7 +170,7 @@ class SklearnRegressor(Regressor):
 
         batch = batch_features([features])
 
-        new_features, new_feature_names = self._prepare_features(batch, feature_names)
+        new_features, new_feature_names = self._prepare_features(batch)
 
         explainer = shap.Explainer(self._regressor, feature_names=new_feature_names)
         shap_values = explainer(new_features)

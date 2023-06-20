@@ -17,5 +17,5 @@ class Regressor(abc.ABC):
     def predict(self, features: Features) -> np.ndarray:
         pass
 
-    def explain(self, features: Features, feature_names: dict[str, list[str]]):
+    def explain(self, features: Features):
         raise NotImplementedError
