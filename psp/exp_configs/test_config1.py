@@ -40,14 +40,16 @@ class ExpConfig(ExpConfigBase):
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=20,
+                num_train_samples=100,
                 sklearn_regressor=HistGradientBoostingRegressor(
-                    max_iter=2,
+                    loss="absolute_error",
+                    random_state=123,
+                    max_iter=20,
                 ),
             ),
             random_state=random_state,
             use_nwp=True,
-            pv_dropout=0.5
+            pv_dropout=1.0
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:

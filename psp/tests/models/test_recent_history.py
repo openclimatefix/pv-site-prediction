@@ -1,11 +1,20 @@
 import datetime as dt
 
 import numpy as np
+import pytest
 import xarray as xr
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
+from psp.data_sources.nwp import NwpDataSource
 from psp.models.recent_history import compute_history_per_horizon
-from psp.typings import Horizons
+from psp.serialization import load_model
+from psp.testing import make_test_nwp_data, make_test_nwp_data_source
+from psp.typings import Horizons, X
+
+
+@pytest.fixture
+def nwp_data_source():
+    return make_test_nwp_data_source()
 
 
 def test_compute_history_per_horizon():
@@ -65,3 +74,58 @@ def test_compute_history_per_horizon():
     )
 
     assert_array_equal(expected_history, history)
+
+
+def _predict(pv_data_source, nwp_data_source):
+    """Predict for given data sources.
+
+    Common code for the test_predict_* tests.
+    """
+    model = load_model("psp/tests/fixtures/models/model_v8_2.pkl")
+
+    model.set_data_sources(
+        pv_data_source=pv_data_source,
+        nwp_data_source=nwp_data_source,
+    )
+
+    return model.predict(X(ts=dt.datetime(2020, 1, 10, 12), pv_id="8215"))
+
+
+def test_predict_with_missing_features(pv_data_source):
+    nwp_data = make_test_nwp_data()
+    nwp_data = nwp_data.sel(variable=["a", "b"])
+    nwp_data_source = NwpDataSource(nwp_data)
+
+    with pytest.raises(ValueError) as e:
+        _predict(pv_data_source, nwp_data_source)
+    assert "has 16 features" in str(e.value)
+    assert "is expecting 18 features" in str(e.value)
+
+
+def test_predict_with_extra_features(pv_data_source):
+    nwp_data = make_test_nwp_data()
+
+    # Add an extra variable
+    var_d = nwp_data.sel(variable="a")
+    var_d.coords["variable"] = "d"
+    nwp_data = xr.concat([nwp_data, var_d], dim="variable")
+    nwp_data_source = NwpDataSource(nwp_data)
+
+    with pytest.raises(ValueError) as e:
+        _predict(pv_data_source, nwp_data_source)
+    assert "has 20 features" in str(e.value)
+    assert "is expecting 18 features" in str(e.value)
+
+
+def test_predict_with_features_in_wrong_order(pv_data_source):
+    nwp_data = make_test_nwp_data()
+
+    y1 = _predict(pv_data_source, NwpDataSource(nwp_data))
+
+    # Swap the variables. The model should still use the right variables.
+    nwp_data = nwp_data.assign_coords(variable=("variable", ["c", "a", "b"]))
+    nwp_data = nwp_data + 10
+    nwp_data_source = NwpDataSource(nwp_data)
+
+    y2 = _predict(pv_data_source, nwp_data_source)
+    assert_allclose(y1.powers, y2.powers, atol=1e-6)

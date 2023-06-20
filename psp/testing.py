@@ -27,14 +27,13 @@ def run_click_command(main_func, cmd_args: list[str]):
     return result
 
 
-def make_test_nwp_data_source():
-    """Make fake NWP data with dates and locations that matches our fixture PV data."""
+def make_test_nwp_data() -> xr.Dataset:
     rng = np.random.default_rng(seed=1234)
     # Create data that aligns with the pv_data_source defined in the same file.
-    time = [dt.datetime(2020, 1, 1) + dt.timedelta(hours=12) * i for i in range(14 * 2)]
-    x = [1.0, 2]
-    y = [0.0, 1]
-    step = [dt.timedelta(hours=x) for x in [0, 6, 12]]
+    time = [dt.datetime(2020, 1, 1) + dt.timedelta(hours=6) * i for i in range(14 * 4)]
+    x = [0, 0.5, 1, 1.5, 2]
+    y = [0, 0.5, 1, 1.5, 2]
+    step = [dt.timedelta(hours=x) for x in [0, 3, 6, 9, 12]]
     variable = ["a", "b", "c"]
 
     data = rng.uniform(
@@ -51,4 +50,10 @@ def make_test_nwp_data_source():
 
     ds = xr.Dataset(dict(value=da))
 
+    return ds
+
+
+def make_test_nwp_data_source():
+    """Make fake NWP data with dates and locations that matches our fixture PV data."""
+    ds = make_test_nwp_data()
     return NwpDataSource(ds)
