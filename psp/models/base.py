@@ -2,7 +2,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Iterable, Tuple
+from typing import Any, Iterable
 
 from psp.typings import Batch, Features, Horizons, X, Y
 
@@ -54,15 +54,6 @@ class PvSiteModel(abc.ABC):
                 that need a different behaviour in training VS testing, such as dropout.
         """
         pass
-
-    def get_features_with_names(self, x: X) -> Tuple[Features, dict[str, list[str]]]:
-        """Like `get_features` but also return data representing the names of the features.
-
-        This is useful when debugging the model.
-        """
-        # The default implementation doesn't return any names, but you can customize this in
-        # subclasses.
-        return self.get_features(x), {}
 
     # TODO Define the output type when we better understand what we need here.
     def explain(self, x: X):

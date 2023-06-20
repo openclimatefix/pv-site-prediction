@@ -23,7 +23,6 @@ from psp.utils.maths import safe_div
 def _make_feature_chart(
     name: str,
     feature_obj: np.ndarray,
-    feature_names: list[str] | None,
     horizon_idx: int,
     num_horizons: int,
 ) -> alt.Chart:
@@ -42,42 +41,20 @@ def _make_feature_chart(
 
     chart: alt.Chart | None = None
 
-    # Guess what we should plot based on the dimension.
-    if ndim == 1:
-        if shape[0] == num_horizons:
-            chart = (
-                alt.Chart(pd.DataFrame({name: feature_obj, "horizon": range(num_horizons)}))
-                .mark_circle()
-                .encode(x="horizon", y=name)
-                .properties(height=75, width=700)
-                + vline
-            )
-    elif ndim == 2:
-        if shape[0] == num_horizons:
-            if feature_names is not None:
-                assert len(feature_names) == shape[1]
-            data = (
-                pd.DataFrame(  # type: ignore
-                    feature_obj,
-                    columns=None if feature_names is None else feature_names,
-                )
-                .stack()
-                .to_frame("value")
-                .reset_index(names=["horizon", "feature"])
-            )
-            chart = (
-                alt.Chart()
-                .mark_circle()
-                .encode(x="horizon", y="value")
-                .properties(height=50, width=700)
-            )
-            chart = (
-                alt.layer(chart, vline, data=data)
-                .facet(row="feature")
-                .resolve_scale(y="independent")
-            )
+    # Right now all the features are 1D arrays with one value per horizon.
+    assert ndim == 1
+    assert shape[0] == num_horizons
+    chart = (
+        alt.Chart(pd.DataFrame({name: feature_obj, "horizon": range(num_horizons)}))
+        .mark_circle()
+        .encode(x="horizon", y=name)
+        .properties(height=75, width=700)
+        + vline
+    )
 
-    return None if chart is None else chart.properties(title=name)
+    chart = chart.properties(title=name)
+
+    return chart
 
 
 def time_rule(timestamp: Timestamp, text: str, align: Literal["left", "right"]) -> alt.Chart:
@@ -431,26 +408,12 @@ def plot_sample(
     print("*** FEATURES ***")
     for model_name, model in models.items():
         print(model_name)
-        features, feature_names = model.get_features_with_names(X(pv_id=pv_id, ts=ts))
+        features = model.get_features(X(pv_id=pv_id, ts=ts))
         for key, value in features.items():
-            if isinstance(value, (int, float)):
-                chart = None
-            else:
-                chart = _make_feature_chart(
-                    name=key,
-                    feature_obj=value,
-                    # We assume that the `feature_names` keys will match the `features`.
-                    feature_names=feature_names.get(key),
-                    horizon_idx=horizon_idx,
-                    num_horizons=num_horizons,
-                )
-            if chart is None:
-                print(key)
-                names = feature_names.get(key)
-                if names is not None:
-                    for name, v in zip(names, value):
-                        print(f"  {name}: {v}")
-                else:
-                    print(value)
-            else:
-                display(chart)
+            chart = _make_feature_chart(
+                name=key,
+                feature_obj=value,
+                horizon_idx=horizon_idx,
+                num_horizons=num_horizons,
+            )
+            display(chart)

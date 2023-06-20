@@ -194,19 +194,16 @@ class RecentHistoryModel(PvSiteModel):
         y = Y(powers=powers)
         return y
 
-    def get_features_with_names(self, x: X) -> tuple[Features, dict[str, list[str]]]:
-        features_with_names = self._get_features(x, with_names=True, is_training=False)
-        assert isinstance(features_with_names, tuple)
-        return features_with_names
-
     def get_features(self, x: X, is_training: bool = False) -> Features:
-        features = self._get_features(x, with_names=False, is_training=is_training)
+        features = self._get_features(x, is_training=is_training)
         assert not isinstance(features, tuple)
         return features
 
-    def _get_features(
-        self, x: X, with_names: bool, is_training: bool
-    ) -> Features | tuple[Features, dict[str, list[str]]]:
+    def _vectorize_feature(self, value: float) -> np.ndarray:
+        """Take a scalar feature and make it into a vector."""
+        return np.ones((len(self.config.horizons),), dtype=float) * value
+
+    def _get_features(self, x: X, is_training: bool) -> Features:
         features: Features = dict()
         data_source = self._pv_data_source.as_available_at(x.ts)
 
@@ -298,17 +295,21 @@ class RecentHistoryModel(PvSiteModel):
         poa_global_now = poa_global[-1]
         poa_global = poa_global[:-1]
 
+        # Features that start with '_' are not sent to the regressor but are used for
+        # things like normalization. See the regressor code.
+        features["_poa_global"] = poa_global
+        features["_capacity"] = self._vectorize_feature(capacity)
+
+        # In the case of poa_global, we also want to use as features.
         features["poa_global"] = poa_global
-        features["capacity"] = capacity
 
-        per_horizon_dict: dict[str, np.ndarray] = {
-            "poa_global": poa_global,
-        }
-
-        common_dict: dict[str, float] = {}
+        # In our current setup, features must be 1D numpy arrays (one value per
+        # horizon). However we do have some values that are the same for each horizon.
+        # We note them in this dictionary and we'll vectorize them later.
+        scalar_features: dict[str, float] = {}
 
         if self._version >= 2 and self._use_capacity_as_feature:
-            common_dict["capacity"] = capacity if np.isfinite(capacity) else -1.0
+            scalar_features["capacity"] = capacity if np.isfinite(capacity) else -1.0
 
         for agg in ["max", "mean", "median"]:
             # When the array is empty or all nan, numpy emits a warning. We don't care about those
@@ -320,8 +321,8 @@ class RecentHistoryModel(PvSiteModel):
                 aggregated = getattr(np, "nan" + agg)(history, axis=1)
 
             assert len(aggregated) == len(self.config.horizons)
-            per_horizon_dict["h_" + agg + "_nan"] = np.isnan(aggregated) * 1.0
-            per_horizon_dict["h_" + agg] = np.nan_to_num(aggregated)
+            features["h_" + agg + "_nan"] = np.isnan(aggregated) * 1.0
+            features["h_" + agg] = np.nan_to_num(aggregated)
 
         # Consider the NWP data in a small region around around our PV.
         if self._use_nwp:
@@ -359,11 +360,8 @@ class RecentHistoryModel(PvSiteModel):
                 var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
                 var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
 
-                per_horizon_dict[variable] = var_per_horizon
-                per_horizon_dict[variable + "_isnan"] = var_per_horizon_is_nan
-
-        # Concatenate all the per-horizon features in a matrix of dimensions (horizon, features)
-        per_horizon = np.stack(list(per_horizon_dict.values()), axis=-1)
+                features[variable] = var_per_horizon
+                features[variable + "_isnan"] = var_per_horizon_is_nan
 
         # Get the recent power.
         recent_power = float(
@@ -375,24 +373,15 @@ class RecentHistoryModel(PvSiteModel):
         if self._normalize_features:
             recent_power = safe_div(recent_power, poa_global_now * capacity)
 
-        common_dict["recent_power"] = 0.0 if recent_power_nan else recent_power
-        common_dict["recent_power_nan"] = recent_power_nan * 1.0
+        scalar_features["recent_power"] = 0.0 if recent_power_nan else recent_power
+        scalar_features["recent_power_nan"] = recent_power_nan * 1.0
 
         if self._version >= 2:
-            common_dict["poa_global_now_is_zero"] = poa_global_now == 0.0
+            scalar_features["poa_global_now_is_zero"] = poa_global_now == 0.0
 
-        features["per_horizon"] = per_horizon
-        features["common"] = np.array(list(map(float, common_dict.values())))
-        if with_names:
-            return (
-                features,
-                {
-                    "per_horizon": list(per_horizon_dict.keys()),
-                    "common": list(common_dict.keys()),
-                },
-            )
-        else:
-            return features
+        return features | {
+            key: self._vectorize_feature(value) for key, value in scalar_features.items()
+        }
 
     def train(
         self, train_iter: Iterable[Batch], valid_iter: Iterable[Batch], batch_size: int
@@ -401,8 +390,8 @@ class RecentHistoryModel(PvSiteModel):
 
     def explain(self, x: X):
         """Return the internal regressor's explain."""
-        features, feature_names = self.get_features_with_names(x)
-        explanation = self._regressor.explain(features, feature_names)
+        features = self.get_features(x)
+        explanation = self._regressor.explain(features)
         return explanation
 
     def _v7_get_capacity(self, dataset: xr.Dataset) -> float:
