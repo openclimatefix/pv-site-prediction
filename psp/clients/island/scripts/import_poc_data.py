@@ -4,7 +4,6 @@ import argparse
 import os
 
 import pandas as pd
-import pytz
 import xarray as xr
 
 
@@ -48,31 +47,6 @@ def load_all_hourly(parent_folder_path):
     return all_combined_df_sort
 
 
-def convert_to_utc(df, source_timezone):
-
-    # Create timezone objects for source and target (UTC) timezones
-    source_tz = pytz.timezone(source_timezone)
-    target_tz = pytz.UTC
-
-    if not isinstance(df.index, pd.DatetimeIndex):
-        # Convert the "datetime" column to a DatetimeIndex
-        df["Datetime"] = pd.to_datetime(df["Datetime"])
-        df.set_index("Datetime", inplace=True)
-
-    # Localize the DatetimeIndex to the source timezone, handling ambiguous and non-existent times
-    df_source_tz = df.index.tz_localize(source_tz, ambiguous="NaT", nonexistent="NaT")
-
-    # Convert the DatetimeIndex to the target timezone (UTC)
-    df_utc = df_source_tz.tz_convert(target_tz)
-
-    # Set the DatetimeIndex as a column in the DataFrame
-    df["datetimeUTC"] = df_utc
-
-    df.set_index("datetimeUTC", inplace=True)
-
-    return df
-
-
 # 2. Convert into usable format (Transpose of hours)
 def transpose_data(df):
 
@@ -103,23 +77,9 @@ def transpose_data(df):
     # Sort the DataFrame based on the 'Datetime' column
     melted_sorted = melted.sort_values(by="Datetime")
 
-    melted_sorted.rename(columns={"value": "Hourly PV Generated Units"}, inplace=True)
+    melted_sorted.rename(columns={"value": "power"}, inplace=True)
 
     return melted_sorted
-
-
-def _dataframe_to_dataset(df):
-    # df = df.rename(columns={"Datetime": "timestamp"})
-    df = df.set_index("timestamp")
-
-    data_array = xr.Dataset(df)
-
-    # data_array = data_array.rename({"Hourly PV Generated Units": "power"})
-    # data_array = data_array.rename({"Total Max Capacity": "capacity"})
-
-    data_array = data_array.expand_dims({"id": [0]})
-
-    return data_array
 
 
 def _from_tz_and_filter(df: pd.DataFrame, time_col: str, tz: str):
@@ -147,7 +107,6 @@ def main():
     df = df.rename(
         columns={
             "Datetime": "timestamp",
-            "Hourly PV Generated Units": "power",
             "Total Max Capacity": "capacity",
         }
     )
@@ -183,7 +142,7 @@ def main():
     df = df.sort_values("timestamp")
 
     # df["timestamp"] = df["timestamp"].dt.tz_localize("Europe/Malta", ambiguous="NaT",
-    nonexistent="NaT")
+    # nonexistent="NaT")
 
     # df = df[~pd.isna(df["timestamp"])]
 
@@ -197,6 +156,9 @@ def main():
     ds = df.to_xarray()
 
     ds = ds.expand_dims(pv_id=["0"])
+
+    # ds = ds.assign_coords(latitude=("pv_id", [35.9]))
+    # ds = ds.assign_coords(longitude=("pv_id", [14.5]))
 
     ds = ds.assign_coords(latitude=("pv_id", [35.87420752836937]))
     ds = ds.assign_coords(longitude=("pv_id", [14.451608933898406]))
