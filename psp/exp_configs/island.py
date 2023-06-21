@@ -14,7 +14,8 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = (
-    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/data_hourly_MW_dstfix_clean_v2.nc"
+    "./patate.nc"
+    # "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v8_hacky.nc"
 )
 NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
 
@@ -30,24 +31,24 @@ class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_TARGET_DATA_PATH,
-            id_dim_name="id",
-            timestamp_dim_name="datetimeUTC",
-            rename={
-                "Hourly PV Generated Units (MW)": "power",
-                "Total Max Capacity (MW)": "capacity",
-            },
+            # id_dim_name="id",
+            timestamp_dim_name="timestamp",
+            # rename={
+            # "Hourly PV Generated Units (MW)": "power",
+            # "Total Max Capacity (MW)": "capacity",
+            # },
         )
 
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=NetcdfPvDataSource(
                 PV_TARGET_DATA_PATH,
-                id_dim_name="id",
-                timestamp_dim_name="datetimeUTC",
-                rename={
-                    "Hourly PV Generated Units (MW)": "power",
-                    "Total Max Capacity (MW)": "capacity",
-                },
+                # id_dim_name="id",
+                timestamp_dim_name="timestamp",
+                # rename={
+                # "Hourly PV Generated Units (MW)": "power",
+                # "Total Max Capacity (MW)": "capacity",
+                # },
                 lag_minutes=5 * 24 * 60,
             ),
             nwp_data_source=NwpDataSource(
