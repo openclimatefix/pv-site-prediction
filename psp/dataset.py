@@ -240,6 +240,7 @@ class TrainDateSplit:
 
     train_date: datetime
     train_days: int
+    min_date: datetime | None = None
 
 
 @dataclasses.dataclass
@@ -268,6 +269,7 @@ def auto_date_split(
     *,
     train_days: int,
     num_trainings: int = 1,
+    min_train_date: datetime | None = None
 ) -> DateSplits:
     """Make a `DateSplits` that tests on a given time range and trains
     `num_trainings` times evenly spaced.
@@ -281,6 +283,7 @@ def auto_date_split(
         TrainDateSplit(
             train_date=d0 + timedelta(days=i * num_days_test // num_trainings),
             train_days=train_days,
+            min_date=min_train_date,
         )
         for i in range(num_trainings)
     ]

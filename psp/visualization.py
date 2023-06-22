@@ -192,7 +192,7 @@ def _make_pv_timeseries_chart(
             # opacity=0.8,
             # width=3,
             size=3,
-            point=alt.OverlayMarkDef(size=10, opacity=1),
+            point=alt.OverlayMarkDef(size=30, opacity=1),
         )
         .encode(
             x=alt.X("timestamp", title="Time", axis=x_axis),

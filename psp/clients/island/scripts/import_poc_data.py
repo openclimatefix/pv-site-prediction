@@ -117,19 +117,20 @@ def main():
     df = df[["timestamp", "power", "capacity"]]
     df = _from_tz_and_filter(df, "timestamp", "Europe/Malta")
 
-    # d0 = dt.datetime(2021, 1, 1)
-    # df_1 = df[df["timestamp"] < d0]
-    # df_2 = df[df["timestamp"] >= d0]
+    import datetime as dt
+    d0 = dt.datetime(2021, 1, 1)
+    df_1 = df[df["timestamp"] < d0]
+    df_2 = df[df["timestamp"] >= d0]
 
-    # summer = (df_1["timestamp"].dt.month >= 4) & (df_1["timestamp"].dt.month <= 10)
+    summer = (df_1["timestamp"].dt.month >= 4) & (df_1["timestamp"].dt.month <= 10)
 
-    # df_1.loc[summer, "timestamp"] = df_1.loc[summer, "timestamp"] + pd.Timedelta(hours=1)
+    df_1.loc[summer, "timestamp"] = df_1.loc[summer, "timestamp"] + pd.Timedelta(hours=0.5)
 
     # summer_2 = (df_2["timestamp"].dt.month >= 4) & (df_2["timestamp"].dt.month <= 10)
 
     # df_2.loc[summer_2, "timestamp"] -= pd.Timedelta(hours=0.25)
 
-    # df = pd.concat([df_1, df_2])
+    df = pd.concat([df_1, df_2])
 
     # summer_3 = (
     #     (df["timestamp"].dt.month >= 4)

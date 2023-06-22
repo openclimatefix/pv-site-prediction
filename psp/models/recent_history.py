@@ -7,7 +7,6 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 import xarray as xr
-
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -94,7 +93,7 @@ def minutes_since_start_of_day(ts: datetime) -> float:
 # changes to the model. We can then adapt the `RecentHistoryModel.set_state` method to take it into
 # account. It's also a good idea to add a new model fixture to the `test_load_models.py` test file
 # whenever we bump this, using a simplified config file like test_config1.py (to get a small model).
-_VERSION = 8
+_VERSION = 14
 
 # To get the metadata (tilt, orientation, capacity), we need a function that takes in
 # the recent PV history and returns the value.
@@ -253,7 +252,12 @@ class RecentHistoryModel(PvSiteModel):
         extra_var = set(data.coords).difference(["ts"])
         data = data.drop_vars(extra_var)
 
-        # As usual we normalize the PV data wrt irradiance and our PV "factor".
+        # 12: norm diffuse
+        # 13: norm diffuse but add poa_global
+        # 14: sins
+        norm_col = "poa_diffuse" if self._version >= 12 else "poa_global"
+
+        # As usual we normalize the PV data wrt irradiance and capacity.
         # Using `safe_div` with `np.nan` fallback to get `nan`s instead of `inf`. The `nan` are
         # ignored in `compute_history_per_horizon`.
         if self._normalize_features:
@@ -265,7 +269,7 @@ class RecentHistoryModel(PvSiteModel):
                 tilt=tilt,
                 orientation=orientation,
             )
-            norm_data = safe_div(data, irr1["poa_global"].to_numpy() * capacity, fallback=np.nan)
+            norm_data = safe_div(data, irr1[norm_col].to_numpy() * capacity, fallback=np.nan)
         else:
             norm_data = data
 
@@ -294,21 +298,45 @@ class RecentHistoryModel(PvSiteModel):
 
         # TODO Should we use the other values from `get_irradiance` other than poa_global?
         poa_global: np.ndarray = irr2.loc[:, "poa_global"].to_numpy()
+        poa_diffuse: np.ndarray = irr2.loc[:, "poa_diffuse"].to_numpy()
 
         poa_global_now = poa_global[-1]
         poa_global = poa_global[:-1]
+        poa_diffuse_now = poa_diffuse[-1]
+        poa_diffuse = poa_diffuse[:-1]
 
-        features["poa_global"] = poa_global
+        features["poa_global"] = poa_diffuse if self._version >= 12 else poa_global
         features["capacity"] = capacity
 
         per_horizon_dict: dict[str, np.ndarray] = {
             "poa_global": poa_global,
         }
 
+        if self._version >= 13:
+            per_horizon_dict["poa_diffuse"] = poa_diffuse
+
         common_dict: dict[str, float] = {}
 
         if self._version >= 2 and self._use_capacity_as_feature:
             common_dict["capacity"] = capacity if np.isfinite(capacity) else -1.0
+
+        if self._version >= 9:
+            per_horizon_dict["hour"] = np.array(
+                [
+                    (x.ts + timedelta(minutes=hor)).hour
+                    # FIXME add minutes
+                    for hor, _ in self.config.horizons
+                ]
+            )
+
+            if self._version >= 14:
+                per_horizon_dict['hour'] = np.sin(per_horizon_dict['hour'] / 24 * np.pi * 2.)
+
+        if self._version >= 11:
+            common_dict["doy"] = x.ts.timetuple().tm_yday
+            if self._version >= 14:
+                common_dict['doy'] = np.sin(x.ts.timetuple().tm_yday / 365 * 2 * np.pi)
+
 
         for agg in ["max", "mean", "median"]:
             # When the array is empty or all nan, numpy emits a warning. We don't care about those
@@ -322,6 +350,11 @@ class RecentHistoryModel(PvSiteModel):
             assert len(aggregated) == len(self.config.horizons)
             per_horizon_dict["h_" + agg + "_nan"] = np.isnan(aggregated) * 1.0
             per_horizon_dict["h_" + agg] = np.nan_to_num(aggregated)
+
+            if self._version >= 10:
+                var_over_capacity = aggregated / capacity
+                per_horizon_dict["h_" + agg + "_over_cap"] = np.nan_to_num(var_over_capacity)
+                per_horizon_dict["h_" + agg + "_over_cap_nan"] = np.isnan(var_over_capacity) * 1.0
 
         # Consider the NWP data in a small region around around our PV.
         if self._use_nwp:

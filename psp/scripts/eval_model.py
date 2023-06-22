@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import torch
 import tqdm
-
 from psp.dataset import pv_list_to_short_str
 from psp.exp_configs.base import EvalConfigBase
 from psp.metrics import Metric, mean_absolute_error
@@ -36,13 +35,21 @@ _log = logging.getLogger(__name__)
     type=int,
     show_default=True,
     help="Maximum number of samples to consider."
-    'Defaults to 1000 if no --frequency-minutes is provided; otherwise defaults to "no limit."',
+    "Defaults to 1000 unless --sequential is passed, then defaults to no limit",
 )
 @click.option(
-    "--frequency-minutes",
+    "--step-minutes",
     type=int,
-    help="Frequency at which to generate forecasts."
+    help="Samples will have a rounded timestamp to that number of minutes."
     "If this is not specified, the samples will be chosen at random.",
+    default=1,
+    show_default=True,
+)
+@click.option(
+    "--sequential",
+    is_flag=True,
+    help="By default we pick samples at random. Use this flag to run for all the timestamps."
+    "The --step-minutes determines the frequency of the samples in time.",
 )
 @click.option(
     "--eval-config",
@@ -80,7 +87,8 @@ def main(
     log_level,
     eval_config,
     new_exp_name,
-    frequency_minutes,
+    sequential: bool,
+    step_minutes: int,
     test_start,
     test_end,
 ):
@@ -92,7 +100,7 @@ def main(
     assert split_name in ["train", "test"]
 
     # Add some default in non-random mode.
-    if limit is None and frequency_minutes is None:
+    if limit is None and not sequential:
         limit = 1000
 
     # This fixes problems when loading files in parallel on GCP.
@@ -144,8 +152,6 @@ def main(
 
     random_state = np.random.RandomState(1234)
 
-    step = frequency_minutes if frequency_minutes is not None else 1
-
     # Use a torch DataLoader to create samples efficiently.
     data_loader = make_data_loader(
         data_source=pv_data_source,
@@ -157,8 +163,8 @@ def main(
         random_state=random_state,
         get_features=model.get_features,
         num_workers=num_workers,
-        shuffle=frequency_minutes is None,
-        step=step,
+        shuffle=not sequential,
+        step=step_minutes,
         limit=limit,
     )
 
@@ -171,7 +177,8 @@ def main(
         for i, sample in tqdm.tqdm(
             enumerate(data_loader),
             # Use rule of thumb when we don't have a `limit`.
-            total=limit or ((test_end - test_start).total_seconds() / 60.0) // step * len(pv_ids),
+            total=limit or ((test_end - test_start).total_seconds() / 60.0) //
+            step_minutes * len(pv_ids),
         ):
             x = sample.x
 

@@ -138,6 +138,9 @@ def main(
             date - dt.timedelta(days=train_date_split.train_days),
             pv_data_source.min_ts(),
         )
+        if train_date_split.min_date:
+            start_ts = max(start_ts, train_date_split.min_date)
+
         end_ts = date
         _log.info(f"Train time range: [{start_ts}, {end_ts}]")
 
@@ -148,6 +151,8 @@ def main(
             shuffle=True,
             start_ts=start_ts,
             end_ts=end_ts,
+            # FIXME
+            step=60,
         )
 
         train_data_loader = make_data_loader(

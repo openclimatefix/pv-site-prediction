@@ -3,6 +3,7 @@
 import argparse
 import pathlib
 
+import numpy as np
 import ocf_blosc2  # noqa: F401
 import xarray
 
@@ -17,6 +18,14 @@ def inspect(path: pathlib.Path, *, engine: str):
         data = ds.coords[coord]
         print(" min:", data.min().values)
         print(" max:", data.max().values)
+
+    for var in ds.data_vars:
+        x = ds[var].values.flatten()
+        x = x[:: len(x) // 1000]
+        print()
+        print("Var", var, ("approx"))
+        for func in [np.min, np.max, np.mean, np.median]:
+            print(f" {func.__name__}:", func(x))
 
 
 def _parse_args():
