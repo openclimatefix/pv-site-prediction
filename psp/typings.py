@@ -66,7 +66,11 @@ class Horizons:
 class Y:
     """Output for a PV site model."""
 
+    # Power predictions for each horizon. `np.nan` means no prediction.
     powers: np.ndarray
+
+    def __eq__(self, other) -> bool:
+        return np.array_equal(self.powers, other.powers, equal_nan=True)
 
 
 # At the moment we assume that each feature is a 1D array of shape `(num_horizons,)`.
