@@ -91,10 +91,14 @@ class TrainDateSplit:
 
     train_date: The date at which we are training.
     train_days: The maximum number of days to use, prior to `train_date`.
+    step_minutes: Round the sample timestamps to this value. Useful if the
+        target data is, say, only every 60 minutes and we can assume that we'll
+        only use the model for round hours.
     """
 
     train_date: datetime
     train_days: int
+    step_minutes: int = 1
 
 
 @dataclasses.dataclass
@@ -103,10 +107,12 @@ class TestDateSplit:
 
     start_date: Start date of the test set.
     end_date: End date of the test set.
+    step_minutes: Round the sample timestamps to this value.
     """
 
     start_date: datetime
     end_date: datetime
+    step_minutes: int = 1
 
 
 @dataclasses.dataclass
@@ -123,27 +129,50 @@ def auto_date_split(
     *,
     train_days: int,
     num_trainings: int = 1,
+    step_minutes: int = 1,
+    min_train_date: datetime | None = None,
 ) -> DateSplits:
     """Make a `DateSplits` that tests on a given time range and trains
     `num_trainings` times evenly spaced.
+
+    Arguments:
+    ---------
+    test_start_date: Start of the test range.
+    test_end_date: End of the test range.
+    train_days: How many days to train on, for a given training. The actual num of days can be lower
+        if there is no ground truth data or if we pass a `min_train_date`.
+    num_trainings: How many trainings to make. They will be evenly spaced on the test time range.
+    step_minutes: Training and testing timestamps will be rounded to this value.
+    min_train_date: Make sure trainings don't start before that date, ignoring `train_days` if need
+        be.
     """
     train_splits: list[TrainDateSplit] = []
 
     d0 = test_start_date - timedelta(days=1)
     num_days_test = (test_end_date - d0).days
 
-    train_splits = [
-        TrainDateSplit(
-            train_date=d0 + timedelta(days=i * num_days_test // num_trainings),
-            train_days=train_days,
+    train_splits = []
+    for i in range(num_trainings):
+        train_date = d0 + timedelta(days=i * num_days_test // num_trainings)
+        start_date = train_date - timedelta(days=train_days)
+        if min_train_date is not None and start_date < min_train_date:
+            start_date = min_train_date
+
+        assert start_date < train_date
+
+        tds = TrainDateSplit(
+            train_date=train_date,
+            train_days=(train_date - start_date).days,
+            step_minutes=step_minutes,
         )
-        for i in range(num_trainings)
-    ]
+
+        train_splits.append(tds)
 
     return DateSplits(
         train_date_splits=train_splits,
         test_date_split=TestDateSplit(
             start_date=test_start_date,
             end_date=test_end_date,
+            step_minutes=step_minutes,
         ),
     )

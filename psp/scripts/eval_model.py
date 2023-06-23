@@ -34,13 +34,7 @@ _log = logging.getLogger(__name__)
     type=int,
     show_default=True,
     help="Maximum number of samples to consider."
-    'Defaults to 1000 if no --frequency-minutes is provided; otherwise defaults to "no limit."',
-)
-@click.option(
-    "--frequency-minutes",
-    type=int,
-    help="Frequency at which to generate forecasts."
-    "If this is not specified, the samples will be chosen at random.",
+    "Defaults to 1000 unless --sequential is passed, then defaults to no limit",
 )
 @click.option(
     "--eval-config",
@@ -69,6 +63,12 @@ _log = logging.getLogger(__name__)
     type=click.DateTime(),
     help="End date for the test set. Defaults to the end date specified in the config.",
 )
+@click.option(
+    "--sequential",
+    is_flag=True,
+    help="By default we pick samples at random. Use this flag to run for all the timestamps."
+    "The --step-minutes determines the frequency of the samples in time.",
+)
 def main(
     exp_root,
     exp_name,
@@ -78,9 +78,9 @@ def main(
     log_level,
     eval_config,
     new_exp_name,
-    frequency_minutes,
     test_start,
     test_end,
+    sequential: bool,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -90,7 +90,7 @@ def main(
     assert split_name in ["train", "test"]
 
     # Add some default in non-random mode.
-    if limit is None and frequency_minutes is None:
+    if limit is None and not sequential:
         limit = 1000
 
     if num_workers > 0:
@@ -138,15 +138,16 @@ def main(
     pv_splits = exp_config.make_pv_splits(pv_data_source)
     pv_ids = getattr(pv_splits, split_name)
 
-    test_start = test_start or date_splits.test_date_split.start_date
-    test_end = test_end or date_splits.test_date_split.end_date
+    test_date_split = date_splits.test_date_split
+    test_start = test_start or test_date_split.start_date
+    test_end = test_end or test_date_split.end_date
 
     _log.info(f"Evaluating on PV split: {pv_list_to_short_str(pv_ids)}")
     _log.info(f"Time range: [{test_start}, {test_end}]")
 
     random_state = np.random.RandomState(1234)
 
-    step = frequency_minutes if frequency_minutes is not None else 1
+    step = test_date_split.step_minutes
 
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader
@@ -161,7 +162,7 @@ def main(
         random_state=random_state,
         get_features=model.get_features,
         num_workers=num_workers,
-        shuffle=frequency_minutes is None,
+        shuffle=not sequential,
         step=step,
         limit=limit,
     )
@@ -218,7 +219,7 @@ def main(
     output_dir = exp_root / (new_exp_name or exp_name)
     print(f"Saving results to {output_dir}")
     output_dir.mkdir(exist_ok=True)
-    df.to_csv(output_dir / f"{split_name}_errors.csv", index=False)
+    df.to_csv(output_dir / f"{split_name}_errors.csv.gz", index=False)
 
 
 if __name__ == "__main__":

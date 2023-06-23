@@ -131,18 +131,20 @@ def main(
     # Dataset
     pv_splits = exp_config.make_pv_splits(pv_data_source)
 
-    date_splits = exp_config.get_date_splits()
+    train_date_splits = exp_config.get_date_splits().train_date_splits
 
     _log.info(f"Train PVs: {pv_list_to_short_str(pv_splits.train)}")
     _log.info(f"Valid PVs: {pv_list_to_short_str(pv_splits.valid)}")
 
-    for i, train_date_split in enumerate(date_splits.train_date_splits):
+    for i, train_date_split in enumerate(train_date_splits):
         date = train_date_split.train_date
+
         start_ts = max(
             date - dt.timedelta(days=train_date_split.train_days),
             pv_data_source.min_ts(),
         )
         end_ts = date
+
         _log.info(f"Train time range: [{start_ts}, {end_ts}]")
 
         data_loader_kwargs = dict(
@@ -152,6 +154,7 @@ def main(
             shuffle=True,
             start_ts=start_ts,
             end_ts=end_ts,
+            step=train_date_split.step_minutes,
         )
 
         # Delay this slow import here (because of pytorch).
