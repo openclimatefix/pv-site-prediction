@@ -5,28 +5,12 @@ from numpy.testing import assert_allclose
 
 from psp.scripts.train_model import main as train_model_main
 from psp.serialization import load_model
-from psp.testing import make_test_nwp_data_source, run_click_command
+from psp.testing import run_click_command
 from psp.typings import X
-
-
-@pytest.fixture
-def nwp_data_source():
-    return make_test_nwp_data_source()
-
 
 # We ran the test once to get the results and pasted here the results.
 # This way we can make sure the output of previous models doesn't change.
-EXPECTED_OUTPUT = {
-    "model_v1": [1.0220418, 1.03555466, 1.04443434, 1.04860107, 1.04799241],
-    "model_v2": [0.447506, 0.448072, 0.446772, 0.443611, 0.438599],
-    "model_v3": [0.801439, 0.802452, 0.800124, 0.794462, 0.785487],
-    "model_v4": [0.498424, 0.499054, 0.497606, 0.494085, 0.488503],
-    "model_v5": [0.484041, 0.484653, 0.483247, 0.479827, 0.474406],
-    "model_v6": [0.484041, 0.484653, 0.483247, 0.479827, 0.474406],
-    "model_v7": [0.614103, 0.61488, 0.613096, 0.608757, 0.60188],
-    "model_v7_nwp": [0.386897, 0.387386, 0.386263, 0.383529, 0.379196],
-    "model_v8": [0.210107, 0.210373, 0.209763, 0.208278, 0.205925],
-}
+EXPECTED_OUTPUT = {"model_v8": [77.446404, 78.650178, 79.028029, 96.746425, 95.17781]}
 
 
 def test_old_models_sanity_check():

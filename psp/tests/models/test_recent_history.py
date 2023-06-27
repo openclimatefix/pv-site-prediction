@@ -1,11 +1,15 @@
 import datetime as dt
 
 import numpy as np
+import pandas as pd
+import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
 
+from psp.data_sources.nwp import NwpDataSource
 from psp.models.recent_history import compute_history_per_horizon
-from psp.typings import Horizons
+from psp.serialization import load_model
+from psp.typings import Horizons, X
 
 
 def test_compute_history_per_horizon():
@@ -65,3 +69,94 @@ def test_compute_history_per_horizon():
     )
 
     assert_array_equal(expected_history, history)
+
+
+def _predict(pv_data_source, nwp_data_source, ts=dt.datetime(2020, 1, 10), pv_id="8229"):
+    """Predict for given data sources.
+
+    Common code for the test_predict_* tests.
+    """
+    # We load some model, it could be any model really.
+    model = load_model("psp/tests/fixtures/models/model_v8.pkl")
+
+    model.set_data_sources(
+        pv_data_source=pv_data_source,
+        nwp_data_source=nwp_data_source,
+    )
+
+    return model.predict(X(ts=ts, pv_id=pv_id))
+
+
+def test_predict_with_missing_features(pv_data_source, nwp_data_source):
+    """Test that if we `predict` with missing features results in an error."""
+    nwp_data_source._data = nwp_data_source._data.drop_isel(variable=0)
+
+    with pytest.raises(RuntimeError) as e:
+        _predict(pv_data_source, nwp_data_source)
+    assert "was trained on features" in str(e.value)
+
+
+def test_predict_with_extra_features(pv_data_source, nwp_data_source):
+    """Test that if we `predict` with extra features results in an error."""
+    nwp_data_source._data = nwp_data_source._data.drop_isel(variable=0)
+    nwp_data = nwp_data_source._data
+
+    # Add an extra variable
+    var_d = nwp_data.sel(variable="hcc")
+    var_d.coords["variable"] = "patate"
+    nwp_data = xr.concat([nwp_data, var_d], dim="variable")
+    nwp_data_source = NwpDataSource(nwp_data)
+
+    with pytest.raises(RuntimeError) as e:
+        _predict(pv_data_source, nwp_data_source)
+    assert "was trained on features" in str(e.value)
+
+
+@pytest.mark.parametrize("reindex", [True, False])
+def test_predict_with_features_in_wrong_order(pv_data_source, nwp_data_source, reindex):
+    """Test that swapping features around doesn't change anything (as long as their names remain
+    the same).
+    """
+    # We test many combinaisons because sometimes we randomly get the same output (e.g. if the NWP
+    # variables are the same).
+    all_close = True
+    for ts in pd.date_range(dt.datetime(2020, 1, 6, 10), dt.datetime(2020, 1, 10, 10), freq="24h"):
+        for pv_id in ["8215", "8229"]:
+
+            y1 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)
+
+            variables = list(nwp_data_source._data.coords["variable"].values)
+            reversed_variables = variables[::-1]
+
+            # Swap the NWP variables around.
+            if reindex:
+                # This swaps the variable names but also the values, i.e. everything should be fine.
+                nwp_data_source._data = nwp_data_source._data.reindex(
+                    {"variable": reversed_variables}
+                )
+
+            else:
+                # This only swaps the names but not the values so we will get a different output
+                # value.
+                # Note that you could be unlucky and have this do nothing if for instance the model
+                # doesn't use those features.
+                nwp_data_source._data = nwp_data_source._data.assign_coords(
+                    variable=("variable", reversed_variables)
+                )
+
+            y2 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)
+
+            if abs(y1.powers - y2.powers).mean() > 1e-6:
+                all_close = False
+                break
+
+        if not all_close:
+            break
+
+    if reindex:
+        # When we reindex (move the variable names AND the values), everything should be fine.
+        assert all_close
+    else:
+        # When we don't properly reindex, and only mix the variable names, then we should get
+        # different output.
+        assert not all_close

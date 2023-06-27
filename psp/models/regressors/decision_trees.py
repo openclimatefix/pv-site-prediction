@@ -46,7 +46,9 @@ class SklearnRegressor(Regressor):
 
         self._version = _VERSION
 
-    def _prepare_features(self, features: BatchedFeatures) -> tuple[np.ndarray, list[str]]:
+    def _prepare_features(
+        self, features: BatchedFeatures, *, is_training: bool
+    ) -> tuple[np.ndarray, list[str]]:
         """Build a (sample, feature)-shaped matrix from (batched) features.
 
         Optionally also build a list of feature names that match the columns.
@@ -58,8 +60,24 @@ class SklearnRegressor(Regressor):
         """
         # Ignore the features that start with an underscore.
         feature_names = list([n for n in features if not n.startswith("_")])
-        # Stack all the features together
-        new_features = np.stack([features[n] for n in feature_names], axis=-1)
+
+        if is_training:
+            # At train-time, we note the feature names.
+            # We make a copy because this list is modified later.
+            self._feature_names = list(feature_names)
+        else:
+            # At evaluation-time, we make sure that the feature names are the same as at train-time.
+            feature_set = set(feature_names)
+            train_feature_set = set(self._feature_names)
+
+            if feature_set != train_feature_set:
+                raise RuntimeError(
+                    f"regressor was trained on features {train_feature_set} != {feature_set}"
+                )
+
+        # Stack all the features together. Note that we stack them in the order they were seen at
+        # train time.
+        new_features = np.stack([features[n] for n in self._feature_names], axis=-1)
 
         n_batch, n_horizon, n_features = new_features.shape
         assert n_features == len(feature_names)
@@ -106,7 +124,7 @@ class SklearnRegressor(Regressor):
         batch = concat_batches(batches)
 
         # Make it into a (sample, features)-shaped matrix.
-        xs, _ = self._prepare_features(batch.features)
+        xs, _ = self._prepare_features(batch.features, is_training=True)
 
         # (batch, horizon)
         poa = batch.features["_poa_global"]
@@ -146,7 +164,7 @@ class SklearnRegressor(Regressor):
         self._regressor.fit(xs, ys, sample_weight=sample_weight)
 
     def predict(self, features: Features):
-        new_features, _ = self._prepare_features(batch_features([features]))
+        new_features, _ = self._prepare_features(batch_features([features]), is_training=False)
         pred = self._regressor.predict(new_features)
         assert len(pred.shape) == 1
 
@@ -170,7 +188,7 @@ class SklearnRegressor(Regressor):
 
         batch = batch_features([features])
 
-        new_features, new_feature_names = self._prepare_features(batch)
+        new_features, new_feature_names = self._prepare_features(batch, is_training=False)
 
         explainer = shap.Explainer(self._regressor, feature_names=new_feature_names)
         shap_values = explainer(new_features)
