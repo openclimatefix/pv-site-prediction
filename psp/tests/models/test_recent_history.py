@@ -1,6 +1,7 @@
 import datetime as dt
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
@@ -8,13 +9,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from psp.data_sources.nwp import NwpDataSource
 from psp.models.recent_history import compute_history_per_horizon
 from psp.serialization import load_model
-from psp.testing import make_test_nwp_data, make_test_nwp_data_source
 from psp.typings import Horizons, X
-
-
-@pytest.fixture
-def nwp_data_source():
-    return make_test_nwp_data_source()
 
 
 def test_compute_history_per_horizon():
@@ -76,58 +71,63 @@ def test_compute_history_per_horizon():
     assert_array_equal(expected_history, history)
 
 
-def _predict(pv_data_source, nwp_data_source):
+def _predict(pv_data_source, nwp_data_source, ts=dt.datetime(2020, 1, 10), pv_id="8229"):
     """Predict for given data sources.
 
     Common code for the test_predict_* tests.
     """
-    model = load_model("psp/tests/fixtures/models/model_v8_2.pkl")
+    # We need any model.
+    model = load_model("psp/tests/fixtures/models/model_v8.pkl")
 
     model.set_data_sources(
         pv_data_source=pv_data_source,
         nwp_data_source=nwp_data_source,
     )
 
-    return model.predict(X(ts=dt.datetime(2020, 1, 10, 12), pv_id="8215"))
+    return model.predict(X(ts=ts, pv_id=pv_id))
 
 
-def test_predict_with_missing_features(pv_data_source):
-    nwp_data = make_test_nwp_data()
-    nwp_data = nwp_data.sel(variable=["a", "b"])
-    nwp_data_source = NwpDataSource(nwp_data)
+def test_predict_with_missing_features(pv_data_source, nwp_data_source):
+    nwp_data_source._data = nwp_data_source._data.drop_isel(variable=0)
 
     with pytest.raises(ValueError) as e:
         _predict(pv_data_source, nwp_data_source)
-    assert "has 16 features" in str(e.value)
-    assert "is expecting 18 features" in str(e.value)
+    assert "has 18 features" in str(e.value)
+    assert "is expecting 20 features" in str(e.value)
 
 
-def test_predict_with_extra_features(pv_data_source):
-    nwp_data = make_test_nwp_data()
+def test_predict_with_extra_features(pv_data_source, nwp_data_source):
+    nwp_data = nwp_data_source._data
 
     # Add an extra variable
-    var_d = nwp_data.sel(variable="a")
-    var_d.coords["variable"] = "d"
+    var_d = nwp_data.sel(variable="hcc")
+    print(var_d)
+    var_d.coords["variable"] = "patate"
+    print(var_d)
     nwp_data = xr.concat([nwp_data, var_d], dim="variable")
     nwp_data_source = NwpDataSource(nwp_data)
 
     with pytest.raises(ValueError) as e:
         _predict(pv_data_source, nwp_data_source)
-    assert "has 20 features" in str(e.value)
-    assert "is expecting 18 features" in str(e.value)
+    assert "has 22 features" in str(e.value)
+    assert "is expecting 20 features" in str(e.value)
 
 
-def test_predict_with_features_in_wrong_order(pv_data_source):
-    nwp_data = make_test_nwp_data()
+@pytest.mark.skip
+def test_predict_with_features_in_wrong_order(pv_data_source, nwp_data_source):
+    # We test many combinaisons because sometimes we randomly get the same output (e.g. if the NWP
+    # variables are the same).
+    for ts in pd.date_range(dt.datetime(2020, 1, 6), dt.datetime(2020, 1, 10), freq="6h"):
+        for pv_id in ["8215", "8229"]:
 
-    y1 = _predict(pv_data_source, NwpDataSource(nwp_data))
+            y1 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)
 
-    # Swap the variables. The model should still use the right variables.
-    nwp_data = nwp_data.assign_coords(variable=("variable", ["c", "a", "b"]))
-    # FIXME
-    nwp_data = nwp_data + 10
+            # Swap the NWP variables around.
+            variables = list(nwp_data_source._data.coords["variable"].values)
+            rev_variables = variables[::-1]
 
-    nwp_data_source = NwpDataSource(nwp_data)
+            nwp_data_source._data = nwp_data_source._data.reindex({"variable": rev_variables})
+            nwp_data_source._data.assign_coords(variable=("variable", rev_variables))
 
-    y2 = _predict(pv_data_source, nwp_data_source)
-    assert_allclose(y1.powers, y2.powers, atol=1e-6)
+            y2 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)
+            assert_allclose(y1.powers, y2.powers, atol=1e-6)

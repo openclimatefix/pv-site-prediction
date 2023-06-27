@@ -5,16 +5,26 @@ import datetime as dt
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingRegressor
 
+from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import DateSplits, PvSplits, TestDateSplit, TrainDateSplit
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
-from psp.testing import make_test_nwp_data_source
 from psp.typings import Horizons
 
-PV_DATA_PATH = "psp/tests/fixtures/pv_data.netcdf"
+PV_DATA_PATH = "psp/tests/fixtures/pv_data.nc"
+NWP_PATH = "psp/tests/fixtures/nwp.zarr"
+
+
+def _get_capacity(d):
+    # Use 0.99 quantile over the history window, fallback on the capacity as defined
+    # in the metadata.
+    value = float(d["power"].quantile(0.99))
+    if not np.isfinite(value):
+        value = float(d.coords["factor"].values)
+    return value
 
 
 class ExpConfig(ExpConfigBase):
@@ -27,9 +37,16 @@ class ExpConfig(ExpConfigBase):
         )
 
     def get_data_source_kwargs(self):
+        pv = self.get_pv_data_source()
         return dict(
-            pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=make_test_nwp_data_source(),
+            pv_data_source=pv,
+            nwp_data_source=NwpDataSource(
+                NWP_PATH,
+                coord_system=27700,
+                time_dim_name="init_time",
+                value_name="UKV",
+                y_is_ascending=False,
+            ),
         )
 
     def get_model_config(self):
@@ -49,14 +66,16 @@ class ExpConfig(ExpConfigBase):
             ),
             random_state=random_state,
             use_nwp=True,
-            pv_dropout=0.5,
+            # Make sure the NWP data is used by adding a lot of dropout on the PV data.
+            pv_dropout=0.9,
+            capacity_getter=_get_capacity,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
         return PvSplits(
-            train=["8215"],
-            valid=["8215"],
-            test=["8229"],
+            train=["8215", "8229"],
+            valid=["8215", "8229"],
+            test=["8215", "8229"],
         )
 
     def get_date_splits(self) -> DateSplits:
