@@ -13,9 +13,7 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_TARGET_DATA_PATH = (
-    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/data_hourly_MW_dstfix_clean_v2.nc"
-)
+PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
 NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
 
 
@@ -30,24 +28,12 @@ class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_TARGET_DATA_PATH,
-            id_dim_name="id",
-            timestamp_dim_name="datetimeUTC",
-            rename={
-                "Hourly PV Generated Units (MW)": "power",
-                "Total Max Capacity (MW)": "capacity",
-            },
         )
 
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=NetcdfPvDataSource(
                 PV_TARGET_DATA_PATH,
-                id_dim_name="id",
-                timestamp_dim_name="datetimeUTC",
-                rename={
-                    "Hourly PV Generated Units (MW)": "power",
-                    "Total Max Capacity (MW)": "capacity",
-                },
                 lag_minutes=5 * 24 * 60,
             ),
             nwp_data_source=NwpDataSource(
@@ -72,7 +58,7 @@ class ExpConfig(ExpConfigBase):
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=2048,
+                num_train_samples=4096,
                 normalize_targets=True,
             ),
             use_nwp=True,
@@ -93,5 +79,8 @@ class ExpConfig(ExpConfigBase):
             test_start_date=dt.datetime(2020, 10, 14),
             test_end_date=dt.datetime(2022, 10, 14),
             num_trainings=8,
-            train_days=365,
+            train_days=365 * 3,
+            # Min date because of NWP not available at the beginning of the PV data.
+            min_train_date=dt.datetime(2018, 11, 2),
+            step_minutes=60,
         )
