@@ -7,7 +7,12 @@ notebook:
 
 .PHONY: test
 test:
-	poetry run pytest psp/tests $(ARGS)
+	poetry run pytest psp/tests \
+		-n auto \
+		--maxprocesses 8 \
+		--verbose \
+		--durations=10 \
+		$(ARGS) 
 
 
 .PHONY: format
