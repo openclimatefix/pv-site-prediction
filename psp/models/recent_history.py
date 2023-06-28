@@ -40,6 +40,11 @@ def compute_history_per_horizon(
     # RecentHistory model.
     assert 24 * 60 % horizons.duration == 0
 
+    # Treat the trivial case.
+    num_values = np.prod(list(pv_data.sizes.values()))
+    if num_values == 0:
+        return np.empty((len(horizons), 1)) * np.nan
+
     df = pv_data.to_dataframe(name="value")
 
     # Make sure we ignore everything before `now`.

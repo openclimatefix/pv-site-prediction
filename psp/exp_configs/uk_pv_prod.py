@@ -158,7 +158,11 @@ SKIP_SS_IDS = [
 def _get_capacity(d):
     # Use 0.99 quantile over the history window, fallback on the capacity as defined
     # in the metadata.
-    value = float(d["power"].quantile(0.99))
+    try:
+        value = float(d["power"].quantile(0.99))
+    except TypeError:
+        # This exception happens if the data is empty.
+        value = np.nan
     if not np.isfinite(value):
         value = float(d.coords["capacity"].values)
     return value
