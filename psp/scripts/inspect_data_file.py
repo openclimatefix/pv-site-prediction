@@ -1,4 +1,7 @@
-"""Inspect a netcdf/zarr data file."""
+"""Inspect a netcdf/zarr data file.
+
+Print a summary view of the data files along with some statistics on the data.
+"""
 
 import argparse
 import pathlib
