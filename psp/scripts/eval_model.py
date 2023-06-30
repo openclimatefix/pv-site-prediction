@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 
-from psp.exp_configs.base import EvalConfigBase
+from psp.exp_configs.base import EvalConfigBase, TrainConfigBase, TrainEvalConfigBase
 from psp.metrics import Metric, mean_absolute_error
 from psp.models.multi import MultiPvSiteModel
 from psp.scripts._options import exp_name_opt, exp_root_opt, log_level_opt, num_workers_opt
@@ -38,6 +38,7 @@ _log = logging.getLogger(__name__)
 )
 @click.option(
     "--eval-config",
+    "eval_config_path",
     help='Use another config than the training one. e.g. "psp.exp_configs.some_config".',
 )
 @click.option(
@@ -76,7 +77,7 @@ def main(
     limit,
     split_name,
     log_level,
-    eval_config,
+    eval_config_path,
     new_exp_name,
     test_start,
     test_end,
@@ -84,7 +85,7 @@ def main(
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    if eval_config is not None:
+    if eval_config_path is not None:
         assert new_exp_name is not None
 
     assert split_name in ["train", "test"]
@@ -102,20 +103,25 @@ def main(
         # https://github.com/fsspec/gcsfs/issues/379
         torch.multiprocessing.set_start_method("spawn")
 
-    if eval_config is not None:
-        print("Loading config from ", eval_config)
-        exp_config_module = importlib.import_module(eval_config)
+    print("Loading train config from ", f"{exp_root}.{exp_name}.config")
+    exp_config_module = importlib.import_module(".config", f"{exp_root}.{exp_name}")
+    train_config: TrainConfigBase = exp_config_module.ExpConfig()
+
+    eval_config: EvalConfigBase
+    if eval_config_path is not None:
+        print("Loading eval config from ", eval_config_path)
+        eval_config_module = importlib.import_module(eval_config_path)
+        eval_config = eval_config_module.ExpConfig()
     else:
-        print("Loading config from ", f"{exp_root}.{exp_name}.config")
-        exp_config_module = importlib.import_module(".config", f"{exp_root}.{exp_name}")
+        print("Using the same config for eval.")
+        assert isinstance(train_config, TrainEvalConfigBase)
+        eval_config = train_config
 
-    exp_config: EvalConfigBase = exp_config_module.ExpConfig()
-
-    data_source_kwargs = exp_config.get_data_source_kwargs()
-    pv_data_source = exp_config.get_pv_data_source()
+    data_source_kwargs = eval_config.get_data_source_kwargs()
+    pv_data_source = eval_config.get_pv_data_source()
 
     # Those are the dates we trained models for.
-    date_splits = exp_config.get_date_splits()
+    date_splits = train_config.get_date_splits()
     # train_dates = dates_split.train_dates
     train_dates = [x.train_date for x in date_splits.train_date_splits]
 
@@ -135,7 +141,7 @@ def main(
 
     # TODO make sure the train_split from the model is consistent with the test one - we could
     # save in the model details about the training and check them here.
-    pv_splits = exp_config.make_pv_splits(pv_data_source)
+    pv_splits = eval_config.make_pv_splits(pv_data_source)
     pv_ids = getattr(pv_splits, split_name)
 
     test_date_split = date_splits.test_date_split
