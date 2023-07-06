@@ -1,0 +1,21 @@
+name: Bump version and auto-release
+on:
+  push:
+#    branches:
+#      - main
+
+jobs:
+  bump-version:
+    uses: openclimatefix/.github/.github/workflows/bump-version.yml@v1.7.2
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+  github-release:
+    needs: [ bump-version ]
+    uses: openclimatefix/.github/.github/workflows/github-release.yml@v1.2.0
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+    with:
+      version: ${{ needs.bump-version.outputs.new_ver }}
+
+
