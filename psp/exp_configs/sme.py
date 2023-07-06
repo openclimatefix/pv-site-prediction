@@ -29,6 +29,7 @@ class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
+            #lag_minutes=2 * 24 * 60
         )
 
     @functools.cache
