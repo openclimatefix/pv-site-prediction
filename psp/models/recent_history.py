@@ -317,7 +317,7 @@ class RecentHistoryModel(PvSiteModel):
             scalar_features["capacity"] = capacity if np.isfinite(capacity) else -1.0
 
         for agg in ["max", "mean", "median"]:
-            # When the array is empty or all nan, numpy emits a warning. We don't care about those
+            # When the array is empty or all nan, numpy emits a warning. We don't care about those_get_features
             # and are happy with np.nan as a result.
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", r"All-NaN (slice|axis) encountered")
