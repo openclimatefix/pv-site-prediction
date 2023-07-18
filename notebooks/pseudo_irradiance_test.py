@@ -1,14 +1,189 @@
 import numpy as np
 import os
 from glob import glob
+import xarray as xr
+
+pv_data = xr.open_dataset("/run/media/jacob/data/5min_v3.nc")
+print(pv_data)
+data = xr.open_zarr("/run/media/jacob/data/irradiance_xarray/combined_test.zarr")
+print(data["pv_id"])
+
+ignore_ids = [
+    8440,
+    16718,
+    8715,
+    17073,
+    9108,
+    9172,
+    10167,
+    10205,
+    10207,
+    10278,
+    26778,
+    26819,
+    10437,
+    10466,
+    26915,
+    10547,
+    26939,
+    26971,
+    10685,
+    10689,
+    2638,
+    2661,
+    2754,
+    2777,
+    2783,
+    2786,
+    2793,
+    2812,
+    2829,
+    2830,
+    2867,
+    2883,
+    2904,
+    2923,
+    2947,
+    2976,
+    2989,
+    2999,
+    3003,
+    3086,
+    3118,
+    3123,
+    3125,
+    3264,
+    3266,
+    3271,
+    3313,
+    3334,
+    3470,
+    3502,
+    11769,
+    11828,
+    11962,
+    3772,
+    11983,
+    3866,
+    3869,
+    4056,
+    4067,
+    4116,
+    4117,
+    4124,
+    4323,
+    4420,
+    20857,
+    4754,
+    13387,
+    13415,
+    5755,
+    5861,
+    5990,
+    6026,
+    6038,
+    6054,
+    14455,
+    6383,
+    6430,
+    6440,
+    6478,
+    6488,
+    6541,
+    6548,
+    6560,
+    14786,
+    6630,
+    6804,
+    6849,
+    6868,
+    6870,
+    6878,
+    6901,
+    6971,
+    7055,
+    7111,
+    7124,
+    7132,
+    7143,
+    7154,
+    7155,
+    7156,
+    7158,
+    7201,
+    7237,
+    7268,
+    7289,
+    7294,
+    7311,
+    7329,
+    7339,
+    7379,
+    7392,
+    7479,
+    7638,
+    7695,
+    7772,
+    15967,
+    7890,
+    16215,
+    # This one has funny night values.
+    7830,
+]
+
+irradiance_ids = data["pv_id"].values
+ss_ids = pv_data["ss_id"].values
+
+new_ignore_ids = set(ss_ids).difference(set(irradiance_ids)).union(set(ignore_ids))
+print(len(new_ignore_ids))
+print(list(new_ignore_ids))
+
+exit()
 
 # Get all the train zarrs in the folder
-files = glob("/run/media/jacob/data/irradiance_xarray/*_train.zarr")
+files = glob("/run/media/jacob/data/irradiance_xarray/*_test.zarr")
 files.sort()
-# Get the initalization times
+# Get all initialization times and see which ones exist in all of the zarrs
+pv_ids = []
+initalization_times = []
+datas = []
 for f in files:
-    pass
+    pv_id = f.split("/")[-1].split("_")[0]
+    print(pv_id)
+    data = xr.open_zarr(f).isel({"idx": slice(0, 1839)})
+    data = data.expand_dims({"pv_id": [int(pv_id)]})
+    initalization_time = data["init_time"].values
+    initalization_times.append(initalization_time)
+    pv_ids.append(pv_id)
+    datas.append(data)
 
+data = xr.concat(datas, dim="pv_id").chunk({"pv_id": 1, "idx": 1})
+print(data)
+data.to_zarr("/run/media/jacob/data/irradiance_xarray/combined_test.zarr")
+exit()
+# Get the set of initialization times that are in all of the zarrs
+# Iterate through and only keep times that are in all pairs of zarrs
+set_of_init_times = initalization_times[0]
+min_length = np.inf
+print(len(initalization_times[2][0]))
+for i in range(len(initalization_times)-1):
+    print(len(initalization_times))
+    if len(initalization_times[i][0]) < min_length:
+        min_length = len(initalization_times[i])
+    #print(initalization_times[i])
+    #set_of_init_times = set(initalization_times[i]).intersection(set(initalization_times[i+1]))
+
+print("Number of initialization times in all zarrs: ")
+#print(len(set_of_init_times))
+print("Min length of initialization times: ")
+print(min_length)
+print("--------------------")
+#initalization_times = np.array(initalization_times)
+#pv_ids = np.array(pv_ids)
+print(initalization_times.shape)
+print(pv_ids.shape)
+print(len(initalization_times))
+print(len(np.unique(initalization_times)))
 
 exit()
 

@@ -182,7 +182,7 @@ class ZarrIrradianceDataSource(IrradianceDataSource):
         ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
         return min_timestamp(ts, self._max_ts)
 
-    def as_available_at(self, ts: Timestamp) -> "NetcdfPvDataSource":
+    def as_available_at(self, ts: Timestamp) -> "ZarrIrradianceDataSource":
         now = ts - datetime.timedelta(minutes=self._lag_minutes) - datetime.timedelta(seconds=1)
         # We simply make a copy and change it's `max_ts`.
         # Using `copy.copy` used __setstate__ and __getstate__, which we tampered with so we use our
