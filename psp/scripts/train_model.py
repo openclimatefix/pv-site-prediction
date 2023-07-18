@@ -47,7 +47,7 @@ def _err(x):
 
 def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     """Evaluate a `model` on samples from a `dataloader` and log the error."""
-    horizon_buckets = 8 * 60
+    horizon_buckets = 2 * 60 # 2 hours
     errors_per_bucket = defaultdict(list)
     all_errors = []
     for sample in tqdm.tqdm(dataloader):

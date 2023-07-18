@@ -375,29 +375,13 @@ class RecentHistoryModel(PvSiteModel):
                 features[variable + "_isnan"] = var_per_horizon_is_nan
         if self._irradiance_data_source is not None:
             irradiance_data_per_horizon = self._irradiance_data_source.get(
-                now=x.ts,
-                timestamps=horizon_timestamps,
-                pv_id=x.pv_id,
+                pv_ids=x.pv_id,
+                start_ts=history_start,
+                end_ts=x.ts,
             )
 
-            irradiance_variables = (
-                self._irradiance_variables or self._irradiance_data_source.list_variables()
-            )
-
-            for variable in irradiance_variables:
-                # Deal with the trivial case where the returns NWP is simply `None`. This happens if
-                # there wasn't any data for the given tolerance.
-                if irradiance_data_per_horizon is None:
-                    var_per_horizon = np.array([np.nan for _ in self.config.horizons])
-                else:
-                    var_per_horizon = irradiance_data_per_horizon.sel(variable=variable).values
-
-                # Deal with potential NaN values in NWP.
-                var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
-                var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
-
-                features[variable] = var_per_horizon
-                features[variable + "_isnan"] = var_per_horizon_is_nan
+            features["latents"] = irradiance_data_per_horizon.sel(variable="latents").values
+            features["latents" + "_isnan"] = np.zeros_like(features["latents"])
         # Get the recent power.
         recent_power = float(
             data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()

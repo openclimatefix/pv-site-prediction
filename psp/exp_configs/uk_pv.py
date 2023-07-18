@@ -86,7 +86,7 @@ class ExpConfig(ExpConfigBase):
         )
 
     def _get_model_config(self) -> PvSiteModelConfig:
-        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48 * 4))
+        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=2 * 4))
 
     def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         kwargs = self.get_data_source_kwargs()
@@ -136,7 +136,7 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2020, 1, 1),
+            test_start_date=dt.datetime(2021, 1, 1),
             test_end_date=dt.datetime(2021, 11, 8),
             train_days=356 * 2,
         )
