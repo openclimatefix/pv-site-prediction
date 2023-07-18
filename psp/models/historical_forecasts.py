@@ -24,7 +24,6 @@ class HistoricalForecasts(PvSiteModel):
             dimensions `("pv_id", "time", "step")` and one "power" data variable. We assume that the
             forecast was done at time "time" and that the "power" is the prediction for the average
             power between "step" and the next "step".
-
         """
         super().__init__(config)
 

@@ -1,3 +1,5 @@
+"""Evaluate a model trained with the train_model.py script."""
+
 import datetime as dt
 import importlib
 import logging
