@@ -234,7 +234,7 @@ class ExpConfig(ExpConfigBase):
             train_date_splits=[
                 TrainDateSplit(
                     train_date=date,
-                    train_days=356 * 2,
+                    train_days=365 * 2,
                 )
                 for date in [dt.datetime(2020, 1, 1), dt.datetime(2021, 10, 8)]
             ],

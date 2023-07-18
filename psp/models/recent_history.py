@@ -139,6 +139,29 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_tolerance: str | None = None,
     ):
+        """
+        Arguments:
+        ---------
+        pv_data_source: Pv data source.
+        nwp_data_source: Nwp data source.
+        regressor: The regressor to train on the features.
+        random_state: Random number generator.
+        use_nwp: Should we use NWP features.
+        nwp_variables: Only use this subset of NWP variables. Defaults to using all.
+        nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
+            This is only used at train-time.
+        pv_dropout: Probability of removing the PV data (replacing it with np.nan).
+            This is only used at train-time.
+        normalize_features: Should we normalize the PV-related features by
+            pvlib's clearsky values.
+        tilt_getter: Function to get the tilt from the PV data array.
+        orientation_getter: Function to get the orientation from the PV data array.
+        capacity_getter: Function to get the capacity from the PV data array.
+        use_capacity_as_feature: Should we use the PV capacity as a feature.
+        num_days_history: How many days to consider for the recent PV features.
+        nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
+            See `NwpDataSource.get`'s documentation for details.
+        """
         super().__init__(config)
         # Validate some options.
         if nwp_dropout > 0.0 or pv_dropout > 0.0:

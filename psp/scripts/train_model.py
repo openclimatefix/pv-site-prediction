@@ -1,3 +1,7 @@
+"""Train a pv-site model
+
+This script is used to train a model.
+"""
 import datetime as dt
 import importlib
 import logging
