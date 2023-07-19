@@ -1,6 +1,10 @@
 # Stremalit Dashboard to explore NWP data and PV data for sites.
 # Version 1.0
 
+#To access remotely, ensure a port is used that is free
+
+# streamlit run sme_pv_dash.py --server.address 0.0.0.0 --server.port 8868
+
 # ------------ Import libraries ------------
 import streamlit as st
 import plotly.express as px
