@@ -10,7 +10,7 @@ from psp.typings import PvId, Timestamp
 from psp.utils.dates import to_pydatetime
 
 _ID = "pv_id"
-_TS = "ts"
+_TS = "init_time"
 
 # https://peps.python.org/pep-0673/
 _Self = TypeVar("_Self", bound="IrradianceDataSource")
@@ -18,6 +18,11 @@ _Self = TypeVar("_Self", bound="IrradianceDataSource")
 
 _log = logging.getLogger(__name__)
 
+import numpy as np
+
+def nearest_ind(items, pivot):
+    time_diff = np.abs([date - pivot for date in items])
+    return time_diff.argmin(0)
 
 class IrradianceDataSource(abc.ABC):
     """Definition of the interface for loading PV data."""
@@ -164,7 +169,13 @@ class ZarrIrradianceDataSource(IrradianceDataSource):
             end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
         end_ts = min_timestamp(self._max_ts, end_ts)
-        return self._data.sel(pv_id=pv_ids, ts=slice(start_ts, end_ts))
+        pv_system = self._data.sel(pv_id=pv_ids)
+        # TODO Change from hacky one, know only for 2 hours, so go 2 hours back from end_ts and select closest one
+        initial_ts = np.datetime64(end_ts - datetime.timedelta(hours=2))
+        nearest_index = nearest_ind(pv_system[_TS].values, initial_ts)
+        pv_system = pv_system.isel(idx=nearest_index) # Gets nearest index, based off init times
+        #print(pv_system)
+        return pv_system
 
     def list_pv_ids(self):
         out = list(self._data.coords[_ID].values)

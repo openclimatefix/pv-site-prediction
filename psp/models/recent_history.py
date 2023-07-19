@@ -167,6 +167,7 @@ class RecentHistoryModel(PvSiteModel):
         # Deprecated - keeping for backward compatibility and mypy.
         self._use_inferred_meta = None
         self._use_data_capacity = None
+        self._use_irradiance = False
 
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
@@ -373,15 +374,19 @@ class RecentHistoryModel(PvSiteModel):
 
                 features[variable] = var_per_horizon
                 features[variable + "_isnan"] = var_per_horizon_is_nan
-        if self._irradiance_data_source is not None:
+        if self._use_irradiance:
             irradiance_data_per_horizon = self._irradiance_data_source.get(
                 pv_ids=x.pv_id,
                 start_ts=history_start,
                 end_ts=x.ts,
             )
 
-            features["latents"] = irradiance_data_per_horizon.sel(variable="latents").values
-            features["latents" + "_isnan"] = np.zeros_like(features["latents"])
+            # 3 rolling mean window, and break up each feature into a different entry
+            for i, latent_feature in enumerate(irradiance_data_per_horizon["latents"].values[:,:-1]): # Want one less to get to 8 entries
+                latent_feature_mean = np.mean(latent_feature.reshape(-1, 3), axis=1)
+                features[f"latent_{i}"] = latent_feature_mean
+                features[f"latent_{i}_isnan"] = np.isnan(latent_feature_mean) * 1.0
+
         # Get the recent power.
         recent_power = float(
             data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()
