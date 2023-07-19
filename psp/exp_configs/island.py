@@ -58,7 +58,7 @@ class ExpConfig(ExpConfigBase):
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=4096,
+                num_train_samples=100000,
                 normalize_targets=True,
             ),
             use_nwp=True,
