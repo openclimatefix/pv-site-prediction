@@ -157,6 +157,9 @@ class NetcdfPvDataSource(PvDataSource):
             num_pvs = len(self._data.coords["pv_id"])
             _log.debug(f"Removed {num_pvs_before - num_pvs} PVs")
 
+        # Only should cover 2020 to 2021
+        self._data = self._data.sel(ts=slice("2020-01-03", "2022-01-01"))
+
     def get(
         self,
         pv_ids: list[PvId] | PvId,

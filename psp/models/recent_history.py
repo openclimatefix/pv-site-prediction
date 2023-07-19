@@ -167,7 +167,7 @@ class RecentHistoryModel(PvSiteModel):
         # Deprecated - keeping for backward compatibility and mypy.
         self._use_inferred_meta = None
         self._use_data_capacity = None
-        self._use_irradiance = False
+        self._use_irradiance = True
 
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
@@ -218,10 +218,18 @@ class RecentHistoryModel(PvSiteModel):
     def _get_features(self, x: X, is_training: bool) -> Features:
         features: Features = dict()
         data_source = self._pv_data_source.as_available_at(x.ts)
-
         # We'll look at stats for the previous few days.
         history_start = to_midnight(x.ts - timedelta(days=self._num_days_history))
-
+        # Only pick times that are in the init time for the PV ID
+        irradiance_data_per_horizon = self._irradiance_data_source.get(
+            pv_ids=x.pv_id,
+            start_ts=history_start,
+            end_ts=x.ts,
+        )
+        # Get timestamp of irradiance data
+        irradiance_data_ts = irradiance_data_per_horizon["init_time"].values
+        x.ts = pd.Timestamp(irradiance_data_ts).to_pydatetime()
+        history_start = to_midnight(x.ts - timedelta(days=self._num_days_history))
         # Slice as much as we can right away.
         _data = data_source.get(
             pv_ids=x.pv_id,
