@@ -171,7 +171,7 @@ class ZarrIrradianceDataSource(IrradianceDataSource):
         end_ts = min_timestamp(self._max_ts, end_ts)
         pv_system = self._data.sel(pv_id=pv_ids)
         # TODO Change from hacky one, know only for 2 hours, so go 2 hours back from end_ts and select closest one
-        initial_ts = np.datetime64(end_ts - datetime.timedelta(hours=2))
+        initial_ts = np.datetime64(end_ts)
         nearest_index = nearest_ind(pv_system[_TS].values, initial_ts)
         pv_system = pv_system.isel(idx=nearest_index) # Gets nearest index, based off init times
         #print(pv_system)
