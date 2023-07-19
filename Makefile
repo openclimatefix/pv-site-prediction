@@ -1,5 +1,5 @@
 SRC=psp notebooks
-PORT=8864
+PORT=8888
 
 .PHONY: notebook
 notebook:
