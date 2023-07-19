@@ -1,8 +1,9 @@
 import argparse
 import pathlib
+
+import numpy as np
 import pandas as pd
 import xarray as xr
-import numpy as np
 
 
 def _parse_args():

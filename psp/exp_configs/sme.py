@@ -13,14 +13,18 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 # _PREFIX = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/mone"
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/PV/sme/zarr_format/sme_t5.zarr" #_PREFIX + "/pv_v3.nc"
+PV_DATA_PATH = (
+    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/"
+    "PV/sme/zarr_format/sme_t5.zarr"
+)
+# _PREFIX + "/pv_v3.nc"
 # PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
 NWP_DATA_PATHS = [
     (
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
         f"/UK_Met_Office/UKV/zarr/UKV_{year}_NWP.zarr"
     )
-    for year in [2018,2019,2020,2021,2022]
+    for year in [2018, 2019, 2020, 2021, 2022]
 ]
 
 
@@ -29,7 +33,7 @@ class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
-            #lag_minutes=2 * 24 * 60
+            # lag_minutes=2 * 24 * 60
         )
 
     @functools.cache
@@ -82,7 +86,7 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2020,1, 1),
+            test_start_date=dt.datetime(2020, 1, 1),
             test_end_date=dt.datetime(2022, 12, 31),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
