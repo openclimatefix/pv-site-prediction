@@ -37,7 +37,7 @@ def main():
 
     # Add the lat/lon that we googled for each location in the provided Location.txt.
     city = pd.DataFrame(index=names, columns=["lat", "lon"])
-    city.loc["4353"][["lat", "lon"]] = (51.11765, 0.93344)
+    city.loc["4353"][["lat", "lon"]] = (51.17533, 0.40693)
     city.loc["4403"][["lat", "lon"]] = (51.65856, -1.79106)
     city.loc["4416"][["lat", "lon"]] = (50.79061, -1.85936)
     city.loc["4417"][["lat", "lon"]] = (50.79061, -1.85936)
