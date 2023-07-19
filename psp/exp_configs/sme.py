@@ -13,7 +13,7 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 # _PREFIX = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/mone"
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/PV/SmartestEnergy/zarr_format/sme_t5.zarr" #_PREFIX + "/pv_v3.nc"
+PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/PV/sme/zarr_format/sme_t5.zarr" #_PREFIX + "/pv_v3.nc"
 # PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
 NWP_DATA_PATHS = [
     (
