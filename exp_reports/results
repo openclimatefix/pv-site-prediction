@@ -1,0 +1,50 @@
+No Pseudo, No NWP:
+Train:
+INFO:__main__:Saving model trained on 2020-12-31 00:00:00 to exp_results/no_pseudo_no_nwp/model_0.pkl
+INFO:__main__:Total: 0.407 ± 0.034
+Validation:
+INFO:__main__:[0 , 2 [ : 0.467 ± 0.033
+INFO:__main__:Total: 0.467 ± 0.033
+
+
+Pseudo, No NWP:
+Train:
+INFO:__main__:Total: 0.399 ± 0.033
+Validation:
+INFO:__main__:Total: 0.452 ± 0.033
+
+Psuedo, No NWP, correct time:
+Train:
+INFO:__main__:Total: 0.312 ± 0.025
+INFO:__main__:Error on the valid set
+
+INFO:__main__:[0 , 2 [ : 0.340 ± 0.025
+INFO:__main__:Total: 0.340 ± 0.025
+
+No Psuedo, No NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.304 ± 0.024
+INFO:__main__:Total: 0.304 ± 0.024
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.351 ± 0.026
+INFO:__main__:Total: 0.351 ± 0.026
+
+Psuedo, NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.301 ± 0.025
+INFO:__main__:Total: 0.301 ± 0.025
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.329 ± 0.024
+INFO:__main__:Total: 0.329 ± 0.024
+
+No Psuedo, NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.301 ± 0.025
+INFO:__main__:Total: 0.301 ± 0.025
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.329 ± 0.024
+INFO:__main__:Total: 0.329 ± 0.024
+
