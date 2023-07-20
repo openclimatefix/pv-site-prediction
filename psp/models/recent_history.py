@@ -10,6 +10,7 @@ import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
+from psp.data_sources.excarta import ExcartaDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
@@ -125,12 +126,16 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None,
+        excarta_data_source: ExcartaDataSource | None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         use_nwp: bool = True,
+        use_excarta: bool = True,
         nwp_variables: list[str] | None = None,
+        excarta_variables: list[str] | None = None,
         nwp_dropout: float = 0.0,
         pv_dropout: float = 0.0,
+        excarta_dropout: float = 0.0,
         normalize_features: bool = True,
         tilt_getter: _MetaGetter | None = None,
         orientation_getter: _MetaGetter | None = None,
@@ -138,6 +143,7 @@ class RecentHistoryModel(PvSiteModel):
         use_capacity_as_feature: bool = True,
         num_days_history: int = 7,
         nwp_tolerance: str | None = None,
+        excarta_tolerance: str | None = None,
     ):
         """
         Arguments:
@@ -164,18 +170,26 @@ class RecentHistoryModel(PvSiteModel):
         """
         super().__init__(config)
         # Validate some options.
+
+        #MIGHT NEED TO ADD DROPOUT FOR EXCARTA
         if nwp_dropout > 0.0 or pv_dropout > 0.0:
             assert random_state is not None
 
         if use_nwp:
             assert nwp_data_source is not None
 
+        if use_excarta:
+            assert excarta_data_source is not None
+
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
+        self._excarta_data_srouce: ExcartaDataSource | None
         self._regressor = regressor
         self._random_state = random_state
         self._use_nwp = use_nwp
+        self._use_excarta = use_excarta
         self._nwp_variables = nwp_variables
+        self._excarta_variables = excarta_variables
         self._normalize_features = normalize_features
 
         self._pv_dropout = pv_dropout
@@ -193,9 +207,13 @@ class RecentHistoryModel(PvSiteModel):
         self._nwp_tolerance = nwp_tolerance
         self._nwp_dropout = nwp_dropout
 
+        self._excarta_tolerance = excarta_tolerance
+        self._excarta_dropout = excarta_dropout
+
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_source=nwp_data_source,
+            excarta_data_source = excarta_data_source
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -209,6 +227,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None = None,
+        excarta_data_source: ExcartaDataSource | None = None,
     ):
         """Set the data sources.
 
@@ -216,6 +235,7 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_source = nwp_data_source
+        self._excarta_data_source = excarta_data_source
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -391,6 +411,44 @@ class RecentHistoryModel(PvSiteModel):
                 features[variable] = var_per_horizon
                 features[variable + "_isnan"] = var_per_horizon_is_nan
 
+        if self._use_excarta:
+            assert self._excarta_data_source is not None
+
+            # We might want to add some dropout on the excarta, *only during training*.
+            if (
+                is_training
+                and self._excarta_dropout > 0
+                # This one is for mypy.
+                and self._random_state is not None
+                and self._random_state.random() < self._excarta_dropout
+            ):
+                excarta_data_per_horizon = None
+            else:
+                excarta_data_per_horizon = self._excarta_data_source.get(
+                    now=x.ts,
+                    timestamps=horizon_timestamps,
+                    nearest_lat=lat,
+                    nearest_lon=lon,
+                    tolerance=self._excarta_tolerance,
+                )
+
+            excarta_variables = self._excarta_variables or self._excarta_data_source.list_variables()
+
+            for variable in excarta_variables:
+                # Deal with the trivial case where the returns excarta is simply `None`. This happens if
+                # there wasn't any data for the given tolerance.
+                if excarta_data_per_horizon is None:
+                    var_per_horizon = np.array([np.nan for _ in self.config.horizons])
+                else:
+                    var_per_horizon = excarta_data_per_horizon.sel(variable=variable).values
+
+                # Deal with potential NaN values in Excarta.
+                var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
+                var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
+
+                features[variable + "_EXC"] = var_per_horizon
+                features[variable + "_EXC_isnan"] = var_per_horizon_is_nan
+
         # Get the recent power.
         recent_power = float(
             data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()
@@ -471,6 +529,7 @@ class RecentHistoryModel(PvSiteModel):
         # for multiprocessing.
         del state["_pv_data_source"]
         del state["_nwp_data_source"]
+        del state["_excarta_data_source"]
         return state
 
     def set_state(self, state):
