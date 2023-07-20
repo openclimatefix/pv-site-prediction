@@ -48,3 +48,11 @@ Validation:
 INFO:__main__:[0 , 2 [ : 0.329 ± 0.024
 INFO:__main__:Total: 0.329 ± 0.024
 
+----------------------------------------
+10000 validation, 20480 training examples
+
+Pseudo+NWP: INFO:__main__:Total: 0.327 ± 0.003
+
+No Pseudo, No NWP: INFO:__main__:Total: 0.335 ± 0.003
+
+No Pseudo, NWP: INFO:__main__:Total: 0.325 ± 0.003
