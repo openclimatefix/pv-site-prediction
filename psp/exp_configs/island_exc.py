@@ -15,8 +15,8 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
-NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
-EXC_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta.zarr"
+NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
+EXC_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta_hour_shift.zarr"
 
 def _get_capacity(data: xr.Dataset) -> float:
     # Use the "capacity" data variable.
@@ -67,7 +67,7 @@ class ExpConfig(ExpConfigBase):
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=2048,
+                num_train_samples=10000,
                 normalize_targets=True,
             ),
             use_nwp=True,
@@ -87,10 +87,10 @@ class ExpConfig(ExpConfigBase):
     def get_date_splits(self):
         return auto_date_split(
             test_start_date=dt.datetime(2020, 1, 1),
-            test_end_date=dt.datetime(2022, 1, 1),
-            num_trainings=1,
+            test_end_date=dt.datetime(2023, 1, 1),
+            num_trainings=8,
             train_days=365 * 2,
             # Min date because of NWP not available at the beginning of the PV data.
-            min_train_date=dt.datetime(2018, 11, 2),
+            min_train_date=dt.datetime(2018, 1, 1),
             step_minutes=60,
         )
