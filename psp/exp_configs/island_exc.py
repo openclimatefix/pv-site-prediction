@@ -44,13 +44,16 @@ class ExpConfig(ExpConfigBase):
                 y_dim_name="longitude",
                 x_is_ascending=False,
             ),
-            excarta_data_source=ExcartaDataSource(
+
+            # so to change this just use the existing NWP data source      
+            excarta_data_source=NwpDataSource(
                 EXC_PATH,
                 coord_system=4326,
                 x_dim_name="x",
                 y_dim_name="y",
                 time_dim_name="init_time",
                 x_is_ascending=True,
+                single_point = False,
             ),
         )
 
@@ -67,11 +70,11 @@ class ExpConfig(ExpConfigBase):
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=10000,
+                num_train_samples=1000,
                 normalize_targets=True,
             ),
             use_nwp=True,
-            use_excarta=True,
+            use_excarta=False,
             normalize_features=True,
             capacity_getter=_get_capacity,
             use_capacity_as_feature=False,
@@ -86,10 +89,10 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2020, 1, 1),
+            test_start_date=dt.datetime(2021, 1, 1),
             test_end_date=dt.datetime(2023, 1, 1),
-            num_trainings=8,
-            train_days=365 * 2,
+            num_trainings=1,
+            train_days=365 ,
             # Min date because of NWP not available at the beginning of the PV data.
             min_train_date=dt.datetime(2018, 1, 1),
             step_minutes=60,

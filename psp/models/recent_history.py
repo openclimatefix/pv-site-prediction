@@ -10,7 +10,6 @@ import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
-from psp.data_sources.excarta import ExcartaDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
@@ -126,7 +125,9 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None,
-        excarta_data_source: ExcartaDataSource | None,
+
+        #Change this back to NWPDataSource
+        excarta_data_source: NwpDataSource | None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         use_nwp: bool = True,
@@ -183,7 +184,7 @@ class RecentHistoryModel(PvSiteModel):
 
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
-        self._excarta_data_srouce: ExcartaDataSource | None
+        self._excarta_data_srouce: NwpDataSource | None
         self._regressor = regressor
         self._random_state = random_state
         self._use_nwp = use_nwp
@@ -227,7 +228,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None = None,
-        excarta_data_source: ExcartaDataSource | None = None,
+        excarta_data_source: NwpDataSource | None = None,
     ):
         """Set the data sources.
 

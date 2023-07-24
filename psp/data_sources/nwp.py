@@ -34,6 +34,7 @@ def _slice_on_lat_lon(
     transformer: CoordinateTransformer,
     x_is_ascending: bool,
     y_is_ascending: bool,
+    single_point: bool,
 ) -> T:
     # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
     # by lat/lon).
@@ -63,7 +64,11 @@ def _slice_on_lat_lon(
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
-        return data.sel(x=x, y=y, method="nearest")  # type: ignore
+
+        if not single_point:
+            return data.sel(x=x, y=y, method="nearest")  # type: ignore
+        else:
+            return data
 
     return data
 
@@ -87,6 +92,7 @@ class NwpDataSource:
         value_name: str = _VALUE,
         x_is_ascending: bool = True,
         y_is_ascending: bool = True,
+        single_point: bool = False,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
     ):
@@ -131,6 +137,7 @@ class NwpDataSource:
         self._value_name = value_name
         self._x_is_ascending = x_is_ascending
         self._y_is_ascending = y_is_ascending
+        self._single_point = single_point
 
         self._lag_minutes = lag_minutes
 
@@ -290,7 +297,7 @@ class NwpDataSource:
         try:
             # Forward fill so that we get the value from the past, not the future!
             ds = ds.sel(
-                time=now - dt.timedelta(minutes=self._lag_minutes),
+                {_TIME: now - dt.timedelta(minutes=self._lag_minutes)},
                 method="ffill",
                 tolerance=tolerance,  # type: ignore
             )
@@ -311,9 +318,10 @@ class NwpDataSource:
             transformer=self._coordinate_transformer,
             x_is_ascending=self._x_is_ascending,
             y_is_ascending=self._y_is_ascending,
+            single_point=self._single_point,
         )
 
-        init_time = to_pydatetime(ds.time.values)
+        init_time = to_pydatetime(ds[_TIME].values)
 
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]
