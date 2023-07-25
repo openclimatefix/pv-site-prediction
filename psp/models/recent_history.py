@@ -125,8 +125,6 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None,
-
-        #Change this back to NWPDataSource
         excarta_data_source: NwpDataSource | None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
@@ -172,8 +170,7 @@ class RecentHistoryModel(PvSiteModel):
         super().__init__(config)
         # Validate some options.
 
-        #MIGHT NEED TO ADD DROPOUT FOR EXCARTA
-        if nwp_dropout > 0.0 or pv_dropout > 0.0:
+        if nwp_dropout > 0.0 or pv_dropout > 0.0 or excarta_dropout > 0.0:
             assert random_state is not None
 
         if use_nwp:
@@ -214,7 +211,7 @@ class RecentHistoryModel(PvSiteModel):
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_source=nwp_data_source,
-            excarta_data_source = excarta_data_source
+            excarta_data_source=excarta_data_source,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -433,11 +430,13 @@ class RecentHistoryModel(PvSiteModel):
                     tolerance=self._excarta_tolerance,
                 )
 
-            excarta_variables = self._excarta_variables or self._excarta_data_source.list_variables()
+            excarta_variables = (
+                self._excarta_variables or self._excarta_data_source.list_variables()
+            )
 
             for variable in excarta_variables:
-                # Deal with the trivial case where the returns excarta is simply `None`. This happens if
-                # there wasn't any data for the given tolerance.
+                # Deal with the trivial case where the returns excarta is simply `None`.
+                # This happens if there wasn't any data for the given tolerance.
                 if excarta_data_per_horizon is None:
                     var_per_horizon = np.array([np.nan for _ in self.config.horizons])
                 else:

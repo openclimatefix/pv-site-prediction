@@ -5,7 +5,6 @@ import datetime as dt
 import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
-from psp.data_sources.excarta import ExcartaDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
@@ -16,7 +15,11 @@ from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
 NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
-EXC_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta_hour_shift.zarr"
+EXC_PATH = (
+    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
+    "sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta_hour_shift.zarr"
+)
+
 
 def _get_capacity(data: xr.Dataset) -> float:
     # Use the "capacity" data variable.
@@ -44,8 +47,7 @@ class ExpConfig(ExpConfigBase):
                 y_dim_name="longitude",
                 x_is_ascending=False,
             ),
-
-            # so to change this just use the existing NWP data source      
+            # so to change this just use the existing NWP data source
             excarta_data_source=NwpDataSource(
                 EXC_PATH,
                 coord_system=4326,
@@ -53,7 +55,7 @@ class ExpConfig(ExpConfigBase):
                 y_dim_name="y",
                 time_dim_name="init_time",
                 x_is_ascending=True,
-                single_point = False,
+                single_point=False,
             ),
         )
 
@@ -92,7 +94,7 @@ class ExpConfig(ExpConfigBase):
             test_start_date=dt.datetime(2021, 1, 1),
             test_end_date=dt.datetime(2023, 1, 1),
             num_trainings=1,
-            train_days=365 ,
+            train_days=365,
             # Min date because of NWP not available at the beginning of the PV data.
             min_train_date=dt.datetime(2018, 1, 1),
             step_minutes=60,
