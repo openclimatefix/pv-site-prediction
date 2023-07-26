@@ -321,7 +321,7 @@ class NwpDataSource:
             single_point=self._single_point,
         )
 
-        init_time = to_pydatetime(ds[_TIME].values.astype('datetime64'))
+        init_time = to_pydatetime(ds[_TIME].values.astype("datetime64"))
 
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]
