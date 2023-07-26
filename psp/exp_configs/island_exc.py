@@ -14,7 +14,7 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
-NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
+GFS_NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
 EXC_PATH = (
     "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
     "sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta_hour_shift.zarr"
@@ -40,23 +40,25 @@ class ExpConfig(ExpConfigBase):
                 PV_TARGET_DATA_PATH,
                 lag_minutes=5 * 24 * 60,
             ),
-            nwp_data_source=NwpDataSource(
-                NWP_PATH,
-                coord_system=4326,
-                x_dim_name="latitude",
-                y_dim_name="longitude",
-                x_is_ascending=False,
-            ),
-            # so to change this just use the existing NWP data source
-            excarta_data_source=NwpDataSource(
-                EXC_PATH,
-                coord_system=4326,
-                x_dim_name="x",
-                y_dim_name="y",
-                time_dim_name="init_time",
-                x_is_ascending=True,
-                single_point=False,
-            ),
+            nwp_data_source=[
+                NwpDataSource(
+                    GFS_NWP_PATH,
+                    coord_system=4326,
+                    x_dim_name="latitude",
+                    y_dim_name="longitude",
+                    x_is_ascending=False,
+                ),
+                NwpDataSource(
+                    EXC_PATH,
+                    coord_system=4326,
+                    x_dim_name="x",
+                    y_dim_name="y",
+                    time_dim_name="init_time",
+                    x_is_ascending=True,
+                    single_point=True,
+                    lag_minutes=8 * 60,
+                ),
+            ],
         )
 
     def get_model_config(self):
@@ -72,11 +74,17 @@ class ExpConfig(ExpConfigBase):
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=1000,
+                num_train_samples=10000,
                 normalize_targets=True,
             ),
-            use_nwp=True,
-            use_excarta=False,
+            # EXAMPLE USE for use_nwp:
+            # use_nwp = None: don't use any NWP sources
+            # use_nwp = ["gfs", None]: use just GFS
+            # use_nwp = [None, "excarta"]: use just Excarta
+            # use_nwp = ["gfs", "excarta"]: use both
+            # It is important to retain the order of NWPs that was set above
+            # as well as specifying the correct name as this is used to label the variables
+            use_nwp=["gfs", "excarta"],
             normalize_features=True,
             capacity_getter=_get_capacity,
             use_capacity_as_feature=False,
@@ -91,11 +99,11 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2021, 1, 1),
+            test_start_date=dt.datetime(2020, 1, 1),
             test_end_date=dt.datetime(2023, 1, 1),
-            num_trainings=1,
-            train_days=365,
+            num_trainings=8,
+            train_days=365 * 2,
             # Min date because of NWP not available at the beginning of the PV data.
-            min_train_date=dt.datetime(2018, 1, 1),
+            min_train_date=dt.datetime(2018, 1, 10),
             step_minutes=60,
         )

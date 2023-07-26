@@ -2,7 +2,7 @@ import logging
 import math
 import warnings
 from datetime import datetime, timedelta
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 
 import numpy as np
 import pandas as pd
@@ -18,10 +18,8 @@ from psp.utils.maths import safe_div
 
 _log = logging.getLogger(__name__)
 
-
 def to_midnight(ts: datetime) -> datetime:
     return ts.replace(hour=0, minute=0, second=0, microsecond=0)
-
 
 def compute_history_per_horizon(
     pv_data: xr.DataArray,
@@ -109,10 +107,8 @@ _MetaGetter = Callable[[xr.Dataset], float]
 def _default_get_tilt(*kwargs):
     return 35.0
 
-
 def _default_get_orientation(*kwargs):
     return 180.0
-
 
 def _default_get_capacity(d: xr.Dataset) -> float:
     return float(d["power"].quantile(0.99))
@@ -124,25 +120,21 @@ class RecentHistoryModel(PvSiteModel):
         config: PvSiteModelConfig,
         *,
         pv_data_source: PvDataSource,
-        nwp_data_source: NwpDataSource | None,
-        excarta_data_source: NwpDataSource | None,
+        nwp_data_source: list[NwpDataSource] | None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
-        use_nwp: bool = True,
-        use_excarta: bool = True,
-        nwp_variables: list[str] | None = None,
-        excarta_variables: list[str] | None = None,
-        nwp_dropout: float = 0.0,
+        use_nwp: list[str] | None = None,
+        nwp_variables: list[list[str]] | None = None,
+        # For future NWPs may need to update the drop_out
+        nwp_dropout: list[float] = [0.0, 0.0],
         pv_dropout: float = 0.0,
-        excarta_dropout: float = 0.0,
         normalize_features: bool = True,
         tilt_getter: _MetaGetter | None = None,
         orientation_getter: _MetaGetter | None = None,
         capacity_getter: _MetaGetter | None = None,
         use_capacity_as_feature: bool = True,
         num_days_history: int = 7,
-        nwp_tolerance: str | None = None,
-        excarta_tolerance: str | None = None,
+        nwp_tolerance: Union[None, list[str]] = None,
     ):
         """
         Arguments:
@@ -170,26 +162,22 @@ class RecentHistoryModel(PvSiteModel):
         super().__init__(config)
         # Validate some options.
 
-        if nwp_dropout > 0.0 or pv_dropout > 0.0 or excarta_dropout > 0.0:
+        if any(dropout > 0.0 for dropout in nwp_dropout) or pv_dropout > 0.0:
             assert random_state is not None
 
-        if use_nwp:
-            assert nwp_data_source is not None
-
-        if use_excarta:
-            assert excarta_data_source is not None
+        if use_nwp and any(data_source is not None for data_source in use_nwp):
+            assert use_nwp and any(
+                data_source is not None for data_source in use_nwp
+            ), "At least one data_source must be not None"
 
         self._pv_data_source: PvDataSource
-        self._nwp_data_source: NwpDataSource | None
-        self._excarta_data_srouce: NwpDataSource | None
+        self._nwp_data_source: list[NwpDataSource] | None
+
         self._regressor = regressor
         self._random_state = random_state
         self._use_nwp = use_nwp
-        self._use_excarta = use_excarta
         self._nwp_variables = nwp_variables
-        self._excarta_variables = excarta_variables
         self._normalize_features = normalize_features
-
         self._pv_dropout = pv_dropout
 
         self._capacity_getter = capacity_getter or _default_get_capacity
@@ -205,13 +193,9 @@ class RecentHistoryModel(PvSiteModel):
         self._nwp_tolerance = nwp_tolerance
         self._nwp_dropout = nwp_dropout
 
-        self._excarta_tolerance = excarta_tolerance
-        self._excarta_dropout = excarta_dropout
-
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_source=nwp_data_source,
-            excarta_data_source=excarta_data_source,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -224,8 +208,7 @@ class RecentHistoryModel(PvSiteModel):
         self,
         *,
         pv_data_source: PvDataSource,
-        nwp_data_source: NwpDataSource | None = None,
-        excarta_data_source: NwpDataSource | None = None,
+        nwp_data_source: list[NwpDataSource] | None = None,
     ):
         """Set the data sources.
 
@@ -233,7 +216,6 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_source = nwp_data_source
-        self._excarta_data_source = excarta_data_source
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -370,84 +352,57 @@ class RecentHistoryModel(PvSiteModel):
             features["h_" + agg + "_nan"] = np.isnan(aggregated) * 1.0
             features["h_" + agg] = np.nan_to_num(aggregated)
 
-        # Consider the NWP data in a small region around around our PV.
-        if self._use_nwp:
-            assert self._nwp_data_source is not None
+        if self._use_nwp is not None:
+            for i in range(len(self._use_nwp)):
+                if not self._use_nwp[i]:
+                    continue
 
-            # We might want to add some dropout on the NWP, *only during training*.
-            if (
-                is_training
-                and self._nwp_dropout > 0
-                # This one is for mypy.
-                and self._random_state is not None
-                and self._random_state.random() < self._nwp_dropout
-            ):
-                nwp_data_per_horizon = None
-            else:
-                nwp_data_per_horizon = self._nwp_data_source.get(
-                    now=x.ts,
-                    timestamps=horizon_timestamps,
-                    nearest_lat=lat,
-                    nearest_lon=lon,
-                    tolerance=self._nwp_tolerance,
+                if self._nwp_data_source is not None:
+                    assert self._nwp_data_source[i] is not None
+
+                if self._nwp_tolerance is not None:
+                    tolerance = self._nwp_tolerance[i]
+                else:
+                    tolerance = None  # or some default value
+
+                if (
+                    is_training
+                    and self._nwp_dropout[i] > 0
+                    and self._random_state is not None
+                    and self._random_state.random() < self._nwp_dropout[i]
+                ):
+                    nwp_data_per_horizon = None
+                else:
+                    nwp_data_per_horizon = self._nwp_data_source[i].get(
+                        now=x.ts,
+                        timestamps=horizon_timestamps,
+                        nearest_lat=lat,
+                        nearest_lon=lon,
+                        tolerance=tolerance,
+                    )
+
+                nwp_variables = (
+                    self._nwp_data_source[i].list_variables()
+                    if self._nwp_variables is None
+                    else self._nwp_variables[i]
                 )
 
-            nwp_variables = self._nwp_variables or self._nwp_data_source.list_variables()
+                for variable in nwp_variables:
+                    # Deal with the trivial case where the returns NWP is simply `None`.
+                    # This happens if there wasn't any data for the given tolerance.
+                    if nwp_data_per_horizon is None:
+                        var_per_horizon = np.array([np.nan for _ in self.config.horizons])
+                    else:
+                        var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
 
-            for variable in nwp_variables:
-                # Deal with the trivial case where the returns NWP is simply `None`. This happens if
-                # there wasn't any data for the given tolerance.
-                if nwp_data_per_horizon is None:
-                    var_per_horizon = np.array([np.nan for _ in self.config.horizons])
-                else:
-                    var_per_horizon = nwp_data_per_horizon.sel(variable=variable).values
+                    # Deal with potential NaN values in NWP.
+                    var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
+                    var_per_horizon = np.nan_to_num(
+                        var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
+                    )
 
-                # Deal with potential NaN values in NWP.
-                var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
-                var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
-
-                features[variable] = var_per_horizon
-                features[variable + "_isnan"] = var_per_horizon_is_nan
-
-        if self._use_excarta:
-            assert self._excarta_data_source is not None
-
-            # We might want to add some dropout on the excarta, *only during training*.
-            if (
-                is_training
-                and self._excarta_dropout > 0
-                # This one is for mypy.
-                and self._random_state is not None
-                and self._random_state.random() < self._excarta_dropout
-            ):
-                excarta_data_per_horizon = None
-            else:
-                excarta_data_per_horizon = self._excarta_data_source.get(
-                    now=x.ts,
-                    timestamps=horizon_timestamps,
-                    nearest_lat=lat,
-                    nearest_lon=lon,
-                    tolerance=self._excarta_tolerance,
-                )
-
-            excarta_variables = (
-                self._excarta_variables or self._excarta_data_source.list_variables()
-            )
-
-            for variable in excarta_variables:
-                # Deal with the trivial case where the returns excarta is simply `None`.
-                # This happens if there wasn't any data for the given tolerance.
-                if excarta_data_per_horizon is None:
-                    var_per_horizon = np.array([np.nan for _ in self.config.horizons])
-                else:
-                    var_per_horizon = excarta_data_per_horizon.sel(variable=variable).values
-
-                # Deal with potential NaN values in Excarta.
-                var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
-                var_per_horizon = np.nan_to_num(var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0)
-
-                features[variable + "_EXC"] = var_per_horizon
-                features[variable + "_EXC_isnan"] = var_per_horizon_is_nan
+                    features[variable + self._use_nwp[i]] = var_per_horizon
+                    features[variable + self._use_nwp[i] + "_isnan"] = var_per_horizon_is_nan
 
         # Get the recent power.
         recent_power = float(
@@ -529,7 +484,6 @@ class RecentHistoryModel(PvSiteModel):
         # for multiprocessing.
         del state["_pv_data_source"]
         del state["_nwp_data_source"]
-        del state["_excarta_data_source"]
         return state
 
     def set_state(self, state):
