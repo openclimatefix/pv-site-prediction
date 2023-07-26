@@ -18,8 +18,10 @@ from psp.utils.maths import safe_div
 
 _log = logging.getLogger(__name__)
 
+
 def to_midnight(ts: datetime) -> datetime:
     return ts.replace(hour=0, minute=0, second=0, microsecond=0)
+
 
 def compute_history_per_horizon(
     pv_data: xr.DataArray,
@@ -107,8 +109,10 @@ _MetaGetter = Callable[[xr.Dataset], float]
 def _default_get_tilt(*kwargs):
     return 35.0
 
+
 def _default_get_orientation(*kwargs):
     return 180.0
+
 
 def _default_get_capacity(d: xr.Dataset) -> float:
     return float(d["power"].quantile(0.99))
