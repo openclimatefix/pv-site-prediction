@@ -96,8 +96,9 @@ class NwpDataSource:
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
         nwp_dropout: float = 0.0,
-        nwp_tolerance: Optional[float] = None,
+        nwp_tolerance: Optional[str] = None,
         use_nwp: bool = True,
+        nwp_variables: Optional[list[str]] = None,
     ):
         """
         Arguments:
@@ -153,6 +154,7 @@ class NwpDataSource:
         self._use_nwp = use_nwp
         self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
+        self._nwp_variables = nwp_variables
 
         self._data = self._prepare_data(raw_data)
 
@@ -334,7 +336,9 @@ class NwpDataSource:
             single_point=self._single_point,
         )
 
-        init_time = to_pydatetime(ds[_TIME].values.astype("datetime64"))
+        ds[_TIME] = ds[_TIME].values.astype("datetime64")
+
+        init_time = to_pydatetime(ds[_TIME].values)
 
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]

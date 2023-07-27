@@ -35,13 +35,32 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=NetcdfPvDataSource(PV_DATA_PATH_5MIN),
-            nwp_data_source=NwpDataSource(
-                NWP_DATA_PATHS,
-                coord_system=27700,
-                time_dim_name="init_time",
-                value_name="UKV",
-                y_is_ascending=False,
-            ),
+            nwp_data_sources={
+                "UKV": NwpDataSource(
+                    NWP_DATA_PATHS,
+                    coord_system=27700,
+                    time_dim_name="init_time",
+                    value_name="UKV",
+                    y_is_ascending=False,
+                    nwp_dropout=0.1,
+                    # Those are the variables available in our prod environment.
+                    nwp_variables=[
+                        "si10",
+                        "vis",
+                        # "r2",
+                        "t",
+                        "prate",
+                        # "sd",
+                        "dlwrf",
+                        "dswrf",
+                        "hcc",
+                        "mcc",
+                        "lcc",
+                    ],
+                    nwp_tolerance="168h",
+                    # use_nwp = False,
+                ),
+            },
         )
 
     def get_model_config(self) -> PvSiteModelConfig:
@@ -56,24 +75,7 @@ class ExpConfig(ExpConfigBase):
                 normalize_targets=True,
             ),
             random_state=random_state,
-            use_nwp=True,
-            nwp_dropout=0.1,
-            # Those are the variables available in our prod environment.
-            nwp_variables=[
-                "si10",
-                "vis",
-                # "r2",
-                "t",
-                "prate",
-                # "sd",
-                "dlwrf",
-                "dswrf",
-                "hcc",
-                "mcc",
-                "lcc",
-            ],
             normalize_features=True,
-            nwp_tolerance="168h",
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
