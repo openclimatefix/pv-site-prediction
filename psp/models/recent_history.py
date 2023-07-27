@@ -2,7 +2,7 @@ import logging
 import math
 import warnings
 from datetime import datetime, timedelta
-from typing import Callable, Iterable, Union
+from typing import Callable, Iterable, Optional
 
 import numpy as np
 import pandas as pd
@@ -124,13 +124,10 @@ class RecentHistoryModel(PvSiteModel):
         config: PvSiteModelConfig,
         *,
         pv_data_source: PvDataSource,
-        nwp_data_source: list[NwpDataSource] | None,
+        nwp_data_sources: dict[str, NwpDataSource],
+        nwp_variables: Optional[dict[str, list[str]]] = None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
-        use_nwp: list[str] | None = None,
-        nwp_variables: list[list[str]] | None = None,
-        # For future NWPs may need to update the drop_out
-        nwp_dropout: list[float] = [0.0, 0.0],
         pv_dropout: float = 0.0,
         normalize_features: bool = True,
         tilt_getter: _MetaGetter | None = None,
@@ -138,7 +135,9 @@ class RecentHistoryModel(PvSiteModel):
         capacity_getter: _MetaGetter | None = None,
         use_capacity_as_feature: bool = True,
         num_days_history: int = 7,
-        nwp_tolerance: Union[None, list[str]] = None,
+        use_nwp: bool = False,
+        nwp_dropout: Optional[float] = None,
+        nwp_tolerance: Optional[float] = None,
     ):
         """
         Arguments:
@@ -147,10 +146,7 @@ class RecentHistoryModel(PvSiteModel):
         nwp_data_source: Nwp data source.
         regressor: The regressor to train on the features.
         random_state: Random number generator.
-        use_nwp: Should we use NWP features.
         nwp_variables: Only use this subset of NWP variables. Defaults to using all.
-        nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
-            This is only used at train-time.
         pv_dropout: Probability of removing the PV data (replacing it with np.nan).
             This is only used at train-time.
         normalize_features: Should we normalize the PV-related features by
@@ -160,26 +156,22 @@ class RecentHistoryModel(PvSiteModel):
         capacity_getter: Function to get the capacity from the PV data array.
         use_capacity_as_feature: Should we use the PV capacity as a feature.
         num_days_history: How many days to consider for the recent PV features.
-        nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
-            See `NwpDataSource.get`'s documentation for details.
         """
         super().__init__(config)
         # Validate some options.
 
-        if any(dropout > 0.0 for dropout in nwp_dropout) or pv_dropout > 0.0:
+        # Check if the dropout is greater than 0 for any NwpDataSource
+        if (
+            any(data_source._nwp_dropout > 0.0 for data_source in nwp_data_sources.values())
+            or pv_dropout > 0.0
+        ):
             assert random_state is not None
 
-        if use_nwp and any(data_source is not None for data_source in use_nwp):
-            assert use_nwp and any(
-                data_source is not None for data_source in use_nwp
-            ), "At least one data_source must be not None"
-
         self._pv_data_source: PvDataSource
-        self._nwp_data_source: list[NwpDataSource] | None
+        self._nwp_data_sources: dict[str, NwpDataSource] | None
 
         self._regressor = regressor
         self._random_state = random_state
-        self._use_nwp = use_nwp
         self._nwp_variables = nwp_variables
         self._normalize_features = normalize_features
         self._pv_dropout = pv_dropout
@@ -194,12 +186,14 @@ class RecentHistoryModel(PvSiteModel):
 
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
-        self._nwp_tolerance = nwp_tolerance
+
+        self._use_nwp = use_nwp
         self._nwp_dropout = nwp_dropout
+        self._nwp_tolerance = nwp_tolerance
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
-            nwp_data_source=nwp_data_source,
+            nwp_data_sources=nwp_data_sources,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -212,14 +206,14 @@ class RecentHistoryModel(PvSiteModel):
         self,
         *,
         pv_data_source: PvDataSource,
-        nwp_data_source: list[NwpDataSource] | None = None,
+        nwp_data_sources: dict[str, NwpDataSource] | None = None,
     ):
         """Set the data sources.
 
         This has to be called after deserializing a model using `load_model`.
         """
         self._pv_data_source = pv_data_source
-        self._nwp_data_source = nwp_data_source
+        self._nwp_data_sources = nwp_data_sources
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -356,28 +350,27 @@ class RecentHistoryModel(PvSiteModel):
             features["h_" + agg + "_nan"] = np.isnan(aggregated) * 1.0
             features["h_" + agg] = np.nan_to_num(aggregated)
 
-        if self._use_nwp is not None:
-            for i in range(len(self._use_nwp)):
-                if not self._use_nwp[i]:
+        if self._nwp_data_sources is not None:
+            for source_key, source in self._nwp_data_sources.items():
+                # Skip if the data source is not used
+
+                if not source._use_nwp:
                     continue
 
-                if self._nwp_data_source is not None:
-                    assert self._nwp_data_source[i] is not None
-
-                if self._nwp_tolerance is not None:
-                    tolerance = self._nwp_tolerance[i]
+                if source._nwp_tolerance is not None:
+                    tolerance = str(source._nwp_tolerance)
                 else:
-                    tolerance = None  # or some default value
+                    tolerance = None
 
                 if (
                     is_training
-                    and self._nwp_dropout[i] > 0
+                    and source._nwp_dropout > 0
                     and self._random_state is not None
-                    and self._random_state.random() < self._nwp_dropout[i]
+                    and self._random_state.random() < source._nwp_dropout
                 ):
                     nwp_data_per_horizon = None
                 else:
-                    nwp_data_per_horizon = self._nwp_data_source[i].get(
+                    nwp_data_per_horizon = source.get(
                         now=x.ts,
                         timestamps=horizon_timestamps,
                         nearest_lat=lat,
@@ -386,9 +379,9 @@ class RecentHistoryModel(PvSiteModel):
                     )
 
                 nwp_variables = (
-                    self._nwp_data_source[i].list_variables()
+                    source.list_variables()
                     if self._nwp_variables is None
-                    else self._nwp_variables[i]
+                    else self._nwp_variables[source_key]
                 )
 
                 for variable in nwp_variables:
@@ -405,8 +398,8 @@ class RecentHistoryModel(PvSiteModel):
                         var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
                     )
 
-                    features[variable + self._use_nwp[i]] = var_per_horizon
-                    features[variable + self._use_nwp[i] + "_isnan"] = var_per_horizon_is_nan
+                    features[variable + source_key] = var_per_horizon
+                    features[variable + source_key + "_isnan"] = var_per_horizon_is_nan
 
         # Get the recent power.
         recent_power = float(
@@ -487,7 +480,7 @@ class RecentHistoryModel(PvSiteModel):
         # We can't put that in __getstate__ directly because we need it when the model is pickled
         # for multiprocessing.
         del state["_pv_data_source"]
-        del state["_nwp_data_source"]
+        del state["_nwp_data_sources"]
         return state
 
     def set_state(self, state):

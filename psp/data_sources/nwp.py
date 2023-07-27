@@ -1,7 +1,7 @@
 import datetime as dt
 import pathlib
 import pickle
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 # This import registers a codec.
 import ocf_blosc2  # noqa
@@ -95,6 +95,9 @@ class NwpDataSource:
         single_point: bool = False,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
+        nwp_dropout: float = 0.0,
+        nwp_tolerance: Optional[float] = None,
+        use_nwp: bool = True,
     ):
         """
         Arguments:
@@ -115,6 +118,12 @@ class NwpDataSource:
             this to `False`.
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
             this to `False`.
+        nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
+            This is only used at train-time.
+        nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
+            See `NwpDataSource.get`'s documentation for details.
+        use_nwp: Is used to set if the nwp source should be used in traing and testing, set to True
+            by default.
         """
         if isinstance(paths_or_data, str):
             paths_or_data = [paths_or_data]
@@ -140,6 +149,10 @@ class NwpDataSource:
         self._single_point = single_point
 
         self._lag_minutes = lag_minutes
+
+        self._use_nwp = use_nwp
+        self._nwp_dropout = nwp_dropout
+        self._nwp_tolerance = nwp_tolerance
 
         self._data = self._prepare_data(raw_data)
 
