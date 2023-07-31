@@ -359,9 +359,7 @@ class NwpDataSource:
             loc_idx=self._loc_idx,
         )
 
-        ds[_TIME] = ds[_TIME].values.astype("datetime64")
-
-        init_time = to_pydatetime(ds[_TIME].values)
+        init_time = to_pydatetime(ds[_TIME].values.item())
 
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]
