@@ -20,7 +20,7 @@ EXC_PATH = [
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
         f"merged_zarrs/test_1_temp/excarta_{year}.zarr"
     )
-    for year in [2018,2019,2020,2021,2022]
+    for year in [2018, 2019, 2020, 2021, 2022]
 ]
 
 
