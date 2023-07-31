@@ -61,7 +61,7 @@ class ExpConfig(ExpConfigBase):
                     y_dim_name="y",
                     time_dim_name="ts",
                     x_is_ascending=True,
-                    single_point=True,
+                    loc_idx=True,
                     lag_minutes=8 * 60,
                     nwp_dropout=0.0,
                     nwp_tolerance=None,
