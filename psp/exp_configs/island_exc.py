@@ -15,10 +15,13 @@ from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
 GFS_NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
-EXC_PATH = (
-    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
-    "sr_UK_Malta_full/zarr_format/r4/Malta/merged_full/malta_excarta_hour_shift.zarr"
-)
+EXC_PATH = [
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
+        f"merged_zarrs/test_1_temp/excarta_{year}.zarr"
+    )
+    for year in [2018,2019,2020,2021,2022]
+]
 
 
 def _get_capacity(data: xr.Dataset) -> float:
@@ -56,7 +59,7 @@ class ExpConfig(ExpConfigBase):
                     coord_system=4326,
                     x_dim_name="x",
                     y_dim_name="y",
-                    time_dim_name="init_time",
+                    time_dim_name="ts",
                     x_is_ascending=True,
                     single_point=True,
                     lag_minutes=8 * 60,
@@ -98,8 +101,8 @@ class ExpConfig(ExpConfigBase):
     def get_date_splits(self):
         return auto_date_split(
             test_start_date=dt.datetime(2020, 1, 1),
-            test_end_date=dt.datetime(2023, 1, 1),
-            num_trainings=1,
+            test_end_date=dt.datetime(2022, 12, 31),
+            num_trainings=8,
             train_days=365 * 2,
             # Min date because of NWP not available at the beginning of the PV data.
             min_train_date=dt.datetime(2018, 1, 10),

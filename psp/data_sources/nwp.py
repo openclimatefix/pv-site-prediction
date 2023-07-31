@@ -6,6 +6,7 @@ from typing import Optional, TypeVar
 # This import registers a codec.
 import ocf_blosc2  # noqa
 import xarray as xr
+from scipy.spatial import KDTree
 
 from psp.gis import CoordinateTransformer
 from psp.typings import Timestamp
@@ -22,6 +23,27 @@ _VARIABLE = "variable"
 _VALUE = "value"
 
 
+def KDTree_lookup(ds, x, y):
+
+    # Extract lat, lon, and locidx data
+    lat = ds.latitude.values
+    lon = ds.longitude.values
+    locidx = ds.locidx.values
+
+    # Create a KDTree
+    tree = KDTree(list(zip(lat, lon)))
+
+    # Query with the [longitude, latitude] of your point
+    _, idx = tree.query([x, y])
+
+    # Retrieve the locidx for this grid point
+    nearest_locidx = locidx[idx]
+
+    data = ds.sel(locidx=nearest_locidx)
+
+    return data
+
+
 def _slice_on_lat_lon(
     data: T,
     *,
@@ -34,7 +56,7 @@ def _slice_on_lat_lon(
     transformer: CoordinateTransformer,
     x_is_ascending: bool,
     y_is_ascending: bool,
-    single_point: bool,
+    loc_idx: bool,
 ) -> T:
     # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
     # by lat/lon).
@@ -65,9 +87,10 @@ def _slice_on_lat_lon(
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
 
-        if not single_point:
+        if not loc_idx:
             return data.sel(x=x, y=y, method="nearest")  # type: ignore
         else:
+            data = KDTree_lookup(data, x, y)
             return data
 
     return data
@@ -92,7 +115,7 @@ class NwpDataSource:
         value_name: str = _VALUE,
         x_is_ascending: bool = True,
         y_is_ascending: bool = True,
-        single_point: bool = False,
+        loc_idx: bool = False,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
         nwp_dropout: float = 0.0,
@@ -147,7 +170,7 @@ class NwpDataSource:
         self._value_name = value_name
         self._x_is_ascending = x_is_ascending
         self._y_is_ascending = y_is_ascending
-        self._single_point = single_point
+        self._loc_idx = loc_idx
 
         self._lag_minutes = lag_minutes
 
@@ -333,7 +356,7 @@ class NwpDataSource:
             transformer=self._coordinate_transformer,
             x_is_ascending=self._x_is_ascending,
             y_is_ascending=self._y_is_ascending,
-            single_point=self._single_point,
+            loc_idx=self._loc_idx,
         )
 
         ds[_TIME] = ds[_TIME].values.astype("datetime64")
