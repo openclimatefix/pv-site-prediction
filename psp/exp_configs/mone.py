@@ -23,6 +23,14 @@ NWP_DATA_PATHS = [
     for year in [2021, 2022]
 ]
 
+EXC_PATH = [
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
+        f"merged_zarrs/test_3_temp/exarta_{year}.zarr"
+    )
+    for year in [2019, 2020, 2021, 2022]  # , 2019, 2020, 2021, 2022]
+]
+
 
 class ExpConfig(ExpConfigBase):
     @functools.cache
@@ -58,6 +66,20 @@ class ExpConfig(ExpConfigBase):
                         "lcc",
                     ],
                     nwp_tolerance="168h",
+                    use_nwp=False,
+                ),
+                "EXC": NwpDataSource(
+                    EXC_PATH,
+                    coord_system=4326,
+                    x_dim_name="x",
+                    y_dim_name="y",
+                    time_dim_name="ts",
+                    x_is_ascending=True,
+                    y_is_ascending=True,
+                    # loc_idx=True,
+                    lag_minutes=8 * 60,
+                    nwp_dropout=0.0,
+                    nwp_tolerance=None,
                     # use_nwp = False,
                 ),
             },
@@ -71,7 +93,7 @@ class ExpConfig(ExpConfigBase):
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=2048,
+                num_train_samples=1000,
                 normalize_targets=True,
             ),
             random_state=random_state,
@@ -83,10 +105,10 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2021, 7, 1),
+            test_start_date=dt.datetime(2022, 1, 1),
             test_end_date=dt.datetime(2022, 12, 31),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
-            num_trainings=3,
+            num_trainings=1,
             train_days=365,
         )

@@ -353,7 +353,6 @@ class RecentHistoryModel(PvSiteModel):
         if self._nwp_data_sources is not None:
             for source_key, source in self._nwp_data_sources.items():
                 # Skip if the data source is not used
-
                 if not source._use_nwp:
                     continue
 
