@@ -81,18 +81,18 @@ def _predict(pv_data_source, nwp_data_source, ts=dt.datetime(2020, 1, 10), pv_id
 
     model.set_data_sources(
         pv_data_source=pv_data_source,
-        nwp_data_source=nwp_data_source,
+        nwp_data_sources=nwp_data_source,
     )
 
     return model.predict(X(ts=ts, pv_id=pv_id))
 
 
-def test_predict_with_missing_features(pv_data_source, nwp_data_source):
+def test_predict_with_missing_features(pv_data_source, nwp_data_sources):
     """Test that if we `predict` with missing features results in an error."""
-    nwp_data_source._data = nwp_data_source._data.drop_isel(variable=0)
+    nwp_data_sources["UKV"]._data = nwp_data_sources["UKV"]._data.drop_isel(variable=0)
 
     with pytest.raises(RuntimeError) as e:
-        _predict(pv_data_source, nwp_data_source)
+        _predict(pv_data_source, nwp_data_sources)
     assert "was trained on features" in str(e.value)
 
 
@@ -105,10 +105,10 @@ def test_predict_with_extra_features(pv_data_source, nwp_data_source):
     var_d = nwp_data.sel(variable="hcc")
     var_d.coords["variable"] = "patate"
     nwp_data = xr.concat([nwp_data, var_d], dim="variable")
-    nwp_data_source = NwpDataSource(nwp_data)
+    nwp_data_sources = {"UKV": NwpDataSource(nwp_data)}
 
     with pytest.raises(RuntimeError) as e:
-        _predict(pv_data_source, nwp_data_source)
+        _predict(pv_data_source, nwp_data_sources)
     assert "was trained on features" in str(e.value)
 
 
@@ -121,6 +121,13 @@ def test_predict_with_features_in_wrong_order(pv_data_source, nwp_data_source, r
     # variables are the same).
     all_close = True
     for ts in pd.date_range(dt.datetime(2020, 1, 6, 10), dt.datetime(2020, 1, 10, 10), freq="24h"):
+
+        # # This ensures the nwp fixture passed for the test is a dictionary
+        # if isinstance(self._nwp_data_sources, dict):
+        #     pass
+        # else:
+        #     self._nwp_data_sources = dict(nwp_data_source = self._nwp_data_sources)
+
         for pv_id in ["8215", "8229"]:
 
             y1 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)

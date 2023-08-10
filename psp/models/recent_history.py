@@ -215,6 +215,13 @@ class RecentHistoryModel(PvSiteModel):
         self._pv_data_source = pv_data_source
         self._nwp_data_sources = nwp_data_sources
 
+        # This ensures the nwp fixture passed for the test is a dictionary
+        if isinstance(self._nwp_data_sources, dict) or self._nwp_data_sources is None:
+            pass
+
+        else:
+            self._nwp_data_sources = dict(nwp_data_source=self._nwp_data_sources)
+
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
         y = Y(powers=powers)
@@ -397,8 +404,17 @@ class RecentHistoryModel(PvSiteModel):
                         var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
                     )
 
-                    features[variable + source_key] = var_per_horizon
-                    features[variable + source_key + "_isnan"] = var_per_horizon_is_nan
+                    # We only want to append the name of the NWP variable to include the provider
+                    # if there are multiple NWP data sources
+
+                    if len(self._nwp_data_sources) > 1:
+                        variable_source_key = variable + source_key
+
+                    else:
+                        variable_source_key = variable
+
+                    features[variable_source_key] = var_per_horizon
+                    features[variable_source_key + "_isnan"] = var_per_horizon_is_nan
 
         # Get the recent power.
         recent_power = float(

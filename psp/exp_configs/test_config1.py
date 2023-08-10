@@ -39,13 +39,15 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=NwpDataSource(
-                NWP_PATH,
-                coord_system=27700,
-                time_dim_name="init_time",
-                value_name="UKV",
-                y_is_ascending=False,
-            ),
+            nwp_data_sources={
+                "UKV": NwpDataSource(
+                    NWP_PATH,
+                    coord_system=27700,
+                    time_dim_name="init_time",
+                    value_name="UKV",
+                    y_is_ascending=False,
+                ),
+            },
         )
 
     def get_model_config(self):

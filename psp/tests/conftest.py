@@ -23,3 +23,16 @@ def nwp_data_source(pv_data_source):
         value_name="UKV",
         y_is_ascending=False,
     )
+
+
+@pytest.fixture
+def nwp_data_sources(pv_data_source):
+    return {
+        "UKV": NwpDataSource(
+            "psp/tests/fixtures/nwp.zarr",
+            coord_system=27700,
+            time_dim_name="init_time",
+            value_name="UKV",
+            y_is_ascending=False,
+        ),
+    }
