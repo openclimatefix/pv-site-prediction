@@ -101,7 +101,6 @@ def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     default=True,
     show_default=True,
 )
-
 def main(
     exp_root,
     exp_name,

@@ -103,7 +103,7 @@ class ExpConfig(ExpConfigBase):
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=5000,
+                num_train_samples=25000,
                 normalize_targets=True,
             ),
             random_state=random_state,
@@ -121,4 +121,6 @@ class ExpConfig(ExpConfigBase):
             # data across the board, 1 training will probably be enough.
             num_trainings=1,
             train_days=365 * 2,
+            # Min date because of NWP not available at the beginning of the PV data.
+            min_train_date=dt.datetime(2019, 10, 1),
         )
