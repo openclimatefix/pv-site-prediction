@@ -1,6 +1,6 @@
 config=$1
 exp_name=$2
-num_proc=16
+num_proc=32
 # num_test_samples=100000
 poetry run python psp/scripts/train_model.py -n $exp_name \
     -c $config \
