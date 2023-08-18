@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "psp"
-version = "0.1.2"
+version = "0.1.3"
 description = "Photovoltaic per site modeling"
 authors = ["Simon Lemieux <1105380+simlmx@users.noreply.github.com>"]
 license = "MIT"
@@ -28,6 +28,10 @@ torch = {version="^1.13.1", optional=true}
 tqdm = "^4.64.1"
 ocf-blosc2 = "^0.0.2"
 netcdf4 = "^1.6.3"
+streamlit = "^1.24.1"
+plotly = "^5.15.0"
+streamlit-extras = "^0.2.7"
+streamlit-option-menu = "^0.3.6"
 
 
 [tool.poetry.group.dev.dependencies]
