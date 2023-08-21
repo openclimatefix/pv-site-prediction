@@ -71,3 +71,13 @@ INFO:__main__:Total: 0.497 ± 0.004
 INFO:__main__:[0 , 2 [ : 0.439 ± 0.004
 INFO:__main__:Total: 0.439 ± 0.004
 
+No Irradiance, 12 hours:
+Train:
+INFO:__main__:[0 , 2 [ : 0.479 ± 0.017
+INFO:__main__:[2 , 4 [ : 0.482 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.493 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.505 ± 0.018
+INFO:__main__:[8 , 10[ : 0.501 ± 0.018
+INFO:__main__:[10, 12[ : 0.504 ± 0.018
+INFO:__main__:Total: 0.494 ± 0.007
+
