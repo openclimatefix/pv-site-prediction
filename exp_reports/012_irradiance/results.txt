@@ -56,3 +56,18 @@ Pseudo+NWP: INFO:__main__:Total: 0.327 ± 0.003
 No Pseudo, No NWP: INFO:__main__:Total: 0.335 ± 0.003
 
 No Pseudo, NWP: INFO:__main__:Total: 0.325 ± 0.003
+
+
+
+------------------------------------------
+
+Psuedo Irradiance satellite Testing
+
+No Irradiance, no NWP:
+Error on train set:
+INFO:__main__:[0 , 2 [ : 0.497 ± 0.004
+INFO:__main__:Total: 0.497 ± 0.004
+
+INFO:__main__:[0 , 2 [ : 0.439 ± 0.004
+INFO:__main__:Total: 0.439 ± 0.004
+
