@@ -12,17 +12,17 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-# _PREFIX = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/mone"
+# _PREFIX = ""
 PV_DATA_PATH = (
     "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/"
-    "PV/sme/zarr_format/sme_t5_with_stark.nc"
+    "PV/sme/v1/all/sme_all.nc"
 )
-# sme_t5.zarr
-# sme_t5_with_stark.nc"
-# sme_t5_without_stark.nc"
+# stark/sme_stark.nc"
+# no_stark/sme_no_stark.nc"
 
 # _PREFIX + "/pv_v3.nc"
 # PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
+
 NWP_DATA_PATHS = [
     (
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
@@ -36,7 +36,7 @@ EXC_PATH = [
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
         f"merged_zarrs/test_3_temp/excarta_{year}.zarr"
     )
-    for year in [2019, 2020, 2021, 2022]  # , 2019, 2020, 2021, 2022]
+    for year in [2019, 2020, 2021, 2022]
 ]
 
 
@@ -96,14 +96,14 @@ class ExpConfig(ExpConfigBase):
         )
 
     def get_model_config(self) -> PvSiteModelConfig:
-        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=36 * 2))
+        return PvSiteModelConfig(horizons=Horizons(duration=30, num_horizons=48 * 2))
 
     def get_model(self, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         return RecentHistoryModel(
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=25000,
+                num_train_samples=5000,
                 normalize_targets=True,
             ),
             random_state=random_state,
@@ -115,7 +115,7 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2021, 1, 1),
+            test_start_date=dt.datetime(2022, 1, 1),
             test_end_date=dt.datetime(2023, 1, 1),
             # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
