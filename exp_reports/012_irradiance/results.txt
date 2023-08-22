@@ -62,6 +62,7 @@ No Pseudo, NWP: INFO:__main__:Total: 0.325 ± 0.003
 ------------------------------------------
 
 Psuedo Irradiance satellite Testing
+Approx 22000 training examples
 
 No Irradiance, no NWP:
 Error on train set:
@@ -109,3 +110,42 @@ INFO:__main__:[6 , 8 [ : 0.417 ± 0.015
 INFO:__main__:[8 , 10[ : 0.416 ± 0.015
 INFO:__main__:[10, 12[ : 0.429 ± 0.015
 INFO:__main__:Total: 0.414 ± 0.006
+
+
+Just nwp:
+Train:
+INFO:__main__:[0 , 2 [ : 0.484 ± 0.018
+INFO:__main__:[2 , 4 [ : 0.478 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.487 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.495 ± 0.018
+INFO:__main__:[8 , 10[ : 0.492 ± 0.018
+INFO:__main__:[10, 12[ : 0.494 ± 0.018
+INFO:__main__:Total: 0.489 ± 0.007
+
+Validaiton:
+INFO:__main__:[0 , 2 [ : 0.430 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.390 ± 0.014
+INFO:__main__:[4 , 6 [ : 0.395 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.407 ± 0.015
+INFO:__main__:[8 , 10[ : 0.404 ± 0.014
+INFO:__main__:[10, 12[ : 0.422 ± 0.016
+INFO:__main__:Total: 0.408 ± 0.006
+
+NWP + Sat Irradiance:
+Train:
+INFO:__main__:[0 , 2 [ : 0.483 ± 0.018
+INFO:__main__:[2 , 4 [ : 0.476 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.486 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.494 ± 0.018
+INFO:__main__:[8 , 10[ : 0.492 ± 0.018
+INFO:__main__:[10, 12[ : 0.496 ± 0.018
+INFO:__main__:Total: 0.488 ± 0.007
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.431 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.388 ± 0.013
+INFO:__main__:[4 , 6 [ : 0.396 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.408 ± 0.014
+INFO:__main__:[8 , 10[ : 0.405 ± 0.014
+INFO:__main__:[10, 12[ : 0.421 ± 0.015
+INFO:__main__:Total: 0.408 ± 0.006
