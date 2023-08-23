@@ -149,3 +149,32 @@ INFO:__main__:[6 , 8 [ : 0.408 ± 0.014
 INFO:__main__:[8 , 10[ : 0.405 ± 0.014
 INFO:__main__:[10, 12[ : 0.421 ± 0.015
 INFO:__main__:Total: 0.408 ± 0.006
+
+
+Sat Irradiance Larger Valid (15000 vs 1000)
+NWP, no irradiance:
+INFO:__main__:[0 , 2 [ : 0.435 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.430 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.431 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.428 ± 0.004
+INFO:__main__:[8 , 10[ : 0.426 ± 0.004
+INFO:__main__:[10, 12[ : 0.433 ± 0.004
+INFO:__main__:Total: 0.430 ± 0.002
+
+NWP + Irradiance:
+INFO:__main__:[0 , 2 [ : 0.435 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.430 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.431 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.428 ± 0.004
+INFO:__main__:[8 , 10[ : 0.426 ± 0.004
+INFO:__main__:[10, 12[ : 0.433 ± 0.004
+INFO:__main__:Total: 0.430 ± 0.002
+
+Irradiance + no NWP:
+INFO:__main__:[0 , 2 [ : 0.439 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.434 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.437 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.433 ± 0.004
+INFO:__main__:[8 , 10[ : 0.430 ± 0.004
+INFO:__main__:[10, 12[ : 0.436 ± 0.004
+INFO:__main__:Total: 0.435 ± 0.002
