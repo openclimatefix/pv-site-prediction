@@ -59,7 +59,7 @@ NWP_DATA_PATHS = [
     for year in range(2020, 2021)
 ]
 
-IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_2021_2/"
+IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_2020_2/"
 import pandas as pd
 dataset = xr.open_dataset(PV_DATA_PATH)
 import glob
