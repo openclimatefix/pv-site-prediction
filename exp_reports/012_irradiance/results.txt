@@ -181,6 +181,45 @@ INFO:__main__:Total: 0.435 ± 0.002
 
 Results from training on 245760 examples (4096*60) on the training set of the irradiance model
 
+Just irradiance, no NWP
+Train:
+INFO:__main__:[0 , 2 [ : 0.465 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.463 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.477 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.482 ± 0.004
+INFO:__main__:[8 , 10[ : 0.482 ± 0.004
+INFO:__main__:[10, 12[ : 0.484 ± 0.004
+INFO:__main__:Total: 0.476 ± 0.001
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.412 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.414 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.420 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.416 ± 0.003
+INFO:__main__:[8 , 10[ : 0.422 ± 0.003
+INFO:__main__:[10, 12[ : 0.427 ± 0.003
+INFO:__main__:Total: 0.418 ± 0.001
+
+
+Just PV:
+Train:
+INFO:__main__:[0 , 2 [ : 0.468 ± 0.005
+INFO:__main__:[2 , 4 [ : 0.468 ± 0.005
+INFO:__main__:[4 , 6 [ : 0.477 ± 0.005
+INFO:__main__:[6 , 8 [ : 0.477 ± 0.005
+INFO:__main__:[8 , 10[ : 0.477 ± 0.005
+INFO:__main__:[10, 12[ : 0.482 ± 0.005
+INFO:__main__:Total: 0.475 ± 0.002
+INFO:__main__:Error on the valid set
+
+Validation Set:
+INFO:__main__:[0 , 2 [ : 0.416 ± 0.005
+INFO:__main__:[2 , 4 [ : 0.418 ± 0.005
+INFO:__main__:[4 , 6 [ : 0.415 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.415 ± 0.004
+INFO:__main__:[8 , 10[ : 0.424 ± 0.005
+INFO:__main__:[10, 12[ : 0.427 ± 0.005
+INFO:__main__:Total: 0.419 ± 0.002
 
 
 Using Irradiance model as PV forecast (no PV history, just NWP and satellite):
@@ -219,3 +258,4 @@ Total: 0.429 ± 0.002
 [8 , 10[ : 0.402 ± 0.004
 [10, 12[ : 0.583 ± 0.006
 Total: 0.418 ± 0.002
+
