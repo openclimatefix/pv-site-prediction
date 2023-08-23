@@ -58,10 +58,21 @@ NWP_DATA_PATHS = [
     )
     for year in range(2020, 2021)
 ]
-
-IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_2020_2/"
+def _get_capacity(d):
+    # Use 0.99 quantile over the history window, fallback on the capacity as defined
+    # in the metadata.
+    value = float(d["generation_wh"].quantile(0.99))
+    if not np.isfinite(value):
+        value = float(d.coords["kwp"].values)
+    return value
+IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_2021_2/"
 import pandas as pd
 dataset = xr.open_dataset(PV_DATA_PATH)
+print(dataset.generation_wh.max().values)
+print(dataset.generation_wh.mean().values)
+print(dataset.generation_wh.min().values)
+print(dataset.kwp.max().values)
+print(dataset.kwp)
 import glob
 forecast_files = glob.glob(IRRADIANCE_DATA_PATH + "*.npz")
 def _eval_model(forecast_files, dataset) -> None:
@@ -73,8 +84,11 @@ def _eval_model(forecast_files, dataset) -> None:
         data = np.load(sample, allow_pickle=True)
         pred = data["latents"][0].clip(min=0.)
         init_time = pd.Timestamp(data["pv_metas"][0][0][0])
-        sample_xr = dataset.sel(ss_id=data["location_datas"][0][0], timestamp=slice(init_time, init_time+pd.Timedelta(hours=12)))
-        target = sample_xr.generation_wh.values
+        sample_xr = dataset.sel(ss_id=data["location_datas"][0][0])
+        # Normalize based off capacity
+        capacity = _get_capacity(sample_xr)
+        sample_xr = sample_xr.sel(timestamp=slice(init_time, init_time+pd.Timedelta(hours=12)))
+        target = sample_xr.generation_wh.values / capacity
         if target.shape[0] != 145:
             continue
         target = target[:-1] # Remove last one to make divisble by 3, same as in training
