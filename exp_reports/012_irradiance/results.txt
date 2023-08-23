@@ -151,7 +151,7 @@ INFO:__main__:[10, 12[ : 0.421 ± 0.015
 INFO:__main__:Total: 0.408 ± 0.006
 
 
-Sat Irradiance Larger Valid (15000 vs 1000)
+Sat Irradiance Larger Valid (15000 vs 1000) Training Examples: 4096
 NWP, no irradiance:
 INFO:__main__:[0 , 2 [ : 0.435 ± 0.004
 INFO:__main__:[2 , 4 [ : 0.430 ± 0.004
@@ -178,3 +178,17 @@ INFO:__main__:[6 , 8 [ : 0.433 ± 0.004
 INFO:__main__:[8 , 10[ : 0.430 ± 0.004
 INFO:__main__:[10, 12[ : 0.436 ± 0.004
 INFO:__main__:Total: 0.435 ± 0.002
+
+Results from training on 245760 examples (4096*60) on the training set of the irradiance model
+
+
+
+Using Irradiance model as PV forecast (no PV history, just NWP and satellite):
+2021 test set:
+[0 , 2 [ : 0.605 ± 0.006
+[2 , 4 [ : 0.558 ± 0.005
+[4 , 6 [ : 0.649 ± 0.006
+[6 , 8 [ : 0.577 ± 0.005
+[8 , 10[ : 0.551 ± 0.005
+[10, 12[ : 0.585 ± 0.005
+Total: 0.588 ± 0.002
