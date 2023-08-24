@@ -10,6 +10,7 @@ import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
+from psp.data_sources.irradiance import IrradianceDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
@@ -125,6 +126,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None,
+        irradiance_data_source: IrradianceDataSource | None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         use_nwp: bool = True,
@@ -172,6 +174,7 @@ class RecentHistoryModel(PvSiteModel):
 
         self._pv_data_source: PvDataSource
         self._nwp_data_source: NwpDataSource | None
+        self._irradiance_data_source: IrradianceDataSource | None
         self._regressor = regressor
         self._random_state = random_state
         self._use_nwp = use_nwp
@@ -187,6 +190,7 @@ class RecentHistoryModel(PvSiteModel):
         # Deprecated - keeping for backward compatibility and mypy.
         self._use_inferred_meta = None
         self._use_data_capacity = None
+        self._use_irradiance = False
 
         self._use_capacity_as_feature = use_capacity_as_feature
         self._num_days_history = num_days_history
@@ -196,6 +200,7 @@ class RecentHistoryModel(PvSiteModel):
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_source=nwp_data_source,
+            irradiance_data_source=irradiance_data_source,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -209,6 +214,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_source: NwpDataSource | None = None,
+        irradiance_data_source: IrradianceDataSource | None = None,
     ):
         """Set the data sources.
 
@@ -216,6 +222,7 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_source = nwp_data_source
+        self._irradiance_data_source = irradiance_data_source
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -233,11 +240,19 @@ class RecentHistoryModel(PvSiteModel):
 
     def _get_features(self, x: X, is_training: bool) -> Features:
         features: Features = dict()
-        data_source = self._pv_data_source.as_available_at(x.ts)
-
         # We'll look at stats for the previous few days.
         history_start = to_midnight(x.ts - timedelta(days=self._num_days_history))
-
+        # Only pick times that are in the init time for the PV ID
+        irradiance_data_per_horizon = self._irradiance_data_source.get(
+            pv_ids=x.pv_id,
+            start_ts=history_start,
+            end_ts=x.ts,
+        )
+        # Get timestamp of irradiance data
+        irradiance_data_ts = irradiance_data_per_horizon["init_time"].values
+        x.ts = pd.Timestamp(irradiance_data_ts).to_pydatetime()
+        data_source = self._pv_data_source.as_available_at(x.ts)
+        history_start = to_midnight(x.ts - timedelta(days=self._num_days_history))
         # Slice as much as we can right away.
         _data = data_source.get(
             pv_ids=x.pv_id,
@@ -340,7 +355,7 @@ class RecentHistoryModel(PvSiteModel):
             scalar_features["capacity"] = capacity if np.isfinite(capacity) else -1.0
 
         for agg in ["max", "mean", "median"]:
-            # When the array is empty or all nan, numpy emits a warning. We don't care about those
+            # When the array is empty or all nan, numpy emits a warning. We don't care about those_get_features
             # and are happy with np.nan as a result.
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", r"All-NaN (slice|axis) encountered")
@@ -390,6 +405,20 @@ class RecentHistoryModel(PvSiteModel):
 
                 features[variable] = var_per_horizon
                 features[variable + "_isnan"] = var_per_horizon_is_nan
+        if self._use_irradiance:
+            irradiance_data_per_horizon = self._irradiance_data_source.get(
+                pv_ids=x.pv_id,
+                start_ts=history_start,
+                end_ts=x.ts,
+            )
+            #print(irradiance_data_per_horizon)
+
+            # 3 rolling mean window, and break up each feature into a different entry
+            for i, latent_feature in enumerate(irradiance_data_per_horizon["latents"].values[:,:-1]): # Want one less to get to 48 entries
+                latent_feature_mean = np.mean(latent_feature.reshape(-1, 3), axis=1)
+                assert latent_feature_mean.shape == (48,), ValueError(f"Latent Shape is {latent_feature_mean=}")
+                features[f"latent_{i}"] = latent_feature_mean
+                features[f"latent_{i}_isnan"] = np.isnan(latent_feature_mean) * 1.0
 
         # Get the recent power.
         recent_power = float(

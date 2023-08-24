@@ -51,7 +51,7 @@ def _err(x):
 
 def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     """Evaluate a `model` on samples from a `dataloader` and log the error."""
-    horizon_buckets = 8 * 60
+    horizon_buckets = 2 * 60 # 2 hours
     errors_per_bucket = defaultdict(list)
     all_errors = []
     for sample in tqdm.tqdm(dataloader):
@@ -83,7 +83,7 @@ def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
 @click.option("-b", "--batch-size", default=32, show_default=True)
 @click.option(
     "--num-test-samples",
-    default=100,
+    default=10000,
     show_default=True,
     help="Number of samples to use to test on train and valid. Use 0 to skip completely.",
 )
@@ -172,7 +172,7 @@ def main(
             random_state=np.random.RandomState(SEED_TRAIN),
         )
 
-        limit = 128
+        limit = 512
 
         # Ensure that way we always have the same valid set, no matter the batch size (for this we
         # need to have only whole batches).

@@ -10,24 +10,29 @@ from psp.typings import PvId, Timestamp
 from psp.utils.dates import to_pydatetime
 
 _ID = "pv_id"
-_TS = "ts"
+_TS = "init_time"
 
 # https://peps.python.org/pep-0673/
-_Self = TypeVar("_Self", bound="PvDataSource")
+_Self = TypeVar("_Self", bound="IrradianceDataSource")
 
 
 _log = logging.getLogger(__name__)
 
+import numpy as np
 
-class PvDataSource(abc.ABC):
+def nearest_ind(items, pivot):
+    time_diff = np.abs([date - pivot for date in items])
+    return time_diff.argmin(0)
+
+class IrradianceDataSource(abc.ABC):
     """Definition of the interface for loading PV data."""
 
     @abc.abstractmethod
     def get(
-        self,
-        pv_ids: list[PvId] | PvId,
-        start_ts: Timestamp | None = None,
-        end_ts: Timestamp | None = None,
+            self,
+            pv_ids: list[PvId] | PvId,
+            start_ts: Timestamp | None = None,
+            end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
         """Get a slice of the data as a xarray Dataset.
 
@@ -88,15 +93,15 @@ def min_timestamp(a: Timestamp | None, b: Timestamp | None) -> Timestamp | None:
             return min(a, b)
 
 
-class NetcdfPvDataSource(PvDataSource):
+class ZarrIrradianceDataSource(IrradianceDataSource):
     def __init__(
-        self,
-        path_or_data: pathlib.Path | str | xr.Dataset,
-        timestamp_dim_name: str = _TS,
-        id_dim_name: str = _ID,
-        rename: dict[str, str] | None = None,
-        ignore_pv_ids: list[str] | None = None,
-        lag_minutes: float = 0.0,
+            self,
+            path_or_data: pathlib.Path | str | xr.Dataset,
+            timestamp_dim_name: str = _TS,
+            id_dim_name: str = _ID,
+            rename: dict[str, str] | None = None,
+            ignore_pv_ids: list[str] | None = None,
+            lag_minutes: float = 0.0,
     ):
         """
         Arguments:
@@ -157,18 +162,21 @@ class NetcdfPvDataSource(PvDataSource):
             num_pvs = len(self._data.coords["pv_id"])
             _log.debug(f"Removed {num_pvs_before - num_pvs} PVs")
 
-        # Only should cover 2020 to 2021
-        self._data = self._data.sel(ts=slice("2018-01-01", "2022-01-01"))
-
     def get(
-        self,
-        pv_ids: list[PvId] | PvId,
-        start_ts: Timestamp | None = None,
-        end_ts: Timestamp | None = None,
+            self,
+            pv_ids: list[PvId] | PvId,
+            start_ts: Timestamp | None = None,
+            end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
         end_ts = min_timestamp(self._max_ts, end_ts)
-        #print(f"max_ts: {self._max_ts=} {end_ts=}, {start_ts=}")
-        return self._data.sel(pv_id=pv_ids, ts=slice(start_ts, end_ts))
+        pv_system = self._data.sel(pv_id=pv_ids)
+        # TODO Change from hacky one, know only for 2 hours, so go 2 hours back from end_ts and select closest one
+        initial_ts = np.datetime64(end_ts)
+        nearest_index = nearest_ind(pv_system[_TS].values, initial_ts)
+        pv_system = pv_system.isel(idx=nearest_index) # Gets nearest index, based off init times
+        # Fill NaNs with 0s
+        #pv_system["latents"] = pv_system["latents"].fillna(0.)
+        return pv_system
 
     def list_pv_ids(self):
         out = list(self._data.coords[_ID].values)
@@ -180,23 +188,20 @@ class NetcdfPvDataSource(PvDataSource):
 
     def min_ts(self):
         ts = to_pydatetime(self._data.coords[_TS].min().values)  # type:ignore
-        #print(f"max_ts: {ts=}, {self._max_ts=}")
         return min_timestamp(ts, self._max_ts)
 
     def max_ts(self):
         ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
-        #print(f"max_ts: {ts=}, {self._max_ts=}")
         return min_timestamp(ts, self._max_ts)
 
-    def as_available_at(self, ts: Timestamp) -> "NetcdfPvDataSource":
+    def as_available_at(self, ts: Timestamp) -> "ZarrIrradianceDataSource":
         now = ts - datetime.timedelta(minutes=self._lag_minutes) - datetime.timedelta(seconds=1)
         # We simply make a copy and change it's `max_ts`.
         # Using `copy.copy` used __setstate__ and __getstate__, which we tampered with so we use our
         # own implementation, which is inspired from the pickle doc:
         # https://docs.python.org/3/library/pickle.html#pickling-class-instances
-        new_ds = NetcdfPvDataSource.__new__(NetcdfPvDataSource)
+        new_ds = ZarrIrradianceDataSource.__new__(ZarrIrradianceDataSource)
         new_ds.__dict__.update(self.__dict__)
-        #print(f"as_available_at: {now=}, {self._max_ts=}")
         new_ds._set_max_ts(min_timestamp(self._max_ts, now))
         return new_ds
 
@@ -205,7 +210,7 @@ class NetcdfPvDataSource(PvDataSource):
         # means we don't need to save the data itself.
         if self._path is None:
             raise RuntimeError(
-                "You can only pickle `PvDataSource`s that were constructed using a path"
+                "You can only pickle `IrradianceDataSource`s that were constructed using a path"
             )
         d = self.__dict__.copy()
         # I'm not sure of the state contained in a `Dataset` object, so I make sure we don't save

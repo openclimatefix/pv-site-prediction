@@ -1,0 +1,318 @@
+No Pseudo, No NWP:
+Train:
+INFO:__main__:Saving model trained on 2020-12-31 00:00:00 to exp_results/no_pseudo_no_nwp/model_0.pkl
+INFO:__main__:Total: 0.407 ± 0.034
+Validation:
+INFO:__main__:[0 , 2 [ : 0.467 ± 0.033
+INFO:__main__:Total: 0.467 ± 0.033
+
+
+Pseudo, No NWP:
+Train:
+INFO:__main__:Total: 0.399 ± 0.033
+Validation:
+INFO:__main__:Total: 0.452 ± 0.033
+
+Psuedo, No NWP, correct time:
+Train:
+INFO:__main__:Total: 0.312 ± 0.025
+INFO:__main__:Error on the valid set
+
+INFO:__main__:[0 , 2 [ : 0.340 ± 0.025
+INFO:__main__:Total: 0.340 ± 0.025
+
+No Psuedo, No NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.304 ± 0.024
+INFO:__main__:Total: 0.304 ± 0.024
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.351 ± 0.026
+INFO:__main__:Total: 0.351 ± 0.026
+
+Psuedo, NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.301 ± 0.025
+INFO:__main__:Total: 0.301 ± 0.025
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.329 ± 0.024
+INFO:__main__:Total: 0.329 ± 0.024
+
+No Psuedo, NWP, correct time:
+Train:
+INFO:__main__:[0 , 2 [ : 0.301 ± 0.025
+INFO:__main__:Total: 0.301 ± 0.025
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.329 ± 0.024
+INFO:__main__:Total: 0.329 ± 0.024
+
+----------------------------------------
+10000 validation, 20480 training examples
+
+Pseudo+NWP: INFO:__main__:Total: 0.327 ± 0.003
+
+No Pseudo, No NWP: INFO:__main__:Total: 0.335 ± 0.003
+
+No Pseudo, NWP: INFO:__main__:Total: 0.325 ± 0.003
+
+
+
+------------------------------------------
+
+Psuedo Irradiance satellite Testing
+Approx 22000 training examples
+
+No Irradiance, no NWP:
+Error on train set:
+INFO:__main__:[0 , 2 [ : 0.497 ± 0.004
+INFO:__main__:Total: 0.497 ± 0.004
+
+INFO:__main__:[0 , 2 [ : 0.439 ± 0.004
+INFO:__main__:Total: 0.439 ± 0.004
+
+No Irradiance, 12 hours:
+Train:
+INFO:__main__:[0 , 2 [ : 0.479 ± 0.017
+INFO:__main__:[2 , 4 [ : 0.482 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.493 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.505 ± 0.018
+INFO:__main__:[8 , 10[ : 0.501 ± 0.018
+INFO:__main__:[10, 12[ : 0.504 ± 0.018
+INFO:__main__:Total: 0.494 ± 0.007
+
+Validation set:
+INFO:__main__:[0 , 2 [ : 0.434 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.394 ± 0.013
+INFO:__main__:[4 , 6 [ : 0.405 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.418 ± 0.015
+INFO:__main__:[8 , 10[ : 0.414 ± 0.015
+INFO:__main__:[10, 12[ : 0.425 ± 0.015
+INFO:__main__:Total: 0.415 ± 0.006
+
+
+Satellite Irradiance, 12 hours:
+Train:
+INFO:__main__:[0 , 2 [ : 0.486 ± 0.018
+INFO:__main__:[2 , 4 [ : 0.485 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.496 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.507 ± 0.018
+INFO:__main__:[8 , 10[ : 0.502 ± 0.018
+INFO:__main__:[10, 12[ : 0.505 ± 0.018
+INFO:__main__:Total: 0.497 ± 0.007
+
+Validation set:
+INFO:__main__:[0 , 2 [ : 0.433 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.391 ± 0.013
+INFO:__main__:[4 , 6 [ : 0.401 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.417 ± 0.015
+INFO:__main__:[8 , 10[ : 0.416 ± 0.015
+INFO:__main__:[10, 12[ : 0.429 ± 0.015
+INFO:__main__:Total: 0.414 ± 0.006
+
+
+Just nwp:
+Train:
+INFO:__main__:[0 , 2 [ : 0.484 ± 0.018
+INFO:__main__:[2 , 4 [ : 0.478 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.487 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.495 ± 0.018
+INFO:__main__:[8 , 10[ : 0.492 ± 0.018
+INFO:__main__:[10, 12[ : 0.494 ± 0.018
+INFO:__main__:Total: 0.489 ± 0.007
+
+Validaiton:
+INFO:__main__:[0 , 2 [ : 0.430 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.390 ± 0.014
+INFO:__main__:[4 , 6 [ : 0.395 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.407 ± 0.015
+INFO:__main__:[8 , 10[ : 0.404 ± 0.014
+INFO:__main__:[10, 12[ : 0.422 ± 0.016
+INFO:__main__:Total: 0.408 ± 0.006
+
+NWP + Sat Irradiance:
+Train:
+INFO:__main__:[0 , 2 [ : 0.483 ± 0.018
+INFO:__main__:[2 , 4 [ : 0.476 ± 0.017
+INFO:__main__:[4 , 6 [ : 0.486 ± 0.018
+INFO:__main__:[6 , 8 [ : 0.494 ± 0.018
+INFO:__main__:[8 , 10[ : 0.492 ± 0.018
+INFO:__main__:[10, 12[ : 0.496 ± 0.018
+INFO:__main__:Total: 0.488 ± 0.007
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.431 ± 0.015
+INFO:__main__:[2 , 4 [ : 0.388 ± 0.013
+INFO:__main__:[4 , 6 [ : 0.396 ± 0.014
+INFO:__main__:[6 , 8 [ : 0.408 ± 0.014
+INFO:__main__:[8 , 10[ : 0.405 ± 0.014
+INFO:__main__:[10, 12[ : 0.421 ± 0.015
+INFO:__main__:Total: 0.408 ± 0.006
+
+
+Sat Irradiance Larger Valid (15000 vs 1000) Training Examples: 4096
+NWP, no irradiance:
+INFO:__main__:[0 , 2 [ : 0.435 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.430 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.431 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.428 ± 0.004
+INFO:__main__:[8 , 10[ : 0.426 ± 0.004
+INFO:__main__:[10, 12[ : 0.433 ± 0.004
+INFO:__main__:Total: 0.430 ± 0.002
+
+NWP + Irradiance:
+INFO:__main__:[0 , 2 [ : 0.435 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.430 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.431 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.428 ± 0.004
+INFO:__main__:[8 , 10[ : 0.426 ± 0.004
+INFO:__main__:[10, 12[ : 0.433 ± 0.004
+INFO:__main__:Total: 0.430 ± 0.002
+
+Irradiance + no NWP:
+INFO:__main__:[0 , 2 [ : 0.439 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.434 ± 0.004
+INFO:__main__:[4 , 6 [ : 0.437 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.433 ± 0.004
+INFO:__main__:[8 , 10[ : 0.430 ± 0.004
+INFO:__main__:[10, 12[ : 0.436 ± 0.004
+INFO:__main__:Total: 0.435 ± 0.002
+
+Results from training on 245760 examples (4096*60) on the training set of the irradiance model
+
+Just irradiance, no NWP
+Train:
+INFO:__main__:[0 , 2 [ : 0.465 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.463 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.477 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.482 ± 0.004
+INFO:__main__:[8 , 10[ : 0.482 ± 0.004
+INFO:__main__:[10, 12[ : 0.484 ± 0.004
+INFO:__main__:Total: 0.476 ± 0.001
+
+Validation:
+INFO:__main__:[0 , 2 [ : 0.412 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.414 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.420 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.416 ± 0.003
+INFO:__main__:[8 , 10[ : 0.422 ± 0.003
+INFO:__main__:[10, 12[ : 0.427 ± 0.003
+INFO:__main__:Total: 0.418 ± 0.001
+
+
+Just PV:
+Train:
+INFO:__main__:[0 , 2 [ : 0.468 ± 0.005
+INFO:__main__:[2 , 4 [ : 0.468 ± 0.005
+INFO:__main__:[4 , 6 [ : 0.477 ± 0.005
+INFO:__main__:[6 , 8 [ : 0.477 ± 0.005
+INFO:__main__:[8 , 10[ : 0.477 ± 0.005
+INFO:__main__:[10, 12[ : 0.482 ± 0.005
+INFO:__main__:Total: 0.475 ± 0.002
+INFO:__main__:Error on the valid set
+
+Validation Set:
+INFO:__main__:[0 , 2 [ : 0.416 ± 0.005
+INFO:__main__:[2 , 4 [ : 0.418 ± 0.005
+INFO:__main__:[4 , 6 [ : 0.415 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.415 ± 0.004
+INFO:__main__:[8 , 10[ : 0.424 ± 0.005
+INFO:__main__:[10, 12[ : 0.427 ± 0.005
+INFO:__main__:Total: 0.419 ± 0.002
+
+Sat Irradiance + NWP:
+INFO:__main__:Error on the train set
+20000it [2:24:01,  2.31it/s]
+INFO:__main__:[0 , 2 [ : 0.463 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.460 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.463 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.464 ± 0.003
+INFO:__main__:[8 , 10[ : 0.468 ± 0.003
+INFO:__main__:[10, 12[ : 0.470 ± 0.004
+INFO:__main__:Total: 0.465 ± 0.001
+INFO:__main__:Error on the valid set
+20000it [2:11:48,  2.53it/s]
+INFO:__main__:[0 , 2 [ : 0.410 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.409 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.408 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.403 ± 0.003
+INFO:__main__:[8 , 10[ : 0.405 ± 0.003
+INFO:__main__:[10, 12[ : 0.411 ± 0.003
+INFO:__main__:Total: 0.408 ± 0.001
+
+NWP, no Sat Irradiance:
+INFO:__main__:Error on the train set
+20000it [2:22:59,  2.33it/s]
+INFO:__main__:[0 , 2 [ : 0.463 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.460 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.463 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.464 ± 0.003
+INFO:__main__:[8 , 10[ : 0.468 ± 0.003
+INFO:__main__:[10, 12[ : 0.470 ± 0.004
+INFO:__main__:Total: 0.465 ± 0.001
+INFO:__main__:Error on the valid set
+20000it [2:06:44,  2.63it/s]
+INFO:__main__:[0 , 2 [ : 0.410 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.410 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.408 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.402 ± 0.003
+INFO:__main__:[8 , 10[ : 0.405 ± 0.003
+INFO:__main__:[10, 12[ : 0.411 ± 0.003
+INFO:__main__:Total: 0.408 ± 0.001
+
+
+Using Irradiance model as PV forecast (no PV history, just NWP and satellite):
+2021 test set, no normalization:
+[0 , 2 [ : 0.605 ± 0.006
+[2 , 4 [ : 0.558 ± 0.005
+[4 , 6 [ : 0.649 ± 0.006
+[6 , 8 [ : 0.577 ± 0.005
+[8 , 10[ : 0.551 ± 0.005
+[10, 12[ : 0.585 ± 0.005
+Total: 0.588 ± 0.002
+
+2020 Test set, no normalization:
+[0 , 2 [ : 0.652 ± 0.006
+[2 , 4 [ : 0.585 ± 0.005
+[4 , 6 [ : 0.673 ± 0.006
+[6 , 8 [ : 0.596 ± 0.005
+[8 , 10[ : 0.565 ± 0.005
+[10, 12[ : 0.598 ± 0.005
+Total: 0.612 ± 0.002
+
+2020 Test set, with PV site normalization:
+[0 , 2 [ : 0.284 ± 0.002
+[2 , 4 [ : 0.331 ± 0.003
+[4 , 6 [ : 0.602 ± 0.006
+[6 , 8 [ : 0.374 ± 0.004
+[8 , 10[ : 0.407 ± 0.004
+[10, 12[ : 0.589 ± 0.006
+Total: 0.429 ± 0.002
+
+2021 Test set, with PV Site normalization:
+[0 , 2 [ : 0.273 ± 0.002
+[2 , 4 [ : 0.326 ± 0.003
+[4 , 6 [ : 0.574 ± 0.006
+[6 , 8 [ : 0.357 ± 0.004
+[8 , 10[ : 0.402 ± 0.004
+[10, 12[ : 0.583 ± 0.006
+Total: 0.418 ± 0.002
+
+2021 Training Test set (i.e. validation set):
+[0 , 2 [ : 0.125 ± 0.001
+[2 , 4 [ : 0.131 ± 0.001
+[4 , 6 [ : 0.134 ± 0.001
+[6 , 8 [ : 0.138 ± 0.001
+[8 , 10[ : 0.138 ± 0.001
+[10, 12[ : 0.137 ± 0.001
+Total: 0.134 ± 0.000
+
+2018-2020 Training set (i.e. set model was trained on):
+[0 , 2 [ : 0.118 ± 0.000
+[2 , 4 [ : 0.121 ± 0.000
+[4 , 6 [ : 0.127 ± 0.000
+[6 , 8 [ : 0.129 ± 0.000
+[8 , 10[ : 0.128 ± 0.000
+[10, 12[ : 0.124 ± 0.000
+Total: 0.125 ± 0.000
