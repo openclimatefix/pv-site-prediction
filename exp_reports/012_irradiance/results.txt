@@ -221,6 +221,46 @@ INFO:__main__:[8 , 10[ : 0.424 ± 0.005
 INFO:__main__:[10, 12[ : 0.427 ± 0.005
 INFO:__main__:Total: 0.419 ± 0.002
 
+Sat Irradiance + NWP:
+INFO:__main__:Error on the train set
+20000it [2:24:01,  2.31it/s]
+INFO:__main__:[0 , 2 [ : 0.463 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.460 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.463 ± 0.004
+INFO:__main__:[6 , 8 [ : 0.464 ± 0.003
+INFO:__main__:[8 , 10[ : 0.468 ± 0.003
+INFO:__main__:[10, 12[ : 0.470 ± 0.004
+INFO:__main__:Total: 0.465 ± 0.001
+INFO:__main__:Error on the valid set
+20000it [2:11:48,  2.53it/s]
+INFO:__main__:[0 , 2 [ : 0.410 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.409 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.408 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.403 ± 0.003
+INFO:__main__:[8 , 10[ : 0.405 ± 0.003
+INFO:__main__:[10, 12[ : 0.411 ± 0.003
+INFO:__main__:Total: 0.408 ± 0.001
+
+NWP, no Sat Irradiance:
+INFO:__main__:Error on the train set
+20000it [2:22:59,  2.33it/s]
+INFO:__main__:[0 , 2 [ : 0.463 ± 0.004
+INFO:__main__:[2 , 4 [ : 0.460 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.463 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.464 ± 0.003
+INFO:__main__:[8 , 10[ : 0.468 ± 0.003
+INFO:__main__:[10, 12[ : 0.470 ± 0.004
+INFO:__main__:Total: 0.465 ± 0.001
+INFO:__main__:Error on the valid set
+20000it [2:06:44,  2.63it/s]
+INFO:__main__:[0 , 2 [ : 0.410 ± 0.003
+INFO:__main__:[2 , 4 [ : 0.410 ± 0.003
+INFO:__main__:[4 , 6 [ : 0.408 ± 0.003
+INFO:__main__:[6 , 8 [ : 0.402 ± 0.003
+INFO:__main__:[8 , 10[ : 0.405 ± 0.003
+INFO:__main__:[10, 12[ : 0.411 ± 0.003
+INFO:__main__:Total: 0.408 ± 0.001
+
 
 Using Irradiance model as PV forecast (no PV history, just NWP and satellite):
 2021 test set, no normalization:
