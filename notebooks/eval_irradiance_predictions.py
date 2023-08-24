@@ -65,7 +65,7 @@ def _get_capacity(d):
     if not np.isfinite(value):
         value = float(d.coords["kwp"].values)
     return value
-IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_2021_2/"
+IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_inference_forecast_train/"
 import pandas as pd
 dataset = xr.open_dataset(PV_DATA_PATH)
 print(dataset.generation_wh.max().values)
