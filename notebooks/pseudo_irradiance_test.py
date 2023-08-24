@@ -5,9 +5,9 @@ import xarray as xr
 
 pv_data = xr.open_dataset("/run/media/jacob/data/5min_v3.nc")
 print(pv_data)
-data = xr.open_zarr("/run/media/jacob/data/irradiance_xarray/combined_test.zarr").sortby("pv_id")
+data = xr.open_zarr("/run/media/jacob/data/irradiance_xarray3/combined_test.zarr").sortby("pv_id")
 print(data["pv_id"])
-datat = xr.open_zarr("/run/media/jacob/data/irradiance_xarray/combined_train.zarr").sortby("pv_id")
+datat = xr.open_zarr("/run/media/jacob/data/irradiance_xarray3/combined_train.zarr").sortby("pv_id")
 print(datat["pv_id"])
 print(data)
 print(datat)
@@ -16,7 +16,7 @@ data = xr.concat([data, datat], dim="idx").set_coords("init_time").sortby("pv_id
 data["idx"] = np.arange(len(data["idx"]))
 data = data.chunk({"pv_id": 1, "idx": -1, "feature": -1})
 print(data)
-data.to_zarr("/run/media/jacob/data/irradiance_xarray/combined.zarr", mode="w")
+data.to_zarr("/run/media/jacob/data/irradiance_xarray3/combined.zarr", mode="w")
 exit()
 
 ignore_ids = [

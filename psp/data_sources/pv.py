@@ -158,7 +158,7 @@ class NetcdfPvDataSource(PvDataSource):
             _log.debug(f"Removed {num_pvs_before - num_pvs} PVs")
 
         # Only should cover 2020 to 2021
-        self._data = self._data.sel(ts=slice("2020-01-03", "2022-01-01"))
+        self._data = self._data.sel(ts=slice("2018-01-01", "2022-01-01"))
 
     def get(
         self,
@@ -167,6 +167,7 @@ class NetcdfPvDataSource(PvDataSource):
         end_ts: Timestamp | None = None,
     ) -> xr.Dataset:
         end_ts = min_timestamp(self._max_ts, end_ts)
+        #print(f"max_ts: {self._max_ts=} {end_ts=}, {start_ts=}")
         return self._data.sel(pv_id=pv_ids, ts=slice(start_ts, end_ts))
 
     def list_pv_ids(self):
@@ -179,10 +180,12 @@ class NetcdfPvDataSource(PvDataSource):
 
     def min_ts(self):
         ts = to_pydatetime(self._data.coords[_TS].min().values)  # type:ignore
+        #print(f"max_ts: {ts=}, {self._max_ts=}")
         return min_timestamp(ts, self._max_ts)
 
     def max_ts(self):
         ts = to_pydatetime(self._data.coords[_TS].max().values)  # type:ignore
+        #print(f"max_ts: {ts=}, {self._max_ts=}")
         return min_timestamp(ts, self._max_ts)
 
     def as_available_at(self, ts: Timestamp) -> "NetcdfPvDataSource":
@@ -193,6 +196,7 @@ class NetcdfPvDataSource(PvDataSource):
         # https://docs.python.org/3/library/pickle.html#pickling-class-instances
         new_ds = NetcdfPvDataSource.__new__(NetcdfPvDataSource)
         new_ds.__dict__.update(self.__dict__)
+        #print(f"as_available_at: {now=}, {self._max_ts=}")
         new_ds._set_max_ts(min_timestamp(self._max_ts, now))
         return new_ds
 

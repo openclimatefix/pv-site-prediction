@@ -18,7 +18,7 @@ from psp.typings import Horizons
 # import xgboost as xgb
 
 PV_DATA_PATH = "/run/media/jacob/data/5min_v3.nc"
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min_v3.nc"
+#PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min_v3.nc"
 # NWP_DATA_PATH = "gs://solar-pv-nowcasting-data/NWP/UK_Met_Office/UKV_intermediate_version_7.zarr"
 NWP_DATA_PATHS = [
     (
@@ -28,8 +28,8 @@ NWP_DATA_PATHS = [
     for year in range(2020, 2021)
 ]
 
-IRRADIANCE_DATA_PATH = "/run/media/jacob/data/irradiance_xarray/combined.zarr"
-IRRADIANCE_DATA_PATH = "/home/jacob/combined.zarr"
+IRRADIANCE_DATA_PATH = "/run/media/jacob/data/xarray_train/combined.zarr"
+#IRRADIANCE_DATA_PATH = "/home/jacob/combined.zarr"
 # TODO Change this to all others but these
 SS_ID_TO_KEEP = [10426, 10512, 10528, 10548, 10630, 10639, 10837, 11591, 12642, 12846,
                  12847, 12860, 14577, 14674, 16364, 16474, 17166, 26771, 26772, 26786,
@@ -76,21 +76,22 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=NwpDataSource(
-                NWP_DATA_PATHS,
-                coord_system=27700,
-                time_dim_name="init_time",
-                value_name="UKV",
-                y_is_ascending=False,
+            nwp_data_source=None,
+            #NwpDataSource(
+            #    NWP_DATA_PATHS,
+            #    coord_system=27700,
+            #    time_dim_name="init_time",
+            #    value_name="UKV",
+            #    y_is_ascending=False,
                 # cache_dir=".nwp_cache",
-            ),
+            #),
             irradiance_data_source=ZarrIrradianceDataSource(
                 IRRADIANCE_DATA_PATH,
             )
         )
 
     def _get_model_config(self) -> PvSiteModelConfig:
-        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=2 * 4))
+        return PvSiteModelConfig(horizons=Horizons(duration=15, num_horizons=48))
 
     def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         kwargs = self.get_data_source_kwargs()
@@ -98,7 +99,7 @@ class ExpConfig(ExpConfigBase):
             config=self._get_model_config(),
             **kwargs,
             regressor=SklearnRegressor(
-                num_train_samples=4096,
+                num_train_samples=4096*60,
                 normalize_targets=True,
                 #
                 # We have done some tests with xgboost and keep this as an example but note that we
@@ -115,7 +116,7 @@ class ExpConfig(ExpConfigBase):
                 # ),
             ),
             random_state=random_state,
-            use_nwp=True,
+            use_nwp=False,
             # Those are the variables available in our prod environment.
             nwp_variables=[
                 "si10",
@@ -142,5 +143,5 @@ class ExpConfig(ExpConfigBase):
         return auto_date_split(
             test_start_date=dt.datetime(2021, 1, 1),
             test_end_date=dt.datetime(2021, 11, 8),
-            train_days=356 * 2,
+            train_days=356 * 3,
         )

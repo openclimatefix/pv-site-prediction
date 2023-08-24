@@ -174,7 +174,8 @@ class ZarrIrradianceDataSource(IrradianceDataSource):
         initial_ts = np.datetime64(end_ts)
         nearest_index = nearest_ind(pv_system[_TS].values, initial_ts)
         pv_system = pv_system.isel(idx=nearest_index) # Gets nearest index, based off init times
-        #print(pv_system)
+        # Fill NaNs with 0s
+        #pv_system["latents"] = pv_system["latents"].fillna(0.)
         return pv_system
 
     def list_pv_ids(self):
