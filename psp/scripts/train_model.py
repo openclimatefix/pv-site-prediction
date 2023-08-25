@@ -83,7 +83,7 @@ def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
 @click.option("-b", "--batch-size", default=32, show_default=True)
 @click.option(
     "--num-test-samples",
-    default=100,
+    default=10000,
     show_default=True,
     help="Number of samples to use to test on train and valid. Use 0 to skip completely.",
 )
@@ -155,9 +155,9 @@ def main(
             data_source=pv_data_source,
             horizons=model.config.horizons,
             num_workers=num_workers,
-            shuffle=True,
             start_ts=start_ts,
             end_ts=end_ts,
+            shuffle=True,
             step=train_date_split.step_minutes,
         )
 

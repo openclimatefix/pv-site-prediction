@@ -10,6 +10,7 @@ from torchdata.datapipes.iter import IterDataPipe
 from psp.data_sources.pv import PvDataSource
 from psp.typings import Batch, Features, Horizons, PvId, Sample, Timestamp, X, Y
 from psp.utils.batches import batch_samples
+from collections import defaultdict
 
 if TYPE_CHECKING:
     # torch imports are slow so we only import if we need to.
@@ -84,6 +85,16 @@ class RandomPvXDataPipe(PvXDataPipe):
             step: Round the timestamp to this many minutes (with 0 seconds and 0 microseconds).
         """
         self._random_state = random_state
+        import glob
+        import tqdm
+        forecast_files = list(glob.glob("/mnt/storage_ssd_4tb/irradiance_inference_forecast_train/*.npz")) + list(glob.glob("/mnt/storage_ssd_4tb/irradiance_inference_forecast_test/*.npz"))
+        init_time_per_pv_id = defaultdict(list)
+        for sample in tqdm.tqdm(forecast_files):
+            data = np.load(sample, allow_pickle=True)
+            if str(data["location_datas"][0][0]) in pv_ids: # Keep train/valid/eval split
+                init_time_per_pv_id[str(data["location_datas"][0][0])].append(pd.Timestamp(data["pv_metas"][0][0][0]))
+        self.init_times_per_pv_id = init_time_per_pv_id
+        print(f"{len(self.init_times_per_pv_id)} PV IDs to use")
         super().__init__(data_source, horizons, pv_ids, start_ts, end_ts, step)
 
     def __iter__(self) -> Iterator[X]:
@@ -91,11 +102,14 @@ class RandomPvXDataPipe(PvXDataPipe):
 
         while True:
             # Random PV.
-            pv_id = self._random_state.choice(self._pv_ids)
+            pv_id = self._random_state.choice(list(self.init_times_per_pv_id.keys()))
 
             # Random timestamp
-            delta_seconds = self._random_state.random() * num_seconds
-            ts = self._start_ts + dt.timedelta(seconds=delta_seconds)
+            # Select from init times of irradiance model here4
+            init_time = self._random_state.choice(self.init_times_per_pv_id[pv_id])
+            if init_time > self._end_ts or init_time < self._start_ts:
+                continue
+            ts = init_time
 
             # Round the minutes to a multiple of `steps`. This is particularly useful when testing,
             # where we might not want something as granualar as every minute, but want to be able
