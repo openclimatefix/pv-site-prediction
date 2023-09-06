@@ -2,8 +2,8 @@
 
 import datetime as dt
 
-import xarray as xr
 import numpy as np
+import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
