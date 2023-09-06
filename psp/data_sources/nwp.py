@@ -116,7 +116,6 @@ class NwpDataSource:
             See `NwpDataSource.get`'s documentation for details..
         nwp_variables: Only use this subset of NWP variables. Defaults to using all.
         """
-
         if isinstance(paths_or_data, str):
             paths_or_data = [paths_or_data]
 
