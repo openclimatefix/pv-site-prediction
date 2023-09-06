@@ -65,10 +65,10 @@ class ExpConfig(ExpConfigBase):
                 ),
             ),
             random_state=random_state,
-            use_nwp=True,
             # Make sure the NWP data is used by adding a lot of dropout on the PV data.
             pv_dropout=0.9,
             capacity_getter=_get_capacity,
+            nwp_dropout=0.0
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:

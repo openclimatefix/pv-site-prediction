@@ -26,9 +26,9 @@ NWP_DATA_PATHS = [
 EXC_PATH = [
     (
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
-        f"merged_zarrs/test_3_temp/exarta_{year}.zarr"
+        f"merged_zarrs/test_3_temp/excarta_{year}.zarr"
     )
-    for year in [2019, 2020, 2021, 2022]  # , 2019, 2020, 2021, 2022]
+    for year in [2019, 2020, 2021, 2022]
 ]
 
 
@@ -50,7 +50,6 @@ class ExpConfig(ExpConfigBase):
                     time_dim_name="init_time",
                     value_name="UKV",
                     y_is_ascending=False,
-                    nwp_dropout=0.1,
                     # Those are the variables available in our prod environment.
                     nwp_variables=[
                         "si10",
@@ -66,21 +65,17 @@ class ExpConfig(ExpConfigBase):
                         "lcc",
                     ],
                     nwp_tolerance="168h",
-                    use_nwp=False,
                 ),
                 "EXC": NwpDataSource(
                     EXC_PATH,
                     coord_system=4326,
-                    x_dim_name="x",
-                    y_dim_name="y",
+                    x_dim_name="latitude",
+                    y_dim_name="longitude",
                     time_dim_name="ts",
                     x_is_ascending=True,
                     y_is_ascending=True,
-                    # loc_idx=True,
                     lag_minutes=8 * 60,
-                    nwp_dropout=0.0,
                     nwp_tolerance=None,
-                    # use_nwp = False,
                 ),
             },
         )
@@ -98,6 +93,7 @@ class ExpConfig(ExpConfigBase):
             ),
             random_state=random_state,
             normalize_features=True,
+            nwp_dropout=0.1,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:

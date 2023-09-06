@@ -6,7 +6,6 @@ from typing import Optional, TypeVar
 # This import registers a codec.
 import ocf_blosc2  # noqa
 import xarray as xr
-from scipy.spatial import KDTree
 
 from psp.gis import CoordinateTransformer
 from psp.typings import Timestamp
@@ -23,27 +22,6 @@ _VARIABLE = "variable"
 _VALUE = "value"
 
 
-def KDTree_lookup(ds, x, y):
-
-    # Extract lat, lon, and locidx data
-    lat = ds.latitude.values
-    lon = ds.longitude.values
-    locidx = ds.locidx.values
-
-    # Create a KDTree
-    tree = KDTree(list(zip(lat, lon)))
-
-    # Query with the [longitude, latitude] of your point
-    _, idx = tree.query([x, y])
-
-    # Retrieve the locidx for this grid point
-    nearest_locidx = locidx[idx]
-
-    data = ds.sel(locidx=nearest_locidx)
-
-    return data
-
-
 def _slice_on_lat_lon(
     data: T,
     *,
@@ -56,7 +34,6 @@ def _slice_on_lat_lon(
     transformer: CoordinateTransformer,
     x_is_ascending: bool,
     y_is_ascending: bool,
-    loc_idx: bool,
 ) -> T:
     # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
     # by lat/lon).
@@ -87,11 +64,7 @@ def _slice_on_lat_lon(
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
 
-        if not loc_idx:
-            return data.sel(x=x, y=y, method="nearest")  # type: ignore
-        else:
-            data = KDTree_lookup(data, x, y)
-            return data
+        return data.sel(x=x, y=y, method="nearest")  # type: ignore
 
     return data
 
@@ -115,12 +88,9 @@ class NwpDataSource:
         value_name: str = _VALUE,
         x_is_ascending: bool = True,
         y_is_ascending: bool = True,
-        loc_idx: bool = False,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
-        nwp_dropout: float = 0.0,
         nwp_tolerance: Optional[str] = None,
-        use_nwp: bool = True,
         nwp_variables: Optional[list[str]] = None,
     ):
         """
@@ -142,13 +112,11 @@ class NwpDataSource:
             this to `False`.
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
             this to `False`.
-        nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
-            This is only used at train-time.
         nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
-            See `NwpDataSource.get`'s documentation for details.
-        use_nwp: Is used to set if the nwp source should be used in traing and testing, set to True
-            by default.
+            See `NwpDataSource.get`'s documentation for details..
+        nwp_variables: Only use this subset of NWP variables. Defaults to using all.
         """
+
         if isinstance(paths_or_data, str):
             paths_or_data = [paths_or_data]
 
@@ -170,12 +138,9 @@ class NwpDataSource:
         self._value_name = value_name
         self._x_is_ascending = x_is_ascending
         self._y_is_ascending = y_is_ascending
-        self._loc_idx = loc_idx
 
         self._lag_minutes = lag_minutes
 
-        self._use_nwp = use_nwp
-        self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
         self._nwp_variables = nwp_variables
 
@@ -210,6 +175,10 @@ class NwpDataSource:
                 rename_map[old] = new
 
         data = data.rename(rename_map)
+
+        # Filter data to keep only the variables in self._nwp_variables if it's not None
+        if self._nwp_variables is not None:
+            data = data.sel(variable=self._nwp_variables)
 
         return data
 
@@ -356,7 +325,6 @@ class NwpDataSource:
             transformer=self._coordinate_transformer,
             x_is_ascending=self._x_is_ascending,
             y_is_ascending=self._y_is_ascending,
-            loc_idx=self._loc_idx,
         )
 
         init_time = to_pydatetime(ds[_TIME].values.item())

@@ -1,7 +1,10 @@
+# The script run_exp.sh can be used to train and then evaluate a model, for example
+#./run_exp.sh exp_config_to_use name_for_exp
+# Current set to evalutate 2000 samples
+
 config=$1
 exp_name=$2
-num_proc=32
-# num_test_samples=100000
+num_proc=16
 poetry run python psp/scripts/train_model.py -n $exp_name \
     -c $config \
     -b 1 \
