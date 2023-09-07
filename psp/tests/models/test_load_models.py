@@ -22,11 +22,11 @@ def test_old_models_sanity_check():
     assert sorted(models) == sorted(EXPECTED_OUTPUT)
 
 
-def _test_model(model_path, expected, pv_data_source, nwp_data_source):
+def _test_model(model_path, expected, pv_data_source, nwp_data_sources):
     model = load_model(model_path)
     model.set_data_sources(
         pv_data_source=pv_data_source,
-        nwp_data_source=nwp_data_source,
+        nwp_data_sources=nwp_data_sources,
     )
 
     pv_id = pv_data_source.list_pv_ids()[0]
@@ -41,13 +41,13 @@ def _test_model(model_path, expected, pv_data_source, nwp_data_source):
 
 
 @pytest.mark.parametrize("model_name,expected", list(EXPECTED_OUTPUT.items()))
-def test_old_models(model_name, expected, pv_data_source, nwp_data_source):
+def test_old_models(model_name, expected, pv_data_source, nwp_data_sources):
     """Make sure that we can load previously trained models."""
     model_path = f"psp/tests/fixtures/models/{model_name}.pkl"
-    _test_model(model_path, expected, pv_data_source, nwp_data_source)
+    _test_model(model_path, expected, pv_data_source, nwp_data_sources)
 
 
-def test_latest_model(tmp_path, pv_data_source, nwp_data_source):
+def test_latest_model(tmp_path, pv_data_source, nwp_data_sources):
     """Make sure that when we train a model using the "test_config1.py" we get a model
     that behaves the same as our last fixture model (see the keys of `EXPECTED_OUTPUT`).
 
@@ -74,5 +74,5 @@ def test_latest_model(tmp_path, pv_data_source, nwp_data_source):
         tmp_path / "train_test" / "model_0.pkl",
         list(EXPECTED_OUTPUT.values())[-1],
         pv_data_source,
-        nwp_data_source,
+        nwp_data_sources,
     )

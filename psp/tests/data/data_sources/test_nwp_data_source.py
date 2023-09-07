@@ -23,7 +23,7 @@ LAT2 = 52
 
 
 @pytest.fixture(params=[27700, 4326])
-def nwp_data_source(tmp_path, request):
+def nwp_data_sources(tmp_path, request):
     coord_system: int = request.param
 
     lats = [LAT0, LAT1, LAT2]
@@ -91,9 +91,9 @@ def hours(x: float) -> timedelta:
     ],
 )
 def test_nwp_data_source_check_times_one_step(
-    now, ts, expected_time, expected_step, nwp_data_source
+    now, ts, expected_time, expected_step, nwp_data_sources
 ):
-    data = nwp_data_source.get(now=now, timestamps=ts)
+    data = nwp_data_sources.get(now=now, timestamps=ts)
 
     # Always one init_time, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3
@@ -134,9 +134,9 @@ def test_nwp_data_source_check_times_one_step(
     ],
 )
 def test_nwp_data_source_check_times_many_steps(
-    now, ts, expected_time, expected_steps, nwp_data_source
+    now, ts, expected_time, expected_steps, nwp_data_sources
 ):
-    data = nwp_data_source.get(now=now, timestamps=ts)
+    data = nwp_data_sources.get(now=now, timestamps=ts)
 
     # Always one init_tie, one step, 3 variables, and 3x3 lat/lon.
     assert data.size == 3 * 3 * 3 * len(expected_steps)
@@ -156,17 +156,17 @@ def test_nwp_data_source_check_times_many_steps(
         [(None, None), (None, None), 27],
     ],
 )
-def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nwp_data_source):
+def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nwp_data_sources):
 
     # Reverse the data order and see if our flag words.
     if reverse_x:
-        nwp_data_source._data = nwp_data_source._data.sortby("x", ascending=False)
-        nwp_data_source._x_is_ascending = False
+        nwp_data_sources._data = nwp_data_sources._data.sortby("x", ascending=False)
+        nwp_data_sources._x_is_ascending = False
     if reverse_y:
-        nwp_data_source._data = nwp_data_source._data.sortby("y", ascending=False)
-        nwp_data_source._y_is_ascending = False
+        nwp_data_sources._data = nwp_data_sources._data.sortby("y", ascending=False)
+        nwp_data_sources._y_is_ascending = False
 
-    data = nwp_data_source.get(
+    data = nwp_data_sources.get(
         now=T0,
         timestamps=T0,
         min_lat=lat[0],
@@ -178,23 +178,23 @@ def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nw
     assert data.size == expected_size
 
 
-def test_nwp_data_source_nearest(nwp_data_source):
-    data = nwp_data_source.get(
+def test_nwp_data_source_nearest(nwp_data_sources):
+    data = nwp_data_sources.get(
         now=T0, timestamps=[T0, T0 + hours(2)], nearest_lat=LAT1, nearest_lon=LON1
     )
-    x, y = nwp_data_source._coordinate_transformer([(LAT1, LON1)])[0]
+    x, y = nwp_data_sources._coordinate_transformer([(LAT1, LON1)])[0]
     assert y == data.coords["y"]
     assert x == data.coords["x"]
     assert data.size == 6
 
 
-def test_nwp_data_source_tolerance(nwp_data_source):
+def test_nwp_data_source_tolerance(nwp_data_sources):
     now = T1 + timedelta(days=2)
-    data = nwp_data_source.get(
+    data = nwp_data_sources.get(
         now=now,
         timestamps=now,
     )
 
     assert data is not None
-    data = nwp_data_source.get(now=now, timestamps=now, tolerance="24h")
+    data = nwp_data_sources.get(now=now, timestamps=now, tolerance="24h")
     assert data is None

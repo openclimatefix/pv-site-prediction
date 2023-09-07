@@ -31,11 +31,6 @@ def main():
     names = [str(name) for name in names]
     site_ids = [str(site_id) for site_id in ds.coords["SiteId"].values]
 
-    # UPDATE VALS for SME
-    # as
-
-    # TO DO: Automate this feature using an postcode to lat long library
-
     # Add the lat/lon that we googled for each location in the provided Location.txt.
     city = pd.DataFrame(index=names, columns=["lat", "lon"])
     city.loc["4353"][["lat", "lon"]] = (51.17533, 0.40693)
@@ -71,7 +66,6 @@ def main():
     ds = ds.rename({"Actual_MW": "power", "CapacityMw": "capacity"})
 
     # Drop any NaNs
-
     # ds = ds.dropna(dim="ts", subset=["power"])
 
     ds = ds.dropna("ts", how="all")

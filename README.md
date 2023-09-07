@@ -37,6 +37,9 @@ This repo contains code to train and evaluate pv-site models.
 
     # Call the scripts with `--help` to see more options, in particular to run on more than one CPU.
 
+    # The script run_exp.sh can be used to train and then evaluate a model, for example
+    ./run_exp.sh exp_config_to_use name_for_exp
+
 
 ## Prerequisites
 

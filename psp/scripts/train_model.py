@@ -94,6 +94,13 @@ def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     default=False,
     show_default=True,
 )
+@click.option(
+    "--no_infer",
+    is_flag=True,
+    help="If set to True, evaluates the error on the train/valid sets. Default is True.",
+    default=False,
+    show_default=True,
+)
 def main(
     exp_root,
     exp_name,
@@ -103,6 +110,7 @@ def main(
     num_test_samples: int,
     log_level: str,
     force: bool,
+    no_infer: bool,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -195,7 +203,7 @@ def main(
         save_model(model, path)
 
         # Print the error on the train/valid sets.
-        if num_test_samples > 0:
+        if num_test_samples > 0 and not no_infer:
             _log.info("Error on the train set")
             train_data_loader2 = make_data_loader(
                 **data_loader_kwargs,
