@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "psp"
-version = "0.1.4"
+version = "0.1.5"
 description = "Photovoltaic per site modeling"
 authors = ["Simon Lemieux <1105380+simlmx@users.noreply.github.com>"]
 license = "MIT"
