@@ -3,13 +3,12 @@
 import datetime as dt
 import importlib
 import logging
+from typing import Optional
 
 import click
 import numpy as np
 import pandas as pd
 import tqdm
-
-from typing import Optional
 
 from psp.exp_configs.base import EvalConfigBase
 from psp.metrics import Metric, mean_absolute_error
@@ -83,7 +82,7 @@ _log = logging.getLogger(__name__)
     type=int,
     default=None,
     help="The time interval of the samples in minutes. "
-         "Defaults to None and then value is taken from the configuration.",
+    "Defaults to None and then value is taken from the configuration.",
 )
 def main(
     exp_root,
