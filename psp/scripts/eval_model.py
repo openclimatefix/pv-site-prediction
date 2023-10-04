@@ -73,7 +73,8 @@ _log = logging.getLogger(__name__)
     "The --step-minutes determines the frequency of the samples in time.",
 )
 @click.option(
-    "--pv-ids-one-string",
+    "--pv_ids",
+    "pv_ids_one_string",
     type=str,
     help="Comma separated list of PV IDs to evaluate on. Defaults to all PVs in the test set.",
 )
