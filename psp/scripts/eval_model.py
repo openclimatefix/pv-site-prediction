@@ -1,3 +1,5 @@
+"""Evaluate a model trained with the train_model.py script."""
+
 import datetime as dt
 import importlib
 import logging
@@ -70,6 +72,11 @@ _log = logging.getLogger(__name__)
     help="By default we pick samples at random. Use this flag to run for all the timestamps."
     "The --step-minutes determines the frequency of the samples in time.",
 )
+@click.option(
+    "--pv-ids-one-string",
+    type=str,
+    help="Comma separated list of PV IDs to evaluate on. Defaults to all PVs in the test set.",
+)
 def main(
     exp_root,
     exp_name,
@@ -82,6 +89,7 @@ def main(
     test_start,
     test_end,
     sequential: bool,
+    pv_ids_one_string: str,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -142,7 +150,10 @@ def main(
     # TODO make sure the train_split from the model is consistent with the test one - we could
     # save in the model details about the training and check them here.
     pv_splits = eval_config.make_pv_splits(pv_data_source)
-    pv_ids = getattr(pv_splits, split_name)
+    if pv_ids_one_string is None:
+        pv_ids = getattr(pv_splits, split_name)
+    else:
+        pv_ids = pv_ids_one_string.split(",")
 
     test_date_split = date_splits.test_date_split
     test_start = test_start or test_date_split.start_date

@@ -2,6 +2,7 @@
 
 import datetime as dt
 
+import numpy as np
 import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
@@ -14,7 +15,14 @@ from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
 PV_TARGET_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/pv_hourly_v6.nc"
-NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/nwp_v8.zarr"
+GFS_NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
+EXC_PATH = [
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/experimental/Excarta/"
+        f"merged_zarrs/test_3_temp/excarta_{year}.zarr"
+    )
+    for year in [2019, 2020, 2021, 2022]  # , 2019, 2020, 2021, 2022]
+]
 
 
 def _get_capacity(data: xr.Dataset) -> float:
@@ -36,13 +44,27 @@ class ExpConfig(ExpConfigBase):
                 PV_TARGET_DATA_PATH,
                 lag_minutes=5 * 24 * 60,
             ),
-            nwp_data_source=NwpDataSource(
-                NWP_PATH,
-                coord_system=4326,
-                x_dim_name="latitude",
-                y_dim_name="longitude",
-                x_is_ascending=False,
-            ),
+            nwp_data_sources={
+                "GFS": NwpDataSource(
+                    GFS_NWP_PATH,
+                    coord_system=4326,
+                    x_dim_name="latitude",
+                    y_dim_name="longitude",
+                    x_is_ascending=False,
+                    nwp_tolerance=None,
+                ),
+                "EXC": NwpDataSource(
+                    EXC_PATH,
+                    coord_system=4326,
+                    x_dim_name="latitude",
+                    y_dim_name="longitude",
+                    time_dim_name="ts",
+                    x_is_ascending=True,
+                    y_is_ascending=True,
+                    lag_minutes=8 * 60,
+                    nwp_tolerance=None,
+                ),
+            },
         )
 
     def get_model_config(self):
@@ -53,19 +75,20 @@ class ExpConfig(ExpConfigBase):
             )
         )
 
-    def get_model(self, **kwargs) -> PvSiteModel:
+    def get_model(self, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         return RecentHistoryModel(
             self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=4096,
+                num_train_samples=5000,
                 normalize_targets=True,
             ),
-            use_nwp=True,
+            random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
             use_capacity_as_feature=False,
             num_days_history=12,
+            nwp_dropout=0.1,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
@@ -76,11 +99,11 @@ class ExpConfig(ExpConfigBase):
 
     def get_date_splits(self):
         return auto_date_split(
-            test_start_date=dt.datetime(2020, 10, 14),
-            test_end_date=dt.datetime(2022, 10, 14),
+            test_start_date=dt.datetime(2021, 1, 1),
+            test_end_date=dt.datetime(2022, 12, 31),
             num_trainings=8,
-            train_days=365 * 3,
+            train_days=365 * 2,
             # Min date because of NWP not available at the beginning of the PV data.
-            min_train_date=dt.datetime(2018, 11, 2),
+            min_train_date=dt.datetime(2019, 1, 1),
             step_minutes=60,
         )

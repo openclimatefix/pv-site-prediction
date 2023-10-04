@@ -1,7 +1,7 @@
 import datetime as dt
 import pathlib
 import pickle
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 # This import registers a codec.
 import ocf_blosc2  # noqa
@@ -63,6 +63,7 @@ def _slice_on_lat_lon(
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
+
         return data.sel(x=x, y=y, method="nearest")  # type: ignore
 
     return data
@@ -89,6 +90,8 @@ class NwpDataSource:
         y_is_ascending: bool = True,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
+        nwp_tolerance: Optional[str] = None,
+        nwp_variables: Optional[list[str]] = None,
     ):
         """
         Arguments:
@@ -109,6 +112,9 @@ class NwpDataSource:
             this to `False`.
         y_is_ascending: Is the `y` coordinate in ascending order. If it's in descending order, set
             this to `False`.
+        nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
+            See `NwpDataSource.get`'s documentation for details..
+        nwp_variables: Only use this subset of NWP variables. Defaults to using all.
         """
         if isinstance(paths_or_data, str):
             paths_or_data = [paths_or_data]
@@ -133,6 +139,9 @@ class NwpDataSource:
         self._y_is_ascending = y_is_ascending
 
         self._lag_minutes = lag_minutes
+
+        self._nwp_tolerance = nwp_tolerance
+        self._nwp_variables = nwp_variables
 
         self._data = self._prepare_data(raw_data)
 
@@ -165,6 +174,10 @@ class NwpDataSource:
                 rename_map[old] = new
 
         data = data.rename(rename_map)
+
+        # Filter data to keep only the variables in self._nwp_variables if it's not None
+        if self._nwp_variables is not None:
+            data = data.sel(variable=self._nwp_variables)
 
         return data
 
@@ -290,7 +303,7 @@ class NwpDataSource:
         try:
             # Forward fill so that we get the value from the past, not the future!
             ds = ds.sel(
-                time=now - dt.timedelta(minutes=self._lag_minutes),
+                {_TIME: now - dt.timedelta(minutes=self._lag_minutes)},
                 method="ffill",
                 tolerance=tolerance,  # type: ignore
             )
@@ -313,7 +326,7 @@ class NwpDataSource:
             y_is_ascending=self._y_is_ascending,
         )
 
-        init_time = to_pydatetime(ds.time.values)
+        init_time = to_pydatetime(ds[_TIME].values.item())
 
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]

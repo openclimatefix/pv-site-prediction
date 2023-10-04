@@ -181,14 +181,30 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
-            nwp_data_source=NwpDataSource(
-                NWP_DATA_PATHS,
-                coord_system=27700,
-                time_dim_name="init_time",
-                value_name="UKV",
-                y_is_ascending=False,
-                cache_dir=".nwp_cache",
-            ),
+            nwp_data_source={
+                "UKV": NwpDataSource(
+                    NWP_DATA_PATHS,
+                    coord_system=27700,
+                    time_dim_name="init_time",
+                    value_name="UKV",
+                    y_is_ascending=False,
+                    cache_dir=".nwp_cache",
+                    # Those are the variables available in our prod environment.
+                    nwp_variables=[
+                        "si10",
+                        "vis",
+                        # "r2",
+                        "t",
+                        "prate",
+                        # "sd",
+                        "dlwrf",
+                        "dswrf",
+                        "hcc",
+                        "mcc",
+                        "lcc",
+                    ],
+                ),
+            },
         )
 
     def _get_model_config(self) -> PvSiteModelConfig:
@@ -204,21 +220,6 @@ class ExpConfig(ExpConfigBase):
                 normalize_targets=True,
             ),
             random_state=random_state,
-            use_nwp=True,
-            # Those are the variables available in our prod environment.
-            nwp_variables=[
-                "si10",
-                "vis",
-                # "r2",
-                "t",
-                "prate",
-                # "sd",
-                "dlwrf",
-                "dswrf",
-                "hcc",
-                "mcc",
-                "lcc",
-            ],
             normalize_features=True,
             capacity_getter=_get_capacity,
             pv_dropout=0.1,
@@ -234,7 +235,7 @@ class ExpConfig(ExpConfigBase):
             train_date_splits=[
                 TrainDateSplit(
                     train_date=date,
-                    train_days=356 * 2,
+                    train_days=365 * 2,
                 )
                 for date in [dt.datetime(2020, 1, 1), dt.datetime(2021, 10, 8)]
             ],
