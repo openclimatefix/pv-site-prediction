@@ -3,6 +3,7 @@
 import datetime as dt
 import importlib
 import logging
+from typing import Optional
 
 import click
 import numpy as np
@@ -71,6 +72,18 @@ _log = logging.getLogger(__name__)
     help="By default we pick samples at random. Use this flag to run for all the timestamps."
     "The --step-minutes determines the frequency of the samples in time.",
 )
+@click.option(
+    "--pv_ids",
+    type=str,
+    help="Comma separated list of PV IDs to evaluate on. Defaults to all PVs in the test set.",
+)
+@click.option(
+    "--step-minutes",
+    type=int,
+    default=None,
+    help="The time interval of the samples in minutes. "
+    "Defaults to None and then value is taken from the configuration.",
+)
 def main(
     exp_root,
     exp_name,
@@ -83,6 +96,8 @@ def main(
     test_start,
     test_end,
     sequential: bool,
+    pv_ids_one_string: str,
+    step_minutes: Optional[int] = None,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -138,7 +153,10 @@ def main(
     # TODO make sure the train_split from the model is consistent with the test one - we could
     # save in the model details about the training and check them here.
     pv_splits = exp_config.make_pv_splits(pv_data_source)
-    pv_ids = getattr(pv_splits, split_name)
+    if pv_ids_one_string is None:
+        pv_ids = getattr(pv_splits, split_name)
+    else:
+        pv_ids = pv_ids_one_string.split(",")
 
     test_date_split = date_splits.test_date_split
     test_start = test_start or test_date_split.start_date
@@ -149,7 +167,10 @@ def main(
 
     random_state = np.random.RandomState(1234)
 
-    step = test_date_split.step_minutes
+    if step_minutes is None:
+        step = test_date_split.step_minutes
+    else:
+        step = step_minutes
 
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader
