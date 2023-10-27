@@ -23,7 +23,7 @@ PV_DATA_PATH = (
 # _PREFIX + "/pv_v3.nc"
 # PV_DATA_PATH_5MIN = _PREFIX + "/pv_v3_5min.nc"
 
-NWP_DATA_PATHS = [
+METOFFICE_PATHS = [
     (
         "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
         f"/UK_Met_Office/UKV/zarr/UKV_{year}_NWP.zarr"
@@ -39,23 +39,30 @@ EXC_PATH = [
     for year in [2019, 2020, 2021, 2022]
 ]
 
+ECMWF_PATH = [
+    (
+        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/"
+        f"NWP/ECMWF/uk/year_merged/{year}.zarr"
+    )
+    for year in [2020, 2021, 2022]
+]
 
 class ExpConfig(ExpConfigBase):
     @functools.cache
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
-            # lag_minutes=60,
-            lag_minutes=2 * 24 * 60,
+            # lag_minutes=60, # Lag for sites with Stark meters
+            lag_minutes=2 * 24 * 60, # Lag for sites without Stark meters
         )
 
     @functools.cache
     def get_data_source_kwargs(self):
         return dict(
-            pv_data_source=NetcdfPvDataSource(PV_DATA_PATH),
+            pv_data_source=self.get_pv_data_source(),
             nwp_data_sources={
                 "UKV": NwpDataSource(
-                    NWP_DATA_PATHS,
+                    METOFFICE_PATHS,
                     coord_system=27700,
                     time_dim_name="init_time",
                     value_name="UKV",
@@ -75,7 +82,7 @@ class ExpConfig(ExpConfigBase):
                         "lcc",
                     ],
                     nwp_tolerance="168h",
-                    lag_minutes=3 * 60,
+                    lag_minutes=4 * 60,
                 ),
                 "EXC": NwpDataSource(
                     EXC_PATH,
@@ -85,8 +92,20 @@ class ExpConfig(ExpConfigBase):
                     time_dim_name="ts",
                     x_is_ascending=True,
                     y_is_ascending=True,
-                    lag_minutes=8 * 60,
-                    nwp_tolerance=None,
+                    lag_minutes=7 * 60,
+                    nwp_tolerance="168h",
+                ),
+                "ECMWF": NwpDataSource(
+                    ECMWF_PATH,
+                    coord_system=4326,
+                    x_dim_name="latitude",
+                    y_dim_name="longitude",
+                    time_dim_name="init_time",
+                    value_name="UKV",
+                    x_is_ascending=True,
+                    y_is_ascending=False,
+                    lag_minutes=6 * 60,
+                    nwp_tolerance="168h",
                 ),
             },
         )
@@ -99,7 +118,7 @@ class ExpConfig(ExpConfigBase):
             config=self.get_model_config(),
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
-                num_train_samples=2000,
+                num_train_samples=4096,
                 normalize_targets=True,
             ),
             random_state=random_state,
@@ -114,10 +133,9 @@ class ExpConfig(ExpConfigBase):
         return auto_date_split(
             test_start_date=dt.datetime(2022, 1, 1),
             test_end_date=dt.datetime(2022, 12, 31),
-            # Using 3 trainings because the NWP data situation changes over time. When we have NWP
             # data across the board, 1 training will probably be enough.
-            num_trainings=1,
+            num_trainings=4,
             train_days=365 * 2,
             # Min date because of NWP not available at the beginning of the PV data.
-            min_train_date=dt.datetime(2019, 10, 1),
+            min_train_date=dt.datetime(2020, 1, 10),
         )
