@@ -1,9 +1,17 @@
 SRC=psp notebooks
-PORT=8888
+PORT_notebook=8868
+PORT_lab=8869
+
 
 .PHONY: notebook
 notebook:
-	CWD=`pwd` poetry run jupyter notebook --notebook-dir notebooks --ip 0.0.0.0 --port $(PORT) --no-browser
+	CWD=`pwd` poetry run jupyter notebook --notebook-dir notebooks --ip 0.0.0.0 --port $(PORT_notebook) --no-browser
+
+
+.PHONY: lab
+lab:
+	CWD=`pwd` poetry run jupyter lab --notebook-dir notebooks --ip 0.0.0.0 --port $(PORT_lab) --no-browser
+
 
 .PHONY: test
 test:

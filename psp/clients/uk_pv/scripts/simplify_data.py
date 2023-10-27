@@ -48,8 +48,8 @@ def main():
 
     if args.many_versions:
         # Make a couple of sampled datasets.
-        dfs["1M"] = df.sample(1_000_000, random_state=rnd_state)  # type:ignore
-        dfs["10k"] = dfs["1M"].sample(10_000, random_state=rnd_state)  # type:ignore
+        dfs["1M"] = df.sample(1_000_000, random_state=rnd_state)
+        dfs["10k"] = dfs["1M"].sample(10_000, random_state=rnd_state)
 
         n = 100
 
@@ -58,8 +58,8 @@ def main():
 
         dfs[f"{n}"] = df.loc[ss_n]
 
-        dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state)  # type: ignore
-        dfs[f"{n}_10k"] = dfs[f"{n}_1M"].sample(10_000, random_state=rnd_state)  # type: ignore
+        dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state)
+        dfs[f"{n}_10k"] = dfs[f"{n}_1M"].sample(10_000, random_state=rnd_state)
 
         # Glasgow region.
         LON_RANGE = [-4.537402, -3.940503]
@@ -75,7 +75,7 @@ def main():
             df.index.get_level_values(0).isin(ss_glas),  # type: ignore
             "glasgow",
         )
-        dfs["glasgow_10k"] = dfs["glasgow"].sample(10_000, random_state=rnd_state)  # type: ignore
+        dfs["glasgow_10k"] = dfs["glasgow"].sample(10_000, random_state=rnd_state)
 
     for key, df in dfs.items():
         df.to_parquet(args.output / f"5min_{key}.parquet")
