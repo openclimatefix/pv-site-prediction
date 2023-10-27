@@ -86,6 +86,14 @@ _log = logging.getLogger(__name__)
     help="The time interval of the samples in minutes. "
     "Defaults to None and then value is taken from the configuration.",
 )
+@click.option(
+    "--use-metadata",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Use no Live PV during inference and only use metadata, "
+    "to simulate no live PV in production.",
+)
 def main(
     exp_root,
     exp_name,
@@ -100,6 +108,7 @@ def main(
     sequential: bool,
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
+    use_metadata: bool = False,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -219,6 +228,11 @@ def main(
                 extra["capacity"] = capacity
 
             y_true = sample.y
+            print("use_metadata: ", use_metadata)
+
+            if use_metadata:
+                model.set_pv_dropout(1)
+
             y_pred = model.predict_from_features(x=x, features=sample.features)
             train_date = model.get_train_date(x.ts)
             for metric_name, metric in METRICS.items():
