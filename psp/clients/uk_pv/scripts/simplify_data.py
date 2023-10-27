@@ -58,7 +58,7 @@ def main():
 
         dfs[f"{n}"] = df.loc[ss_n]
 
-        dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state) 
+        dfs[f"{n}_1M"] = dfs[f"{n}"].sample(1_000_000, random_state=rnd_state)
         dfs[f"{n}_10k"] = dfs[f"{n}_1M"].sample(10_000, random_state=rnd_state)
 
         # Glasgow region.
