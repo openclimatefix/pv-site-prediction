@@ -47,13 +47,14 @@ ECMWF_PATH = [
     for year in [2020, 2021, 2022]
 ]
 
+
 class ExpConfig(ExpConfigBase):
     @functools.cache
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
             PV_DATA_PATH,
             # lag_minutes=60, # Lag for sites with Stark meters
-            lag_minutes=2 * 24 * 60, # Lag for sites without Stark meters
+            lag_minutes=2 * 24 * 60,  # Lag for sites without Stark meters
         )
 
     @functools.cache

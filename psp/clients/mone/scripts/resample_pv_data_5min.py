@@ -12,10 +12,12 @@ def resample_pv_data(input_dir: str, output_dir: str) -> None:
     Resample the formatted pv data.
 
     Args:
+    ----
         input_dir (str): Directory containing the .netcdf file.
         output_dir (str): Output netcdf file.
 
     Returns:
+    -------
         None
     """
     print("Resampling PV data...")
