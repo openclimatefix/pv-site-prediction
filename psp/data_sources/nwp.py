@@ -1,4 +1,5 @@
 import datetime as dt
+import logging
 import pathlib
 import pickle
 from typing import Optional, TypeVar
@@ -11,6 +12,8 @@ from psp.gis import CoordinateTransformer
 from psp.typings import Timestamp
 from psp.utils.dates import to_pydatetime
 from psp.utils.hashing import naive_hash
+
+_log = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=xr.Dataset | xr.DataArray)
 
@@ -92,6 +95,7 @@ class NwpDataSource:
         lag_minutes: float = 0.0,
         nwp_tolerance: Optional[str] = None,
         nwp_variables: Optional[list[str]] = None,
+        filter_on_step: Optional[bool] = True,
     ):
         """
         Arguments:
@@ -150,7 +154,10 @@ class NwpDataSource:
         if self._cache_dir:
             self._cache_dir.mkdir(exist_ok=True)
 
+        self._filter_on_step = filter_on_step
+
     def _open(self, paths: list[str]) -> xr.Dataset:
+        _log.debug(f"Opening data {paths}")
         return xr.open_mfdataset(
             paths,
             engine="zarr",
@@ -331,9 +338,11 @@ class NwpDataSource:
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]
 
-        # Get the nearest prediction to what we are interested in.
-        ds = ds.sel(step=deltas, method="nearest")
+        if self._filter_on_step:
+            # Get the nearest prediction to what we are interested in.
+            ds = ds.sel(step=deltas, method="nearest")
 
+        print(ds)
         da = ds[_VALUE]
 
         if load:
