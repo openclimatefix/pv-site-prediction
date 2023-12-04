@@ -181,6 +181,7 @@ class ExpConfig(ExpConfigBase):
     def get_data_source_kwargs(self):
         return dict(
             pv_data_source=self.get_pv_data_source(),
+            # add new satelite here
             nwp_data_source={
                 "UKV": NwpDataSource(
                     NWP_DATA_PATHS,
@@ -228,19 +229,17 @@ class ExpConfig(ExpConfigBase):
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
         return split_pvs(pv_data_source)
 
-    def get_date_splits(self):
+    def get_date_splits(self, step_minutes: int = 1) -> DateSplits:
         # Train 2 models, one at the beginning of the test range, and one 1 month before the end.
         # The last one is the one we'll use in production.
         return DateSplits(
             train_date_splits=[
-                TrainDateSplit(
-                    train_date=date,
-                    train_days=365 * 2,
-                )
+                TrainDateSplit(train_date=date, train_days=365 * 2, step_minutes=15)
                 for date in [dt.datetime(2020, 1, 1), dt.datetime(2021, 10, 8)]
             ],
             test_date_split=TestDateSplit(
                 start_date=dt.datetime(2020, 1, 1),
                 end_date=dt.datetime(2021, 11, 8),
+                step_minutes=step_minutes,
             ),
         )

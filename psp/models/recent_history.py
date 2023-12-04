@@ -125,6 +125,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource],
+        # add new satellite data source here
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         pv_dropout: float = 0.0,
@@ -356,7 +357,6 @@ class RecentHistoryModel(PvSiteModel):
 
         if self._nwp_data_sources is not None:
             for source_key, source in self._nwp_data_sources.items():
-
                 if source._nwp_tolerance is not None:
                     tolerance = str(source._nwp_tolerance)
                 else:
@@ -405,6 +405,8 @@ class RecentHistoryModel(PvSiteModel):
 
                     features[variable_source_key] = var_per_horizon
                     features[variable_source_key + "_isnan"] = var_per_horizon_is_nan
+
+            # add another section here fore getting the satellite data
 
         # Get the recent power.
         recent_power = float(
