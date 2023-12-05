@@ -558,6 +558,7 @@ class RecentHistoryModel(PvSiteModel):
         # for multiprocessing.
         del state["_pv_data_source"]
         del state["_nwp_data_sources"]
+        del state["_satellite_data_sources"]
         return state
 
     def set_state(self, state):

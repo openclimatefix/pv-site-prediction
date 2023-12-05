@@ -18,7 +18,6 @@ class SatelliteDataSource(NwpDataSource):
             lat_lon_order=False,
         )
 
-        # self._data = self.prepare_data(data=self._data)
         area_definition_yaml = self._data.value.attrs["area"]
 
         geostationary_area_definition = pyresample.area_config.load_area_from_string(
