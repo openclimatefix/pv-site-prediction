@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import ocf_blosc2  # noqa
+import xarray as xr
 
 from psp.data_sources.satellite import SatelliteDataSource
 
@@ -36,11 +37,13 @@ def test_satellite_data_source():
 
     example = sat.get(now=now, timestamps=[now], nearest_lat=y, nearest_lon=x)
 
+    assert isinstance(example, xr.DataArray)
     assert example.x.size > 0
     assert example.y.size > 0
 
     example = sat.get(
         now=now, timestamps=[now], max_lat=y + 5000, min_lat=y, max_lon=x + 1000, min_lon=x
     )
+    assert isinstance(example, xr.DataArray)
     assert example.x.size > 0
     assert example.y.size > 0
