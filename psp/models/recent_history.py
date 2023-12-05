@@ -9,8 +9,8 @@ import pandas as pd
 import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
-from psp.data_sources.satellite import SatelliteDataSource
 from psp.data_sources.pv import PvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
