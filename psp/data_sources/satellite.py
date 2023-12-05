@@ -1,9 +1,9 @@
-import pyproj
 import pyresample
 import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.utils import _TIME, _VALUE, _VARIABLE, _X, _Y
+from psp.gis import CoordinateTransformer
 
 
 class SatelliteDataSource(NwpDataSource):
@@ -15,21 +15,17 @@ class SatelliteDataSource(NwpDataSource):
             x_dim_name="x_geostationary",
             y_dim_name="y_geostationary",
             value_name="data",
-            lat_lon_order=False,
         )
 
+        # Get the coordinate transformer.# get crs
         area_definition_yaml = self._data.value.attrs["area"]
-
         geostationary_area_definition = pyresample.area_config.load_area_from_string(
             area_definition_yaml
         )
         geostationary_crs = geostationary_area_definition.crs
 
-        self.lonlat_to_geostationary = pyproj.Transformer.from_crs(
-            crs_from=4326,
-            crs_to=geostationary_crs,
-            always_xy=True,
-        ).transform
+        # Get the coordinate transformer, from lat/lon to geostationary.
+        self._coordinate_transformer = CoordinateTransformer(from_=4326, to=geostationary_crs)
 
     def prepare_data(self, data: xr.Dataset) -> xr.Dataset:
         # Rename the dimensions.

@@ -437,14 +437,11 @@ class RecentHistoryModel(PvSiteModel):
                     satellite_data_per_horizon = None
                 else:
 
-                    # convert lat lon to geostationary
-                    x_geo, y_geo = source.lonlat_to_geostationary(xx=lon, yy=lat)
-
                     satellite_data_per_horizon = source.get(
                         now=x.ts,
                         timestamps=horizon_timestamps,
-                        nearest_lat=y_geo,
-                        nearest_lon=x_geo,
+                        nearest_lat=lat,
+                        nearest_lon=lon,
                         tolerance=tolerance,
                     )
                 satellite_variables = source.list_variables()

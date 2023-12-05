@@ -21,29 +21,17 @@ def test_satellite_data_source():
     sat = SatelliteDataSource(paths_or_data=paths, x_is_ascending=False)
 
     now = datetime(2021, 2, 1)
-    # sat.get(now=now, timestamps=[now])
+    lat = 50
+    lon = 0
 
-    x = 5415727
-    y = 1401188
-
-    x, y = sat.lonlat_to_geostationary(xx=0, yy=50)
-    # this gives the right answer
-    # x ~ -600000
-    # y ~ 4500000
-
-    assert x > sat._data.x.min()
-    assert x < sat._data.x.max()
-    assert y > sat._data.y.min()
-    assert y < sat._data.y.max()
-
-    example = sat.get(now=now, timestamps=[now], nearest_lat=y, nearest_lon=x)
+    example = sat.get(now=now, timestamps=[now], nearest_lat=lat, nearest_lon=lon)
 
     assert isinstance(example, xr.DataArray)
     assert example.x.size > 0
     assert example.y.size > 0
 
     example = sat.get(
-        now=now, timestamps=[now], max_lat=y + 5000, min_lat=y, max_lon=x + 1000, min_lon=x
+        now=now, timestamps=[now], max_lat=lat + 1, min_lat=lat, max_lon=lon + 1, min_lon=lon
     )
     assert isinstance(example, xr.DataArray)
     assert example.x.size > 0
