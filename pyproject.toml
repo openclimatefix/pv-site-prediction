@@ -33,6 +33,7 @@ streamlit = "^1.24.1"
 plotly = "^5.15.0"
 streamlit-extras = "^0.2.7"
 streamlit-option-menu = "^0.3.6"
+pyresample = "^1.27.1"
 
 
 [tool.poetry.group.dev.dependencies]
