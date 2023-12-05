@@ -9,6 +9,7 @@ import pandas as pd
 import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.data_sources.pv import PvDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
@@ -125,7 +126,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource],
-        # add new satellite data source here
+        sat_data_sources: dict[str, SatelliteDataSource],
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         pv_dropout: float = 0.0,
@@ -169,6 +170,7 @@ class RecentHistoryModel(PvSiteModel):
 
         self._pv_data_source: PvDataSource
         self._nwp_data_sources: dict[str, NwpDataSource] | None
+        self._satellite_data_sources: dict[str, SatelliteDataSource] | None
 
         self._regressor = regressor
         self._random_state = random_state
@@ -192,6 +194,7 @@ class RecentHistoryModel(PvSiteModel):
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_sources=nwp_data_sources,
+            sat_data_sources=sat_data_sources,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -205,6 +208,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource] | None = None,
+        sat_data_sources: dict[str, SatelliteDataSource] | None = None,
     ):
         """Set the data sources.
 
@@ -212,13 +216,19 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_sources = nwp_data_sources
+        self._satellite_data_sources = sat_data_sources
 
         # This ensures the nwp fixture passed for the test is a dictionary
         if isinstance(self._nwp_data_sources, dict) or self._nwp_data_sources is None:
             pass
-
         else:
             self._nwp_data_sources = dict(nwp_data_source=self._nwp_data_sources)
+
+        # this make sure the satellite data is a dictionary
+        if (self._satellite_data_sources is not None) and (
+            not isinstance(self._satellite_data_sources, dict)
+        ):
+            self._satellite_data_sources = dict(sat_data_source=self._satellite_data_sources)
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)

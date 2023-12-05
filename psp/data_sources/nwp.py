@@ -2,74 +2,19 @@ import datetime as dt
 import logging
 import pathlib
 import pickle
-from typing import Optional, TypeVar
+from typing import Optional
 
 # This import registers a codec.
 import ocf_blosc2  # noqa
 import xarray as xr
 
+from psp.data_sources.utils import _STEP, _TIME, _VALUE, _VARIABLE, _X, _Y, slice_on_lat_lon
 from psp.gis import CoordinateTransformer
 from psp.typings import Timestamp
 from psp.utils.dates import to_pydatetime
 from psp.utils.hashing import naive_hash
 
 _log = logging.getLogger(__name__)
-
-T = TypeVar("T", bound=xr.Dataset | xr.DataArray)
-
-_X = "x"
-_Y = "y"
-_TIME = "time"
-_STEP = "step"
-_VARIABLE = "variable"
-_VALUE = "value"
-
-
-def _slice_on_lat_lon(
-    data: T,
-    *,
-    min_lat: float | None = None,
-    max_lat: float | None = None,
-    min_lon: float | None = None,
-    max_lon: float | None = None,
-    nearest_lat: float | None = None,
-    nearest_lon: float | None = None,
-    transformer: CoordinateTransformer,
-    x_is_ascending: bool,
-    y_is_ascending: bool,
-) -> T:
-    # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
-    # by lat/lon).
-    num_none = sum([x is None for x in [min_lat, max_lat, min_lon, max_lon]])
-    assert num_none in [0, 4]
-
-    if min_lat is not None:
-        assert min_lat is not None
-        assert min_lon is not None
-        assert max_lat is not None
-        assert max_lon is not None
-
-        assert max_lat >= min_lat
-        assert max_lon >= min_lon
-
-        point1, point2 = transformer([(min_lat, min_lon), (max_lat, max_lon)])
-        min_x, min_y = point1
-        max_x, max_y = point2
-
-        if not x_is_ascending:
-            min_x, max_x = max_x, min_x
-        if not y_is_ascending:
-            min_y, max_y = max_y, min_y
-
-        # Type ignore because this is still simpler than addin some `@overload`.
-        return data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))  # type: ignore
-
-    elif nearest_lat is not None and nearest_lon is not None:
-        ((x, y),) = transformer([(nearest_lat, nearest_lon)])
-
-        return data.sel(x=x, y=y, method="nearest")  # type: ignore
-
-    return data
 
 
 class NwpDataSource:
@@ -148,6 +93,7 @@ class NwpDataSource:
         self._nwp_variables = nwp_variables
 
         self._data = self._prepare_data(raw_data)
+        self.raw_data = raw_data
 
         self._cache_dir = pathlib.Path(cache_dir) if cache_dir else None
 
@@ -267,6 +213,11 @@ class NwpDataSource:
 
         # If it was not loaded from the cache, we load it from the original dataset.
         if data is None:
+            print(f"{min_lat}=")
+            print(f"{max_lat}=")
+            print(f"{min_lon}=")
+            print(f"{max_lon}=")
+
             data = self._get(
                 now=now,
                 timestamps=timestamps,
@@ -320,7 +271,7 @@ class NwpDataSource:
             assert tolerance is not None
             return None
 
-        ds = _slice_on_lat_lon(
+        ds = slice_on_lat_lon(
             ds,
             min_lat=min_lat,
             max_lat=max_lat,
