@@ -436,14 +436,17 @@ class RecentHistoryModel(PvSiteModel):
                 ):
                     satellite_data_per_horizon = None
                 else:
+
+                    # convert lat lon to geostationary
+                    x_geo, y_geo = source.lonlat_to_geostationary(xx=lon, yy=lat)
+
                     satellite_data_per_horizon = source.get(
                         now=x.ts,
                         timestamps=horizon_timestamps,
-                        nearest_lat=lat,
-                        nearest_lon=lon,
+                        nearest_lat=y_geo,
+                        nearest_lon=x_geo,
                         tolerance=tolerance,
                     )
-
                 satellite_variables = source.list_variables()
 
                 for variable in satellite_variables:
@@ -453,6 +456,9 @@ class RecentHistoryModel(PvSiteModel):
                         var_per_horizon = np.array([np.nan for _ in self.config.horizons])
                     else:
                         var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
+
+                    # expand satellite data to all time steps
+                    var_per_horizon = np.repeat(var_per_horizon, len(self.config.horizons))
 
                     # Deal with potential NaN values in NWP.
                     var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0

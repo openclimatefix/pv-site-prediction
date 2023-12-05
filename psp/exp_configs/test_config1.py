@@ -7,6 +7,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.dataset import DateSplits, PvSplits, TestDateSplit, TrainDateSplit
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -16,6 +17,7 @@ from psp.typings import Horizons
 
 PV_DATA_PATH = "psp/tests/fixtures/pv_data.nc"
 NWP_PATH = "psp/tests/fixtures/nwp.zarr"
+SATELLITE_PATH = "psp/tests/fixtures/satellite.zarr"
 
 
 def _get_capacity(d):
@@ -46,6 +48,12 @@ class ExpConfig(ExpConfigBase):
                     time_dim_name="init_time",
                     value_name="UKV",
                     y_is_ascending=False,
+                ),
+            },
+            sat_data_sources={
+                "EUMETSAT": SatelliteDataSource(
+                    SATELLITE_PATH,
+                    x_is_ascending=False,
                 ),
             },
         )
