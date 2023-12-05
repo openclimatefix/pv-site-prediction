@@ -10,6 +10,7 @@ def test_satellite_data_source():
     """Test loading the satellite data
 
     Note this test uses the satellite public dataset to get this data.
+    It can take about 30 seconds to run
 
     """
     # this is for the google datasets

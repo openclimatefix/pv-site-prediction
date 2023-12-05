@@ -460,7 +460,8 @@ class RecentHistoryModel(PvSiteModel):
                         var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
                     )
 
-                    # We only want to append the name of the Satellite variable to include the provider
+                    # We only want to append the name of the Satellite variable to include the
+                    # provider
                     # if there are multiple Satellite data sources
                     if len(self._satellite_data_sources) > 1:
                         variable_source_key = variable + source_key
