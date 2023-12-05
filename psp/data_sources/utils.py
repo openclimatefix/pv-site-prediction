@@ -26,7 +26,25 @@ def slice_on_lat_lon(
     transformer: CoordinateTransformer,
     x_is_ascending: bool,
     y_is_ascending: bool,
+    do_average: bool = False,
 ) -> T:
+    """
+    Slice the data on lat/lon
+
+    Args:
+    ----
+        data: The data to slice
+        min_lat: The minimum latitude to slice on
+        max_lat: The maximum latitude to slice on
+        min_lon: The minimum longitude to slice on
+        max_lon: The maximum longitude to slice on
+        nearest_lat: The latitude to slice on
+        nearest_lon: The longitude to slice on
+        transformer: The transformer to use to convert lat/lon to x/y
+        x_is_ascending: Whether the x values are ascending
+        y_is_ascending: Whether the y values are ascending
+        do_average: Take average over the area, of x and y coordinates
+    """
     # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
     # by lat/lon).
     num_none = sum([x is None for x in [min_lat, max_lat, min_lon, max_lon]])
@@ -45,7 +63,7 @@ def slice_on_lat_lon(
         # (x, y) = transformer([(lat, lon)])
         # however for lat/lon to geostationary we have to use
         # (x_geo, y_geo) = transformer([(lon, lat)])
-        print(min_lat, max_lat, min_lon, max_lon)
+
         points = [(min_lat, min_lon), (max_lat, max_lon)]
         point1, point2 = transformer(points)
         min_x, min_y = point1
@@ -56,10 +74,13 @@ def slice_on_lat_lon(
         if not y_is_ascending:
             min_y, max_y = max_y, min_y
 
-        print(min_x, max_x, min_y, max_y)
+        new_data = data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))
 
-        # Type ignore because this is still simpler than addin some `@overload`.
-        return data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))  # type: ignore
+        if do_average:
+            return new_data.mean(dim=["x", "y"])
+        else:
+            # Type ignore because this is still simpler than adding some `@overload`.
+            return new_data  # type: ignore
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
