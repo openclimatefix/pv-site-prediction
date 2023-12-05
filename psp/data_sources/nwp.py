@@ -38,8 +38,8 @@ class NwpDataSource:
         y_is_ascending: bool = True,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
-        nwp_tolerance: Optional[str] = None,
-        nwp_variables: Optional[list[str]] = None,
+        tolerance: Optional[str] = None,
+        variables: Optional[list[str]] = None,
         filter_on_step: Optional[bool] = True,
         lat_lon_order: bool = True,
     ):
@@ -90,8 +90,8 @@ class NwpDataSource:
 
         self._lag_minutes = lag_minutes
 
-        self._nwp_tolerance = nwp_tolerance
-        self._nwp_variables = nwp_variables
+        self._tolerance = tolerance
+        self._variables = variables
 
         self._data = self._prepare_data(raw_data)
         self.raw_data = raw_data
@@ -131,8 +131,8 @@ class NwpDataSource:
         data = data.rename(rename_map)
 
         # Filter data to keep only the variables in self._nwp_variables if it's not None
-        if self._nwp_variables is not None:
-            data = data.sel(variable=self._nwp_variables)
+        if self._variables is not None:
+            data = data.sel(variable=self._variables)
 
         return data
 
@@ -215,10 +215,6 @@ class NwpDataSource:
 
         # If it was not loaded from the cache, we load it from the original dataset.
         if data is None:
-            print(f"{min_lat}=")
-            print(f"{max_lat}=")
-            print(f"{min_lon}=")
-            print(f"{max_lon}=")
 
             data = self._get(
                 now=now,

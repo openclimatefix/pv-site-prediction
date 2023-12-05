@@ -187,7 +187,7 @@ class ExpConfig(ExpConfigBase):
                     y_is_ascending=False,
                     # cache_dir=".nwp_cache",
                     # Those are the variables available in our prod environment.
-                    nwp_variables=[
+                    variables=[
                         "si10",
                         "vis",
                         # "r2",

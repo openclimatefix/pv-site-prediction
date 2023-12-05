@@ -121,7 +121,6 @@ def test_predict_with_features_in_wrong_order(pv_data_source, nwp_data_source, r
     # variables are the same).
     all_close = True
     for ts in pd.date_range(dt.datetime(2020, 1, 6, 10), dt.datetime(2020, 1, 10, 10), freq="24h"):
-
         # # This ensures the nwp fixture passed for the test is a dictionary
         # if isinstance(self._nwp_data_sources, dict):
         #     pass
@@ -129,7 +128,6 @@ def test_predict_with_features_in_wrong_order(pv_data_source, nwp_data_source, r
         #     self._nwp_data_sources = dict(nwp_data_source = self._nwp_data_sources)
 
         for pv_id in ["8215", "8229"]:
-
             y1 = _predict(pv_data_source, nwp_data_source, ts=ts, pv_id=pv_id)
 
             variables = list(nwp_data_source._data.coords["variable"].values)

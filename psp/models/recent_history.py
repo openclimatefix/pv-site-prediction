@@ -138,6 +138,8 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_dropout: float = 0.1,
         nwp_tolerance: Optional[float] = None,
+        satellite_dropout: float = 0.1,
+        satellite_tolerance: Optional[float] = None,
     ):
         """
         Arguments:
@@ -190,6 +192,8 @@ class RecentHistoryModel(PvSiteModel):
 
         self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
+        self._satellite_dropout = satellite_dropout
+        self._satellite_tolerance = satellite_tolerance
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -367,8 +371,8 @@ class RecentHistoryModel(PvSiteModel):
 
         if self._nwp_data_sources is not None:
             for source_key, source in self._nwp_data_sources.items():
-                if source._nwp_tolerance is not None:
-                    tolerance = str(source._nwp_tolerance)
+                if source._tolerance is not None:
+                    tolerance = str(source._tolerance)
                 else:
                     tolerance = None
 
@@ -416,7 +420,56 @@ class RecentHistoryModel(PvSiteModel):
                     features[variable_source_key] = var_per_horizon
                     features[variable_source_key + "_isnan"] = var_per_horizon_is_nan
 
-            # add another section here fore getting the satellite data
+        # add another section here fore getting the satellite data
+        if self._satellite_data_sources is not None:
+            for source_key, source in self._satellite_data_sources.items():
+                if source._tolerance is not None:
+                    tolerance = str(source._tolerance)
+                else:
+                    tolerance = None
+
+                if (
+                    is_training
+                    and self._nwp_dropout > 0.0
+                    and self._random_state is not None
+                    and self._random_state.random() < self._nwp_dropout
+                ):
+                    satellite_data_per_horizon = None
+                else:
+                    satellite_data_per_horizon = source.get(
+                        now=x.ts,
+                        timestamps=horizon_timestamps,
+                        nearest_lat=lat,
+                        nearest_lon=lon,
+                        tolerance=tolerance,
+                    )
+
+                satellite_variables = source.list_variables()
+
+                for variable in satellite_variables:
+                    # Deal with the trivial case where the returns Satellite is simply `None`.
+                    # This happens if there wasn't any data for the given tolerance.
+                    if satellite_data_per_horizon is None:
+                        var_per_horizon = np.array([np.nan for _ in self.config.horizons])
+                    else:
+                        var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
+
+                    # Deal with potential NaN values in NWP.
+                    var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
+                    var_per_horizon = np.nan_to_num(
+                        var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
+                    )
+
+                    # We only want to append the name of the Satellite variable to include the provider
+                    # if there are multiple Satellite data sources
+                    if len(self._satellite_data_sources) > 1:
+                        variable_source_key = variable + source_key
+
+                    else:
+                        variable_source_key = variable
+
+                    features[variable_source_key] = var_per_horizon
+                    features[variable_source_key + "_isnan"] = var_per_horizon_is_nan
 
         # Get the recent power.
         recent_power = float(

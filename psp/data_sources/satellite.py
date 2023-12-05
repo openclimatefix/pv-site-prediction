@@ -51,7 +51,7 @@ class SatelliteDataSource(NwpDataSource):
         data = data.rename(rename_map)
 
         # Filter data to keep only the variables in self._nwp_variables if it's not None
-        if self._nwp_variables is not None:
-            data = data.sel(variable=self._nwp_variables)
+        if self._variables is not None:
+            data = data.sel(variable=self._variables)
 
         return data
