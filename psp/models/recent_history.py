@@ -138,8 +138,10 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_dropout: float = 0.1,
         nwp_tolerance: Optional[float] = None,
+        nwp_patch_size: int = 0,
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
+        satellite_patch_size: float = 0,
     ):
         """
         Arguments:
@@ -160,7 +162,9 @@ class RecentHistoryModel(PvSiteModel):
         nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
             This is only used at train-time.
         nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
-            See `NwpDataSource.get`'s documentation for details..
+            See `NwpDataSource.get`'s documentation for details.
+        nwp_patch_size: Size of the patch to use for the NWP data. This is in degrees.
+        satellite_patch_size: Size of the patch to use for the satellite data. This is in degrees.
         """
         super().__init__(config)
         # Validate some options.
@@ -192,8 +196,10 @@ class RecentHistoryModel(PvSiteModel):
 
         self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
+        self._nwp_patch_size = nwp_patch_size
         self._satellite_dropout = satellite_dropout
         self._satellite_tolerance = satellite_tolerance
+        self._satellite_patch_size = satellite_patch_size
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -233,6 +239,12 @@ class RecentHistoryModel(PvSiteModel):
             not isinstance(self._satellite_data_sources, dict)
         ):
             self._satellite_data_sources = dict(sat_data_source=self._satellite_data_sources)
+
+        # set this attribute so it works for older models
+        if not hasattr(self, "_nwp_patch_size"):
+            self._nwp_patch_size = 0
+        if not hasattr(self, "_satellite_patch_size"):
+            self._nwp_patch_size = 0
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -390,6 +402,7 @@ class RecentHistoryModel(PvSiteModel):
                         nearest_lat=lat,
                         nearest_lon=lon,
                         tolerance=tolerance,
+                        patch_size=self._nwp_patch_size,
                     )
 
                 nwp_variables = source.list_variables()
@@ -443,6 +456,7 @@ class RecentHistoryModel(PvSiteModel):
                         nearest_lat=lat,
                         nearest_lon=lon,
                         tolerance=tolerance,
+                        patch_size=self._satellite_patch_size,
                     )
                 satellite_variables = source.list_variables()
 

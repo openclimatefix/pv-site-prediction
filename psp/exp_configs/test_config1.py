@@ -76,7 +76,8 @@ class ExpConfig(ExpConfigBase):
             # Make sure the NWP data is used by adding a lot of dropout on the PV data.
             pv_dropout=0.9,
             capacity_getter=_get_capacity,
-            nwp_dropout=0.0
+            nwp_dropout=0.0,
+            satellite_patch_size=0.25,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
