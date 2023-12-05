@@ -126,7 +126,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource],
-        sat_data_sources: dict[str, SatelliteDataSource],
+        sat_data_sources: dict[str, SatelliteDataSource] = None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         pv_dropout: float = 0.0,
