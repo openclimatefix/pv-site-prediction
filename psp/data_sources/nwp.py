@@ -41,6 +41,7 @@ class NwpDataSource:
         nwp_tolerance: Optional[str] = None,
         nwp_variables: Optional[list[str]] = None,
         filter_on_step: Optional[bool] = True,
+        lat_lon_order: bool = True,
     ):
         """
         Arguments:
@@ -101,6 +102,7 @@ class NwpDataSource:
             self._cache_dir.mkdir(exist_ok=True)
 
         self._filter_on_step = filter_on_step
+        self._lat_lon_order = lat_lon_order
 
     def _open(self, paths: list[str]) -> xr.Dataset:
         _log.debug(f"Opening data {paths}")
@@ -282,6 +284,7 @@ class NwpDataSource:
             transformer=self._coordinate_transformer,
             x_is_ascending=self._x_is_ascending,
             y_is_ascending=self._y_is_ascending,
+            lat_lon_order=self._lat_lon_order,
         )
 
         init_time = to_pydatetime(ds[_TIME].values.item())

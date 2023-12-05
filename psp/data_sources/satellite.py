@@ -14,7 +14,8 @@ class SatelliteDataSource(NwpDataSource):
             filter_on_step=False,
             x_dim_name="x_geostationary",
             y_dim_name="y_geostationary",
-            value_name="data"
+            value_name="data",
+            lat_lon_order=False,
         )
 
         # self._data = self.prepare_data(data=self._data)
