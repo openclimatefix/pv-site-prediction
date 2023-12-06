@@ -12,7 +12,7 @@ from psp.typings import X
 # This way we can make sure the output of previous models doesn't change.
 EXPECTED_OUTPUT = {
     "model_v8": [77.446404, 78.650178, 79.028029, 96.746425, 95.17781],
-    "model_v9": [72.830389, 73.962415, 74.317745, 81.360972, 80.041813],
+    "model_v9": [67.522277, 68.571797, 68.901229, 78.870112, 77.591338],
 }
 
 

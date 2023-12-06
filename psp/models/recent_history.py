@@ -458,7 +458,10 @@ class RecentHistoryModel(PvSiteModel):
                         )
 
                         # take mean over x and y
-                        satellite_data_per_horizon = satellite_data_per_horizon.mean(dim=["x", "y"])
+                        if satellite_data_per_horizon is not None:
+                            satellite_data_per_horizon = satellite_data_per_horizon.mean(
+                                dim=["x", "y"]
+                            )
 
                     else:
                         satellite_data_per_horizon = source.get(

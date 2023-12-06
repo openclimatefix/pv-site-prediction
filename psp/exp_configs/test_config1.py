@@ -77,7 +77,7 @@ class ExpConfig(ExpConfigBase):
             pv_dropout=0.9,
             capacity_getter=_get_capacity,
             nwp_dropout=0.0,
-            satellite_patch_size=0.25,
+            satellite_patch_size=0.5,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:
