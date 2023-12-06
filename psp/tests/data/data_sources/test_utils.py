@@ -39,26 +39,3 @@ def test_slice_on_nearest(nwp_data_sources):
 
     assert new_data.x.size == 1
     assert new_data.y.size == 1
-
-
-def test_slice_on_average_patch(nwp_data_sources):
-
-    transformer = CoordinateTransformer(from_=4326, to=27700)
-
-    data = nwp_data_sources["UKV"]._data
-
-    new_data = slice_on_lat_lon(
-        data=data,
-        max_lat=55,
-        min_lat=48,
-        max_lon=-1,
-        min_lon=-4,
-        transformer=transformer,
-        y_is_ascending=False,
-        x_is_ascending=True,
-        do_average=True,
-    )
-
-    assert new_data.variable.size == 4
-    assert new_data.time.size == 105
-    assert new_data.step.size == 5

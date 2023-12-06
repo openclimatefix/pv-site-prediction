@@ -138,7 +138,6 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_dropout: float = 0.1,
         nwp_tolerance: Optional[float] = None,
-        nwp_patch_size: int = 0,
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
         satellite_patch_size: float = 0,
@@ -196,7 +195,6 @@ class RecentHistoryModel(PvSiteModel):
 
         self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
-        self._nwp_patch_size = nwp_patch_size
         self._satellite_dropout = satellite_dropout
         self._satellite_tolerance = satellite_tolerance
         self._satellite_patch_size = satellite_patch_size
@@ -241,8 +239,6 @@ class RecentHistoryModel(PvSiteModel):
             self._satellite_data_sources = dict(sat_data_source=self._satellite_data_sources)
 
         # set this attribute so it works for older models
-        if not hasattr(self, "_nwp_patch_size"):
-            self._nwp_patch_size = 0
         if not hasattr(self, "_satellite_patch_size"):
             self._nwp_patch_size = 0
 
@@ -402,7 +398,6 @@ class RecentHistoryModel(PvSiteModel):
                         nearest_lat=lat,
                         nearest_lon=lon,
                         tolerance=tolerance,
-                        patch_size=self._nwp_patch_size,
                     )
 
                 nwp_variables = source.list_variables()
@@ -450,14 +445,29 @@ class RecentHistoryModel(PvSiteModel):
                     satellite_data_per_horizon = None
                 else:
 
-                    satellite_data_per_horizon = source.get(
-                        now=x.ts,
-                        timestamps=horizon_timestamps,
-                        nearest_lat=lat,
-                        nearest_lon=lon,
-                        tolerance=tolerance,
-                        patch_size=self._satellite_patch_size,
-                    )
+                    if self._satellite_patch_size > 0:
+                        satellite_data_per_horizon = source.get(
+                            now=x.ts,
+                            timestamps=horizon_timestamps,
+                            min_lat=lat - self._satellite_patch_size / 2,
+                            max_lat=lat + self._satellite_patch_size / 2,
+                            min_lon=lon - self._satellite_patch_size / 2,
+                            max_lon=lon + self._satellite_patch_size / 2,
+                            nearest_lon=lon,
+                            tolerance=tolerance,
+                        )
+
+                        # take mean over x and y
+                        satellite_data_per_horizon = satellite_data_per_horizon.mean(dim=["x", "y"])
+
+                    else:
+                        satellite_data_per_horizon = source.get(
+                            now=x.ts,
+                            timestamps=horizon_timestamps,
+                            nearest_lat=lat,
+                            nearest_lon=lon,
+                            tolerance=tolerance,
+                        )
                 satellite_variables = source.list_variables()
 
                 for variable in satellite_variables:

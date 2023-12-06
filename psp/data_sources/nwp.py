@@ -151,7 +151,6 @@ class NwpDataSource:
         nearest_lon: float | None = None,
         tolerance: str | None = None,
         load: bool = True,
-        patch_size: float = 0,
     ) -> xr.DataArray | None:
         """Slice the original data in the `time` dimension, and optionally on the x,y
         coordinates.
@@ -205,7 +204,6 @@ class NwpDataSource:
                 self._lag_minutes,
                 tolerance,
                 *timestamps,
-                patch_size,
             ]
             hashes = tuple([naive_hash(x) for x in hash_data])
             hash_ = str(hash(hashes))
@@ -216,16 +214,6 @@ class NwpDataSource:
 
         # If it was not loaded from the cache, we load it from the original dataset.
         if data is None:
-
-            # TODO, im not sure if this is the right way to do it,
-            # could be better to take nearest and then expand outwards from the patch
-            if (patch_size > 0) and min_lat is not None:
-                min_lat = nearest_lat - patch_size / 2.0
-                max_lat = nearest_lat + patch_size / 2.0
-                min_lon = nearest_lon - patch_size / 2.0
-                max_lon = nearest_lon + patch_size / 2.0
-                nearest_lat = None
-                nearest_lon = None
 
             data = self._get(
                 now=now,
@@ -238,7 +226,6 @@ class NwpDataSource:
                 max_lon=max_lon,
                 tolerance=tolerance,
                 load=load,
-                patch_size=patch_size,
             )
             # If using the cache, save it for next time.
             if use_cache:
@@ -260,7 +247,6 @@ class NwpDataSource:
         nearest_lon: float | None,
         tolerance: str | None,
         load: bool,
-        patch_size: float = 0,
     ) -> xr.DataArray | None:
         """Slice the data.
 
@@ -282,11 +268,6 @@ class NwpDataSource:
             assert tolerance is not None
             return None
 
-        if patch_size > 0:
-            do_average = True
-        else:
-            do_average = False
-
         ds = slice_on_lat_lon(
             ds,
             min_lat=min_lat,
@@ -298,7 +279,6 @@ class NwpDataSource:
             transformer=self._coordinate_transformer,
             x_is_ascending=self._x_is_ascending,
             y_is_ascending=self._y_is_ascending,
-            do_average=do_average,
         )
 
         init_time = to_pydatetime(ds[_TIME].values.item())

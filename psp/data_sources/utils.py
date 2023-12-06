@@ -26,7 +26,6 @@ def slice_on_lat_lon(
     transformer: CoordinateTransformer,
     x_is_ascending: bool,
     y_is_ascending: bool,
-    do_average: bool = False,
 ) -> T:
     """
     Slice the data on lat/lon
@@ -76,11 +75,8 @@ def slice_on_lat_lon(
 
         new_data = data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))
 
-        if do_average:
-            return new_data.mean(dim=["x", "y"])
-        else:
-            # Type ignore because this is still simpler than adding some `@overload`.
-            return new_data  # type: ignore
+        # Type ignore because this is still simpler than adding some `@overload`.
+        return new_data  # type: ignore
 
     elif nearest_lat is not None and nearest_lon is not None:
         ((x, y),) = transformer([(nearest_lat, nearest_lon)])
