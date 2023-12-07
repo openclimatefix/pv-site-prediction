@@ -290,7 +290,6 @@ class NwpDataSource:
             # Get the nearest prediction to what we are interested in.
             ds = ds.sel(step=deltas, method="nearest")
 
-        print(ds)
         da = ds[_VALUE]
 
         if load:
