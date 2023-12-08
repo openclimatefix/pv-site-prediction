@@ -50,3 +50,14 @@ class SatelliteDataSource(NwpDataSource):
             data = data.sel(variable=self._variables)
 
         return data
+
+    def _open(self, paths: list[str]) -> xr.Dataset:
+        d = xr.open_mfdataset(
+            paths,
+            engine="zarr",
+            concat_dim="time",
+            combine="nested",
+            chunks="auto",
+            join="override",
+        )
+        return d
