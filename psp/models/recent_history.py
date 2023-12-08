@@ -478,6 +478,8 @@ class RecentHistoryModel(PvSiteModel):
                     # This happens if there wasn't any data for the given tolerance.
                     if satellite_data_per_horizon is not None:
                         var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
+                    else:
+                        var_per_horizon = np.nan
 
                     # expand satellite data to all time steps
                     var_per_horizon = np.repeat(var_per_horizon, len(self.config.horizons))
