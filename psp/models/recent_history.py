@@ -140,7 +140,7 @@ class RecentHistoryModel(PvSiteModel):
         nwp_tolerance: Optional[float] = None,
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
-        satellite_patch_size: float = 0,
+        satellite_patch_size: float = 0.5,
     ):
         """
         Arguments:
@@ -476,9 +476,7 @@ class RecentHistoryModel(PvSiteModel):
                 for variable in satellite_variables:
                     # Deal with the trivial case where the returns Satellite is simply `None`.
                     # This happens if there wasn't any data for the given tolerance.
-                    if satellite_data_per_horizon is None:
-                        var_per_horizon = np.array([np.nan for _ in self.config.horizons])
-                    else:
+                    if satellite_data_per_horizon is not None:
                         var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
 
                     # expand satellite data to all time steps
