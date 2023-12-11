@@ -434,7 +434,7 @@ class RecentHistoryModel(PvSiteModel):
             # add the forecast horizon to the features. This is because the satellite data is
             # only available for the current time step, but not as a forecast, compared to NWP
             # which are available at all timesteps
-            features['forecast_horizon'] = self.config.horizons
+            features["forecast_horizon"] = self.config.horizons
 
             for source_key, source in self._satellite_data_sources.items():
                 if source._tolerance is not None:
