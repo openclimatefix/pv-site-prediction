@@ -189,7 +189,7 @@ class NwpDataSource:
                 raise ValueError(f'Timestamp "{t}" should be after now={now}')
 
         # Only cache for nearest_* because lat/lon ranges could be big.
-        use_cache = self._cache_dir and (nearest_lon is not None or nearest_lat is not None)
+        use_cache = self._cache_dir
 
         data = None
 
@@ -200,6 +200,10 @@ class NwpDataSource:
                 now,
                 nearest_lat,
                 nearest_lon,
+                min_lat,
+                max_lat,
+                min_lon,
+                max_lon,
                 self._paths,
                 self._lag_minutes,
                 tolerance,
