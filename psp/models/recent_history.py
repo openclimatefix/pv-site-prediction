@@ -140,7 +140,7 @@ class RecentHistoryModel(PvSiteModel):
         nwp_tolerance: Optional[float] = None,
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
-        satellite_patch_size: float = 0.5,
+        satellite_patch_size: float = 0.25,
     ):
         """
         Arguments:
@@ -434,7 +434,7 @@ class RecentHistoryModel(PvSiteModel):
             # add the forecast horizon to the features. This is because the satellite data is
             # only available for the current time step, but not as a forecast, compared to NWP
             # which are available at all timesteps
-            # not each hoirzon is the start and end horizon
+            # not each horizon is the start and end horizon
             feature_forecast_horizons = []
             for horizon in self.config.horizons:
                 feature_forecast_horizons.append((horizon[0] + horizon[1]) / 2.0)
@@ -451,13 +451,13 @@ class RecentHistoryModel(PvSiteModel):
                     is_training
                     and self._nwp_dropout > 0.0
                     and self._random_state is not None
-                    and self._random_state.random() < self._nwp_dropout
+                    and self._random_state.random() < self._satellite_dropout
                 ):
-                    satellite_data_per_horizon = None
+                    satellite_data = None
                 else:
 
                     if self._satellite_patch_size > 0:
-                        satellite_data_per_horizon = source.get(
+                        satellite_data = source.get(
                             now=x.ts,
                             timestamps=horizon_timestamps,
                             min_lat=lat - self._satellite_patch_size / 2,
@@ -469,13 +469,13 @@ class RecentHistoryModel(PvSiteModel):
                         )
 
                         # take mean over x and y
-                        if satellite_data_per_horizon is not None:
-                            satellite_data_per_horizon = satellite_data_per_horizon.mean(
+                        if satellite_data is not None:
+                            satellite_data = satellite_data.mean(
                                 dim=["x", "y"]
                             )
 
                     else:
-                        satellite_data_per_horizon = source.get(
+                        satellite_data = source.get(
                             now=x.ts,
                             timestamps=horizon_timestamps,
                             nearest_lat=lat,
@@ -487,11 +487,11 @@ class RecentHistoryModel(PvSiteModel):
                 for variable in satellite_variables:
                     # Deal with the trivial case where the returns Satellite is simply `None`.
                     # This happens if there wasn't any data for the given tolerance.
-                    if satellite_data_per_horizon is not None:
-                        var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
+                    if satellite_data is not None:
+                        var = satellite_data.sel(variable=variable).values
 
                         # expand satellite data to all time steps
-                        var_per_horizon = np.array([var_per_horizon for _ in self.config.horizons])
+                        var_per_horizon = np.array([var for _ in self.config.horizons])
 
                     else:
                         var_per_horizon = np.array([np.nan for _ in self.config.horizons])
