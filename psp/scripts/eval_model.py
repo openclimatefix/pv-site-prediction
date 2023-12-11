@@ -88,7 +88,6 @@ _log = logging.getLogger(__name__)
 )
 @click.option(
     "--use-metadata",
-    type=bool,
     is_flag=True,
     default=False,
     help="Use no Live PV during inference and only use metadata, "
@@ -191,6 +190,13 @@ def main(
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader
 
+    _log.info(f"use_metadata: {use_metadata}")
+
+    if use_metadata:
+        get_feature_function = model.get_features_without_pv
+    else:
+        get_feature_function = model.get_features
+
     data_loader = make_data_loader(
         data_source=pv_data_source,
         horizons=model_config.horizons,
@@ -199,12 +205,15 @@ def main(
         end_ts=test_end,
         batch_size=None,
         random_state=random_state,
-        get_features=model.get_features,
+        get_features=get_feature_function,
         num_workers=num_workers,
         shuffle=not sequential,
         step=step,
         limit=limit,
     )
+
+    _log.info("Created data loader")
+    print(data_loader)
 
     # Gather all errors for every samples. We'll make a DataFrame with it.
     error_rows = []
@@ -228,13 +237,10 @@ def main(
                 extra["capacity"] = capacity
 
             y_true = sample.y
-            print("use_metadata: ", use_metadata)
-
-            if use_metadata:
-                model.set_pv_dropout(1)
 
             y_pred = model.predict_from_features(x=x, features=sample.features)
             train_date = model.get_train_date(x.ts)
+
             for metric_name, metric in METRICS.items():
                 error = metric(y_true, y_pred)
                 # Error is a vector
