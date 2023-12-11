@@ -434,8 +434,13 @@ class RecentHistoryModel(PvSiteModel):
             # add the forecast horizon to the features. This is because the satellite data is
             # only available for the current time step, but not as a forecast, compared to NWP
             # which are available at all timesteps
-            features["forecast_horizon"] = self.config.horizons
+            # not each hoirzon is the start and end horizon
+            feature_forecast_horizons = []
+            for horizon in self.config.horizons:
+                feature_forecast_horizons.append((horizon[0] + horizon[1]) / 2.0)
+            features["forecast_horizons"] = np.array(feature_forecast_horizons)
 
+            # loop over satellite sources
             for source_key, source in self._satellite_data_sources.items():
                 if source._tolerance is not None:
                     tolerance = str(source._tolerance)
@@ -484,11 +489,12 @@ class RecentHistoryModel(PvSiteModel):
                     # This happens if there wasn't any data for the given tolerance.
                     if satellite_data_per_horizon is not None:
                         var_per_horizon = satellite_data_per_horizon.sel(variable=variable).values
-                    else:
-                        var_per_horizon = np.nan
 
-                    # expand satellite data to all time steps
-                    var_per_horizon = np.repeat(var_per_horizon, len(self.config.horizons))
+                        # expand satellite data to all time steps
+                        var_per_horizon = np.array([var_per_horizon for _ in self.config.horizons])
+
+                    else:
+                        var_per_horizon = np.array([np.nan for _ in self.config.horizons])
 
                     # Deal with potential NaN values in NWP.
                     var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
