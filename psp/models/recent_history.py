@@ -126,7 +126,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource],
-        sat_data_sources: dict[str, SatelliteDataSource] | None = None,
+        satellite_data_sources: dict[str, SatelliteDataSource] | None = None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         pv_dropout: float = 0.0,
@@ -202,7 +202,7 @@ class RecentHistoryModel(PvSiteModel):
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_sources=nwp_data_sources,
-            sat_data_sources=sat_data_sources,
+            sat_data_sources=satellite_data_sources,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old

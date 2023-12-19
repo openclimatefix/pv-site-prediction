@@ -210,7 +210,7 @@ class ExpConfig(ExpConfigBase):
                     ],
                 ),
             },
-            sat_data_sources={
+            satellite_data_sources={
                 "EUMETSAT": SatelliteDataSource(
                     SATELLITE_DATA_PATHS,
                     x_is_ascending=False,
