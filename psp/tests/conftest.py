@@ -2,6 +2,7 @@ import pytest
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 
 
 @pytest.fixture
@@ -34,5 +35,15 @@ def nwp_data_sources(pv_data_source):
             time_dim_name="init_time",
             value_name="UKV",
             y_is_ascending=False,
+        ),
+    }
+
+
+@pytest.fixture
+def satellite_data_sources(pv_data_source):
+    return {
+        "EUMETSAT": SatelliteDataSource(
+            "psp/tests/fixtures/satellite.zarr",
+            x_is_ascending=False,
         ),
     }

@@ -7,6 +7,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.dataset import DateSplits, PvSplits, TestDateSplit, TrainDateSplit
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -16,6 +17,7 @@ from psp.typings import Horizons
 
 PV_DATA_PATH = "psp/tests/fixtures/pv_data.nc"
 NWP_PATH = "psp/tests/fixtures/nwp.zarr"
+SATELLITE_PATH = "psp/tests/fixtures/satellite.zarr"
 
 
 def _get_capacity(d):
@@ -48,6 +50,12 @@ class ExpConfig(ExpConfigBase):
                     y_is_ascending=False,
                 ),
             },
+            satellite_data_sources={
+                "EUMETSAT": SatelliteDataSource(
+                    SATELLITE_PATH,
+                    x_is_ascending=False,
+                ),
+            },
         )
 
     def get_model_config(self):
@@ -68,7 +76,8 @@ class ExpConfig(ExpConfigBase):
             # Make sure the NWP data is used by adding a lot of dropout on the PV data.
             pv_dropout=0.9,
             capacity_getter=_get_capacity,
-            nwp_dropout=0.0
+            nwp_dropout=0.0,
+            satellite_patch_size=0.5,
         )
 
     def make_pv_splits(self, pv_data_source: PvDataSource) -> PvSplits:

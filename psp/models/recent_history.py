@@ -10,6 +10,7 @@ import xarray as xr
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import PvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.models.base import PvSiteModel, PvSiteModelConfig
 from psp.models.regressors.base import Regressor
 from psp.pv import get_irradiance
@@ -125,6 +126,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource],
+        satellite_data_sources: dict[str, SatelliteDataSource] | None = None,
         regressor: Regressor,
         random_state: np.random.RandomState | None = None,
         pv_dropout: float = 0.0,
@@ -136,6 +138,9 @@ class RecentHistoryModel(PvSiteModel):
         num_days_history: int = 7,
         nwp_dropout: float = 0.1,
         nwp_tolerance: Optional[float] = None,
+        satellite_dropout: float = 0.1,
+        satellite_tolerance: Optional[float] = None,
+        satellite_patch_size: float = 0.25,
     ):
         """
         Arguments:
@@ -156,7 +161,11 @@ class RecentHistoryModel(PvSiteModel):
         nwp_dropout: Probability of removing the NWP data (replacing it with np.nan).
             This is only used at train-time.
         nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
-            See `NwpDataSource.get`'s documentation for details..
+            See `NwpDataSource.get`'s documentation for details.
+        satellite_dropout: Probability of removing the satellite data (replacing it with np.nan).
+        satellite_tolerance: How old should the satellite predictions be before
+            we start ignoring them.
+        satellite_patch_size: Size of the patch to use for the satellite data. This is in degrees.
         """
         super().__init__(config)
         # Validate some options.
@@ -168,6 +177,7 @@ class RecentHistoryModel(PvSiteModel):
 
         self._pv_data_source: PvDataSource
         self._nwp_data_sources: dict[str, NwpDataSource] | None
+        self._satellite_data_sources: dict[str, SatelliteDataSource] | None
 
         self._regressor = regressor
         self._random_state = random_state
@@ -187,10 +197,14 @@ class RecentHistoryModel(PvSiteModel):
 
         self._nwp_dropout = nwp_dropout
         self._nwp_tolerance = nwp_tolerance
+        self._satellite_dropout = satellite_dropout
+        self._satellite_tolerance = satellite_tolerance
+        self._satellite_patch_size = satellite_patch_size
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_sources=nwp_data_sources,
+            sat_data_sources=satellite_data_sources,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -204,6 +218,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource] | None = None,
+        sat_data_sources: dict[str, SatelliteDataSource] | None = None,
     ):
         """Set the data sources.
 
@@ -211,13 +226,23 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_sources = nwp_data_sources
+        self._satellite_data_sources = sat_data_sources
 
         # This ensures the nwp fixture passed for the test is a dictionary
         if isinstance(self._nwp_data_sources, dict) or self._nwp_data_sources is None:
             pass
-
         else:
             self._nwp_data_sources = dict(nwp_data_source=self._nwp_data_sources)
+
+        # this make sure the satellite data is a dictionary
+        if (self._satellite_data_sources is not None) and (
+            not isinstance(self._satellite_data_sources, dict)
+        ):
+            self._satellite_data_sources = dict(sat_data_source=self._satellite_data_sources)
+
+        # set this attribute so it works for older models
+        if not hasattr(self, "_satellite_patch_size"):
+            self._nwp_patch_size = 0
 
     def predict_from_features(self, x: X, features: Features) -> Y:
         powers = self._regressor.predict(features)
@@ -356,9 +381,8 @@ class RecentHistoryModel(PvSiteModel):
 
         if self._nwp_data_sources is not None:
             for source_key, source in self._nwp_data_sources.items():
-
-                if source._nwp_tolerance is not None:
-                    tolerance = str(source._nwp_tolerance)
+                if source._tolerance is not None:
+                    tolerance = str(source._tolerance)
                 else:
                     tolerance = None
 
@@ -398,6 +422,90 @@ class RecentHistoryModel(PvSiteModel):
                     # if there are multiple NWP data sources
 
                     if len(self._nwp_data_sources) > 1:
+                        variable_source_key = variable + source_key
+
+                    else:
+                        variable_source_key = variable
+
+                    features[variable_source_key] = var_per_horizon
+                    features[variable_source_key + "_isnan"] = var_per_horizon_is_nan
+
+        # add another section here fore getting the satellite data
+        if self._satellite_data_sources is not None:
+
+            # add the forecast horizon to the features. This is because the satellite data is
+            # only available for the current time step, but not as a forecast, compared to NWP
+            # which are available at all timesteps
+            # not each horizon is the start and end horizon
+            feature_forecast_horizons = []
+            for horizon in self.config.horizons:
+                feature_forecast_horizons.append((horizon[0] + horizon[1]) / 2.0)
+            features["forecast_horizons"] = np.array(feature_forecast_horizons)
+
+            # loop over satellite sources
+            for source_key, source in self._satellite_data_sources.items():
+                if source._tolerance is not None:
+                    tolerance = str(source._tolerance)
+                else:
+                    tolerance = None
+
+                if (
+                    is_training
+                    and self._nwp_dropout > 0.0
+                    and self._random_state is not None
+                    and self._random_state.random() < self._satellite_dropout
+                ):
+                    satellite_data = None
+                else:
+
+                    if self._satellite_patch_size > 0:
+                        satellite_data = source.get(
+                            now=x.ts,
+                            timestamps=horizon_timestamps,
+                            min_lat=lat - self._satellite_patch_size / 2,
+                            max_lat=lat + self._satellite_patch_size / 2,
+                            min_lon=lon - self._satellite_patch_size / 2,
+                            max_lon=lon + self._satellite_patch_size / 2,
+                            nearest_lon=lon,
+                            tolerance=tolerance,
+                        )
+
+                        # take mean over x and y
+                        if satellite_data is not None:
+                            satellite_data = satellite_data.mean(dim=["x", "y"])
+
+                    else:
+                        satellite_data = source.get(
+                            now=x.ts,
+                            timestamps=horizon_timestamps,
+                            nearest_lat=lat,
+                            nearest_lon=lon,
+                            tolerance=tolerance,
+                        )
+                satellite_variables = source.list_variables()
+
+                for variable in satellite_variables:
+                    # Deal with the trivial case where the returns Satellite is simply `None`.
+                    # This happens if there wasn't any data for the given tolerance.
+                    if satellite_data is not None:
+                        var = satellite_data.sel(variable=variable).values
+
+                        # expand satellite data to all time steps
+                        var_per_horizon = np.array([var for _ in self.config.horizons])
+
+                    else:
+                        var_per_horizon = np.array([np.nan for _ in self.config.horizons])
+
+                    # Deal with potential NaN values in NWP.
+                    var_per_horizon_is_nan = np.isnan(var_per_horizon) * 1.0
+                    var_per_horizon = np.nan_to_num(
+                        var_per_horizon, nan=0.0, posinf=0.0, neginf=0.0
+                    )
+
+                    # We only want to append the name of the Satellite variable to include the
+                    # provider
+                    # if there are multiple Satellite data sources
+                    if len(self._satellite_data_sources) > 1:
                         variable_source_key = variable + source_key
 
                     else:
@@ -486,6 +594,7 @@ class RecentHistoryModel(PvSiteModel):
         # for multiprocessing.
         del state["_pv_data_source"]
         del state["_nwp_data_sources"]
+        del state["_satellite_data_sources"]
         return state
 
     def set_state(self, state):

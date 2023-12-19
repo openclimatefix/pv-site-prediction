@@ -51,7 +51,7 @@ class ExpConfig(ExpConfigBase):
                     value_name="UKV",
                     y_is_ascending=False,
                     # Those are the variables available in our prod environment.
-                    nwp_variables=[
+                    variables=[
                         "si10",
                         "vis",
                         # "r2",
@@ -64,7 +64,7 @@ class ExpConfig(ExpConfigBase):
                         "mcc",
                         "lcc",
                     ],
-                    nwp_tolerance="168h",
+                    tolerance="168h",
                 ),
                 "EXC": NwpDataSource(
                     EXC_PATH,
@@ -75,7 +75,7 @@ class ExpConfig(ExpConfigBase):
                     x_is_ascending=True,
                     y_is_ascending=True,
                     lag_minutes=8 * 60,
-                    nwp_tolerance=None,
+                    tolerance=None,
                 ),
             },
         )

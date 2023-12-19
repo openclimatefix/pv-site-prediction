@@ -10,7 +10,10 @@ from psp.typings import X
 
 # We ran the test once to get the results and pasted here the results.
 # This way we can make sure the output of previous models doesn't change.
-EXPECTED_OUTPUT = {"model_v8": [77.446404, 78.650178, 79.028029, 96.746425, 95.17781]}
+EXPECTED_OUTPUT = {
+    "model_v8": [77.446404, 78.650178, 79.028029, 96.746425, 95.17781],
+    "model_v9": [67.522277, 68.571797, 68.901229, 78.870112, 77.591338],
+}
 
 
 def test_old_models_sanity_check():
@@ -22,11 +25,12 @@ def test_old_models_sanity_check():
     assert sorted(models) == sorted(EXPECTED_OUTPUT)
 
 
-def _test_model(model_path, expected, pv_data_source, nwp_data_sources):
+def _test_model(model_path, expected, pv_data_source, nwp_data_sources, sat_data_source=None):
     model = load_model(model_path)
     model.set_data_sources(
         pv_data_source=pv_data_source,
         nwp_data_sources=nwp_data_sources,
+        sat_data_sources=sat_data_source,
     )
 
     pv_id = pv_data_source.list_pv_ids()[0]
@@ -40,14 +44,14 @@ def _test_model(model_path, expected, pv_data_source, nwp_data_sources):
     assert_allclose(output.powers, expected, atol=1e-6)
 
 
-@pytest.mark.parametrize("model_name,expected", list(EXPECTED_OUTPUT.items()))
+@pytest.mark.parametrize("model_name,expected", [("model_v8", EXPECTED_OUTPUT["model_v8"])])
 def test_old_models(model_name, expected, pv_data_source, nwp_data_sources):
     """Make sure that we can load previously trained models."""
     model_path = f"psp/tests/fixtures/models/{model_name}.pkl"
     _test_model(model_path, expected, pv_data_source, nwp_data_sources)
 
 
-def test_latest_model(tmp_path, pv_data_source, nwp_data_sources):
+def test_latest_model(tmp_path, pv_data_source, nwp_data_sources, satellite_data_sources):
     """Make sure that when we train a model using the "test_config1.py" we get a model
     that behaves the same as our last fixture model (see the keys of `EXPECTED_OUTPUT`).
 
@@ -75,4 +79,5 @@ def test_latest_model(tmp_path, pv_data_source, nwp_data_sources):
         list(EXPECTED_OUTPUT.values())[-1],
         pv_data_source,
         nwp_data_sources,
+        satellite_data_sources,
     )
