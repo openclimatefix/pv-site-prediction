@@ -162,7 +162,8 @@ class RecentHistoryModel(PvSiteModel):
             This is only used at train-time.
         nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
             See `NwpDataSource.get`'s documentation for details.
-        nwp_patch_size: Size of the patch to use for the NWP data. This is in degrees.
+        satellite_dropout: Probability of removing the satellite data (replacing it with np.nan).
+        satellite_tolerance: How old should the satellite predictions be before we start ignoring them.
         satellite_patch_size: Size of the patch to use for the satellite data. This is in degrees.
         """
         super().__init__(config)
