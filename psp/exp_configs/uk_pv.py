@@ -6,7 +6,6 @@ import numpy as np
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
-from psp.data_sources.satellite import SatelliteDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -182,11 +181,14 @@ def _get_orientation(d):
     orientation_values = d["orientation"].values
     return orientation_values
 
+
 def _default_get_tilt(_):
     return 35.0
 
+
 def _default_get_orientation(_):
     return 180.0
+
 
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
