@@ -19,9 +19,6 @@ class MultiPvSiteModel(PvSiteModel):
         # Make sure the models are sorted by date.
         assert list(sorted(models)) == list(models)
 
-    def set_pv_dropout(self, value: float):
-        self._pv_dropout = value
-
     def predict_from_features(self, x: X, features: Features) -> Y:
         model = self._get_model_for_ts(x.ts)
         return model.predict_from_features(x, features)

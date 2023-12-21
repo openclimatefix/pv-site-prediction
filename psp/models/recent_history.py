@@ -138,7 +138,7 @@ class RecentHistoryModel(PvSiteModel):
         nwp_tolerance: Optional[float] = None,
     ):
         """
-        Arguments:s
+        Arguments:
         ---------
         pv_data_source: Pv data source.
         nwp_data_source: Nwp data source.
@@ -265,8 +265,6 @@ class RecentHistoryModel(PvSiteModel):
             and self._random_state.random() < self._pv_dropout
         ):
             data *= np.nan
-
-        _log.info(f"PV dropout in recent_history {self._pv_dropout}")
 
         coords = _data.coords
 
