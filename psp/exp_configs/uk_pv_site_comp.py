@@ -12,7 +12,7 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_DATA_PATH = "/home/zak/pv-site-prediction/data/uk_pv_comp/uk_pv_sites/v1/uk_pv_test_sites.nc"
+PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/pv_site_testset/uk_pv_test_sites.nc"
 
 METOFFICE_PATHS = [
     (
