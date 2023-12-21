@@ -184,9 +184,9 @@ class RecentHistoryModel(PvSiteModel):
         self._normalize_features = normalize_features
         self._pv_dropout = pv_dropout
 
-        self._capacity_getter = capacity_getter or _default_get_capacity
-        self._tilt_getter = tilt_getter or _default_get_tilt
-        self._orientation_getter = orientation_getter or _default_get_orientation
+        self._capacity_getter = capacity_getter
+        self._tilt_getter = tilt_getter
+        self._orientation_getter = orientation_getter
 
         # Deprecated - keeping for backward compatibility and mypy.
         self._use_inferred_meta = None

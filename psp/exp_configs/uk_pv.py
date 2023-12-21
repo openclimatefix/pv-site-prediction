@@ -173,6 +173,16 @@ def _get_capacity(d):
     return value
 
 
+def _get_tilt(d):
+    tilt_values = d["tilt"].values
+    return tilt_values
+
+
+def _get_orientation(d):
+    orientation_values = d["orientation"].values
+    return orientation_values
+
+
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
@@ -181,6 +191,7 @@ class ExpConfig(ExpConfigBase):
             timestamp_dim_name="timestamp",
             rename={"generation_wh": "power", "kwp": "capacity"},
             ignore_pv_ids=SKIP_SS_IDS,
+            hardcode_tilt_orientation=True,
         )
 
     def get_data_source_kwargs(self):
@@ -223,11 +234,19 @@ class ExpConfig(ExpConfigBase):
 
     def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         kwargs = self.get_data_source_kwargs()
+
+        if kwargs["pv_data_source"]._hardcode_tilt_orientation is True:
+            tilt = 35
+            orientation = 180
+        else:
+            tilt = _get_tilt
+            orientation = _get_orientation
+
         return RecentHistoryModel(
             config=self._get_model_config(),
             **kwargs,
             regressor=SklearnRegressor(
-                num_train_samples=4096,
+                num_train_samples=400,
                 normalize_targets=True,
                 #
                 # We have done some tests with xgboost and keep this as an example but note that we
@@ -246,6 +265,8 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
+            tilt_getter=tilt,
+            orientation_getter=orientation,
             pv_dropout=0.1,
         )
 
@@ -257,4 +278,7 @@ class ExpConfig(ExpConfigBase):
             test_start_date=dt.datetime(2020, 1, 1),
             test_end_date=dt.datetime(2021, 11, 8),
             train_days=356 * 2,
+            num_trainings=1,
+            # Min date because of NWP not available at the beginning of the PV data.
+            min_train_date=dt.datetime(2020, 1, 10),
         )
