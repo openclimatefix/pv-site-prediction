@@ -44,11 +44,9 @@ def test_pvx_datapipe_dataset(pv_data_source):
             dataset_file=f.name,
         )
 
-        pvx = iter(pvx)
-        x = next(pvx)
+        x, y = [x for x in iter(pvx)]
         assert x.pv_id == "0"
         assert x.ts == datetime(2020, 1, 1)
 
-        x = next(pvx)
-        assert x.pv_id == "1"
-        assert x.ts == datetime(2020, 1, 2)
+        assert y.pv_id == "1"
+        assert y.ts == datetime(2020, 1, 2)

@@ -56,14 +56,12 @@ class PvXDataPipe(IterDataPipe[X]):
         assert self._end_ts > self._start_ts
 
         if self._dataset_file is not None:
-            self.dataset = pd.read_csv(self._dataset_file)
-        else:
-            self.dataset = None
+            self._dataset = pd.read_csv(self._dataset_file)
 
     def __iter__(self) -> Iterator[X]:
         step = dt.timedelta(minutes=self._step)
 
-        if self.dataset is None:
+        if self._dataset_file is None:
             for pv_id in self._pv_ids:
                 ts = self._start_ts
                 minute = ts.minute
@@ -73,7 +71,7 @@ class PvXDataPipe(IterDataPipe[X]):
                     yield x
                     ts = ts + step
         else:
-            for index, row in self.dataset.iterrows():
+            for index, row in self._dataset.iterrows():
                 pv_id = str(row["pv_id"])
                 ts = pd.Timestamp(row["timestamp"])
                 ts = ts.replace(second=0, microsecond=0)
@@ -203,6 +201,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
+    dataset_file: str | None = None,
 ) -> "DataLoader[Sample]":
     ...
 
@@ -222,6 +221,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
+    dataset_file: str | None = None,
 ) -> "DataLoader[Batch]":
     ...
 
