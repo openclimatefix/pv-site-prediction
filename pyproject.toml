@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pv-site-prediction"
 packages = [{include = "psp"}]
-version = "0.1.12"
+version = "0.1.13"
 description = "Photovoltaic per site modeling"
 authors = ["Simon Lemieux <1105380+simlmx@users.noreply.github.com>"]
 license = "MIT"
