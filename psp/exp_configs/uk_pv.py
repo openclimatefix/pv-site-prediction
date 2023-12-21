@@ -242,7 +242,6 @@ class ExpConfig(ExpConfigBase):
 
     def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         kwargs = self.get_data_source_kwargs()
-
         return RecentHistoryModel(
             config=self._get_model_config(),
             **kwargs,
