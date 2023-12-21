@@ -86,6 +86,13 @@ _log = logging.getLogger(__name__)
     help="The time interval of the samples in minutes. "
     "Defaults to None and then value is taken from the configuration.",
 )
+@click.option(
+    "--test-dataset",
+    type=str,
+    default=None,
+    help="The csv file for the test dataset to use. Defaults to None. "
+    "The csv must have pv_id and timestamp columns.",
+)
 def main(
     exp_root,
     exp_name,
@@ -100,6 +107,7 @@ def main(
     sequential: bool,
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
+    test_dataset: Optional[str] = None,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -192,9 +200,10 @@ def main(
         random_state=random_state,
         get_features=model.get_features,
         num_workers=num_workers,
-        shuffle=not sequential,
+        shuffle=(not sequential) and (test_dataset is None),
         step=step,
         limit=limit,
+        dataset_file=test_dataset,
     )
 
     # Gather all errors for every samples. We'll make a DataFrame with it.
