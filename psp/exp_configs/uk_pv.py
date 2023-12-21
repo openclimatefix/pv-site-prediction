@@ -183,14 +183,6 @@ def _get_orientation(d):
     return orientation_values
 
 
-def _default_get_tilt(_):
-    return 35.0
-
-
-def _default_get_orientation(_):
-    return 180.0
-
-
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
         return NetcdfPvDataSource(
@@ -199,7 +191,6 @@ class ExpConfig(ExpConfigBase):
             timestamp_dim_name="timestamp",
             rename={"generation_wh": "power", "kwp": "capacity"},
             ignore_pv_ids=SKIP_SS_IDS,
-            hardcode_tilt_orientation=True,
         )
 
     def get_data_source_kwargs(self):
@@ -265,12 +256,8 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
-            tilt_getter=_default_get_tilt
-            if kwargs["pv_data_source"]._hardcode_tilt_orientation
-            else _get_tilt,
-            orientation_getter=_default_get_orientation
-            if kwargs["pv_data_source"]._hardcode_tilt_orientation
-            else _get_orientation,
+            tilt_getter= _get_tilt,
+            orientation_getter=_get_orientation,
             pv_dropout=0.1,
         )
 

@@ -97,7 +97,6 @@ class NetcdfPvDataSource(PvDataSource):
         rename: dict[str, str] | None = None,
         ignore_pv_ids: list[str] | None = None,
         lag_minutes: float = 0.0,
-        hardcode_tilt_orientation: bool = False,
     ):
         """
         Arguments:
@@ -128,7 +127,6 @@ class NetcdfPvDataSource(PvDataSource):
         self._rename = rename
         self._ignore_pv_ids = ignore_pv_ids
         self._lag_minutes = lag_minutes
-        self._hardcode_tilt_orientation = hardcode_tilt_orientation
 
         self._prepare_data(raw_data)
 
