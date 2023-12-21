@@ -107,7 +107,7 @@ def main(
     sequential: bool,
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
-    test_dataset_file: Optional[str] = None,
+    test_dataset: Optional[str] = None,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -200,10 +200,10 @@ def main(
         random_state=random_state,
         get_features=model.get_features,
         num_workers=num_workers,
-        shuffle=not sequential,
+        shuffle=(not sequential) and (test_dataset is None),
         step=step,
         limit=limit,
-        dataset_file=test_dataset_file,
+        dataset_file=test_dataset,
     )
 
     # Gather all errors for every samples. We'll make a DataFrame with it.
