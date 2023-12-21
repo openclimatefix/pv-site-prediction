@@ -110,7 +110,6 @@ class NetcdfPvDataSource(PvDataSource):
                 in practice. Concretely, this means that when we call `as_available_at`,
                 `lag_minutes` minutes will subtracted from the passed timestamp. When training, this
                 should be set to the expected delay before the PV data is available, in production.
-            hardcode_tilt_orientation: If True, we hardcode the tilt and orientation of the PVs.
         """
         if rename is None:
             rename = {}
