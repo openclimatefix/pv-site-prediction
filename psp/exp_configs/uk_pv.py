@@ -283,7 +283,4 @@ class ExpConfig(ExpConfigBase):
             test_start_date=dt.datetime(2020, 1, 1),
             test_end_date=dt.datetime(2021, 11, 8),
             train_days=356 * 2,
-            # num_trainings=1,
-            # Min date because of NWP not available at the beginning of the PV data.
-            # min_train_date=dt.datetime(2020, 1, 10),
         )
