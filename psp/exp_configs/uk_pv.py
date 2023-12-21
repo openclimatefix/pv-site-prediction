@@ -6,6 +6,7 @@ import numpy as np
 
 from psp.data_sources.nwp import NwpDataSource
 from psp.data_sources.pv import NetcdfPvDataSource, PvDataSource
+from psp.data_sources.satellite import SatelliteDataSource
 from psp.dataset import PvSplits, auto_date_split, split_pvs
 from psp.exp_configs.base import ExpConfigBase
 from psp.models.base import PvSiteModel, PvSiteModelConfig
@@ -228,12 +229,12 @@ class ExpConfig(ExpConfigBase):
                     ],
                 ),
             },
-            # satellite_data_sources={
-            #     "EUMETSAT": SatelliteDataSource(
-            #         SATELLITE_DATA_PATHS,
-            #         x_is_ascending=False,
-            #     ),
-            # },
+            satellite_data_sources={
+                "EUMETSAT": SatelliteDataSource(
+                    SATELLITE_DATA_PATHS,
+                    x_is_ascending=False,
+                ),
+            },
         )
 
     def _get_model_config(self) -> PvSiteModelConfig:
@@ -242,18 +243,11 @@ class ExpConfig(ExpConfigBase):
     def get_model(self, *, random_state: np.random.RandomState | None = None) -> PvSiteModel:
         kwargs = self.get_data_source_kwargs()
 
-        if kwargs["pv_data_source"]._hardcode_tilt_orientation is True:
-            tilt_getter = _default_get_tilt
-            orientation_getter = _default_get_orientation
-        else:
-            tilt_getter = _get_tilt
-            orientation_getter = _get_orientation
-
         return RecentHistoryModel(
             config=self._get_model_config(),
             **kwargs,
             regressor=SklearnRegressor(
-                num_train_samples=400,
+                num_train_samples=4096,
                 normalize_targets=True,
                 #
                 # We have done some tests with xgboost and keep this as an example but note that we
@@ -272,8 +266,12 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
-            tilt_getter=tilt_getter,
-            orientation_getter=orientation_getter,
+            tilt_getter=_default_get_tilt
+            if kwargs["pv_data_source"]._hardcode_tilt_orientation
+            else _get_tilt,
+            orientation_getter=_default_get_orientation
+            if kwargs["pv_data_source"]._hardcode_tilt_orientation
+            else _get_orientation,
             pv_dropout=0.1,
         )
 
