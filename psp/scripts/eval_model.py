@@ -246,10 +246,8 @@ def main(
                 extra["capacity"] = capacity
 
             y_true = sample.y
-
             y_pred = model.predict_from_features(x=x, features=sample.features)
             train_date = model.get_train_date(x.ts)
-
             for metric_name, metric in METRICS.items():
                 error = metric(y_true, y_pred)
                 # Error is a vector
