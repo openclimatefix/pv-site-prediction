@@ -1,3 +1,7 @@
+# This config is used for PV site comparison (comp) experiments, specifically looking into the
+# performance of training and evaluating on the same and on a different set of sites.
+# This file contains the config for a bespoke model of for the 50 pv sites testset.
+
 import datetime as dt
 import functools
 
@@ -12,7 +16,10 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/pv_site_testset/uk_pv_test_sites.nc"
+PV_DATA_PATH = (
+    "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/pv_site_testset/"
+    "uk_pv_test_sites.nc"
+)
 
 METOFFICE_PATHS = [
     (
