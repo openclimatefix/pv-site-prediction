@@ -157,7 +157,6 @@ def test_nwp_data_source_check_times_many_steps(
     ],
 )
 def test_nwp_data_source_space(reverse_x, reverse_y, lat, lon, expected_size, nwp_data_sources):
-
     # Reverse the data order and see if our flag words.
     if reverse_x:
         nwp_data_sources._data = nwp_data_sources._data.sortby("x", ascending=False)

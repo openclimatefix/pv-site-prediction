@@ -49,3 +49,19 @@ def test_coordinate_transformer(coord1, coord2, input_points, expected_points):
     assert len(new_points) == len(expected_points)
     for p1, p2 in zip(expected_points, new_points):
         assert_allclose(p1, p2, atol=1e-10)
+
+
+def test_coordinate_transformer_lat_lon_lat_lon():
+    transform = CoordinateTransformer(4326, 4326)
+
+    points = [(50, -1), (54, 1)]
+
+    new_points = transform(points)
+
+    assert len(new_points) == len(points)
+    for p1, p2 in zip(points, new_points):
+        assert_allclose(p1, p2, atol=1e-10)
+
+    transform = CoordinateTransformer(27700, 4326)
+    new_points = transform(points)
+    transform = CoordinateTransformer(4326, 27700)

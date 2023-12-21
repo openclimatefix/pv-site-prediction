@@ -51,7 +51,7 @@ class ExpConfig(ExpConfigBase):
                     x_dim_name="latitude",
                     y_dim_name="longitude",
                     x_is_ascending=False,
-                    nwp_tolerance=None,
+                    tolerance=None,
                 ),
                 "EXC": NwpDataSource(
                     EXC_PATH,
@@ -62,7 +62,7 @@ class ExpConfig(ExpConfigBase):
                     x_is_ascending=True,
                     y_is_ascending=True,
                     lag_minutes=8 * 60,
-                    nwp_tolerance=None,
+                    tolerance=None,
                 ),
             },
         )

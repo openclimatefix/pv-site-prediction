@@ -1,72 +1,20 @@
 import datetime as dt
+import logging
 import pathlib
 import pickle
-from typing import Optional, TypeVar
+from typing import Optional
 
 # This import registers a codec.
 import ocf_blosc2  # noqa
 import xarray as xr
 
+from psp.data_sources.utils import _STEP, _TIME, _VALUE, _VARIABLE, _X, _Y, slice_on_lat_lon
 from psp.gis import CoordinateTransformer
 from psp.typings import Timestamp
 from psp.utils.dates import to_pydatetime
 from psp.utils.hashing import naive_hash
 
-T = TypeVar("T", bound=xr.Dataset | xr.DataArray)
-
-_X = "x"
-_Y = "y"
-_TIME = "time"
-_STEP = "step"
-_VARIABLE = "variable"
-_VALUE = "value"
-
-
-def _slice_on_lat_lon(
-    data: T,
-    *,
-    min_lat: float | None = None,
-    max_lat: float | None = None,
-    min_lon: float | None = None,
-    max_lon: float | None = None,
-    nearest_lat: float | None = None,
-    nearest_lon: float | None = None,
-    transformer: CoordinateTransformer,
-    x_is_ascending: bool,
-    y_is_ascending: bool,
-) -> T:
-    # Only allow `None` values for lat/lon if they are all None (in which case we don't filter
-    # by lat/lon).
-    num_none = sum([x is None for x in [min_lat, max_lat, min_lon, max_lon]])
-    assert num_none in [0, 4]
-
-    if min_lat is not None:
-        assert min_lat is not None
-        assert min_lon is not None
-        assert max_lat is not None
-        assert max_lon is not None
-
-        assert max_lat >= min_lat
-        assert max_lon >= min_lon
-
-        point1, point2 = transformer([(min_lat, min_lon), (max_lat, max_lon)])
-        min_x, min_y = point1
-        max_x, max_y = point2
-
-        if not x_is_ascending:
-            min_x, max_x = max_x, min_x
-        if not y_is_ascending:
-            min_y, max_y = max_y, min_y
-
-        # Type ignore because this is still simpler than addin some `@overload`.
-        return data.sel(x=slice(min_x, max_x), y=slice(min_y, max_y))  # type: ignore
-
-    elif nearest_lat is not None and nearest_lon is not None:
-        ((x, y),) = transformer([(nearest_lat, nearest_lon)])
-
-        return data.sel(x=x, y=y, method="nearest")  # type: ignore
-
-    return data
+_log = logging.getLogger(__name__)
 
 
 class NwpDataSource:
@@ -90,8 +38,9 @@ class NwpDataSource:
         y_is_ascending: bool = True,
         cache_dir: str | None = None,
         lag_minutes: float = 0.0,
-        nwp_tolerance: Optional[str] = None,
-        nwp_variables: Optional[list[str]] = None,
+        tolerance: Optional[str] = None,
+        variables: Optional[list[str]] = None,
+        filter_on_step: Optional[bool] = True,
     ):
         """
         Arguments:
@@ -115,6 +64,7 @@ class NwpDataSource:
         nwp_tolerance: How old should the NWP predictions be before we start ignoring them.
             See `NwpDataSource.get`'s documentation for details..
         nwp_variables: Only use this subset of NWP variables. Defaults to using all.
+
         """
         if isinstance(paths_or_data, str):
             paths_or_data = [paths_or_data]
@@ -140,17 +90,21 @@ class NwpDataSource:
 
         self._lag_minutes = lag_minutes
 
-        self._nwp_tolerance = nwp_tolerance
-        self._nwp_variables = nwp_variables
+        self._tolerance = tolerance
+        self._variables = variables
 
         self._data = self._prepare_data(raw_data)
+        self.raw_data = raw_data
 
         self._cache_dir = pathlib.Path(cache_dir) if cache_dir else None
 
         if self._cache_dir:
             self._cache_dir.mkdir(exist_ok=True)
 
+        self._filter_on_step = filter_on_step
+
     def _open(self, paths: list[str]) -> xr.Dataset:
+        _log.debug(f"Opening data {paths}")
         return xr.open_mfdataset(
             paths,
             engine="zarr",
@@ -176,8 +130,8 @@ class NwpDataSource:
         data = data.rename(rename_map)
 
         # Filter data to keep only the variables in self._nwp_variables if it's not None
-        if self._nwp_variables is not None:
-            data = data.sel(variable=self._nwp_variables)
+        if self._variables is not None:
+            data = data.sel(variable=self._variables)
 
         return data
 
@@ -235,7 +189,7 @@ class NwpDataSource:
                 raise ValueError(f'Timestamp "{t}" should be after now={now}')
 
         # Only cache for nearest_* because lat/lon ranges could be big.
-        use_cache = self._cache_dir and (nearest_lon is not None or nearest_lat is not None)
+        use_cache = self._cache_dir
 
         data = None
 
@@ -246,6 +200,10 @@ class NwpDataSource:
                 now,
                 nearest_lat,
                 nearest_lon,
+                min_lat,
+                max_lat,
+                min_lon,
+                max_lon,
                 self._paths,
                 self._lag_minutes,
                 tolerance,
@@ -260,6 +218,7 @@ class NwpDataSource:
 
         # If it was not loaded from the cache, we load it from the original dataset.
         if data is None:
+
             data = self._get(
                 now=now,
                 timestamps=timestamps,
@@ -313,7 +272,7 @@ class NwpDataSource:
             assert tolerance is not None
             return None
 
-        ds = _slice_on_lat_lon(
+        ds = slice_on_lat_lon(
             ds,
             min_lat=min_lat,
             max_lat=max_lat,
@@ -331,8 +290,9 @@ class NwpDataSource:
         # How long after `time` do we need the predictions.
         deltas = [t - init_time for t in timestamps]
 
-        # Get the nearest prediction to what we are interested in.
-        ds = ds.sel(step=deltas, method="nearest")
+        if self._filter_on_step:
+            # Get the nearest prediction to what we are interested in.
+            ds = ds.sel(step=deltas, method="nearest")
 
         da = ds[_VALUE]
 

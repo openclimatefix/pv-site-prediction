@@ -87,6 +87,13 @@ _log = logging.getLogger(__name__)
     "Defaults to None and then value is taken from the configuration.",
 )
 @click.option(
+    "--test-dataset",
+    type=str,
+    default=None,
+    help="The csv file for the test dataset to use. Defaults to None. "
+    "The csv must have pv_id and timestamp columns.",
+)
+@click.option(
     "--use-metadata",
     is_flag=True,
     default=False,
@@ -107,6 +114,7 @@ def main(
     sequential: bool,
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
+    test_dataset: Optional[str] = None,
     use_metadata: bool = False,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
@@ -207,9 +215,10 @@ def main(
         random_state=random_state,
         get_features=get_feature_function,
         num_workers=num_workers,
-        shuffle=not sequential,
+        shuffle=(not sequential) and (test_dataset is None),
         step=step,
         limit=limit,
+        dataset_file=test_dataset,
     )
 
     _log.info("Created data loader")

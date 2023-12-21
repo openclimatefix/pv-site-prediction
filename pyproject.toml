@@ -1,6 +1,7 @@
 [tool.poetry]
-name = "psp"
-version = "0.1.8"
+name = "pv-site-prediction"
+packages = [{include = "psp"}]
+version = "0.1.13"
 description = "Photovoltaic per site modeling"
 authors = ["Simon Lemieux <1105380+simlmx@users.noreply.github.com>"]
 license = "MIT"
@@ -32,6 +33,7 @@ streamlit = "^1.24.1"
 plotly = "^5.15.0"
 streamlit-extras = "^0.2.7"
 streamlit-option-menu = "^0.3.6"
+pyresample = "^1.27.1"
 
 
 [tool.poetry.group.dev.dependencies]

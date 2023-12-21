@@ -12,7 +12,7 @@ This repo contains code to train and evaluate pv-site models.
 ├── data                # Placeholder for data files
 └── psp                 # Main python package
     ├── clients         # Client specific code
-    ├── data_sources    # Data sources (PV, NWP, etc.)
+    ├── data_sources    # Data sources (PV, NWP, Satellite, etc.)
     ├── exp_configs     # Experimentation configs - a config defines the different options for
     │                   # training and evaluation models. This directory contains many ready
     │                   # configs where the paths points to the data on Leonardo.
