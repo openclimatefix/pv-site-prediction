@@ -31,6 +31,7 @@ class PvXDataPipe(IterDataPipe[X]):
         start_ts: Timestamp | None = None,
         end_ts: Timestamp | None = None,
         step: int = 15,
+        dataset_file: str | None = None,
     ):
         """
         Arguments:
@@ -39,6 +40,8 @@ class PvXDataPipe(IterDataPipe[X]):
             start_ts: If provided, wll only pick dates after this date.
             end_ts: If provided, wll only pick dates before this date.
             step: Step used to make samples in time (in minutes).
+            dataset_file: If provided, will only pick from those pv_ids.
+                This has columns of pv_id and timestamp
         """
         self._data_source = data_source
         self._horizons = horizons
@@ -46,22 +49,34 @@ class PvXDataPipe(IterDataPipe[X]):
         self._start_ts = start_ts or self._data_source.min_ts()
         self._end_ts = end_ts or self._data_source.max_ts()
         self._step = step
+        self._dataset_file = dataset_file
 
         # Sanity checks.
         assert len(self._pv_ids) > 0
         assert self._end_ts > self._start_ts
 
+        if self._dataset_file is not None:
+            self._dataset = pd.read_csv(self._dataset_file)
+
     def __iter__(self) -> Iterator[X]:
         step = dt.timedelta(minutes=self._step)
 
-        for pv_id in self._pv_ids:
-            ts = self._start_ts
-            minute = ts.minute
-            ts = ts.replace(minute=round_to(minute, self._step), second=0, microsecond=0)
-            while ts < self._end_ts:
+        if self._dataset_file is None:
+            for pv_id in self._pv_ids:
+                ts = self._start_ts
+                minute = ts.minute
+                ts = ts.replace(minute=round_to(minute, self._step), second=0, microsecond=0)
+                while ts < self._end_ts:
+                    x = X(pv_id=pv_id, ts=ts)
+                    yield x
+                    ts = ts + step
+        else:
+            for index, row in self._dataset.iterrows():
+                pv_id = str(row["pv_id"])
+                ts = pd.Timestamp(row["timestamp"])
+                ts = ts.replace(second=0, microsecond=0)
                 x = X(pv_id=pv_id, ts=ts)
                 yield x
-                ts = ts + step
 
 
 # We inherit from PvSamplesGenerator to save some code even though it's not super sound.
@@ -186,6 +201,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
+    dataset_file: str | None = None,
 ) -> "DataLoader[Sample]":
     ...
 
@@ -205,6 +221,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
+    dataset_file: str | None = None,
 ) -> "DataLoader[Batch]":
     ...
 
@@ -223,6 +240,7 @@ def make_data_loader(
     shuffle: bool = False,
     step: int = 1,
     limit: int | None = None,
+    dataset_file: str | None = None,
 ) -> "DataLoader[Sample] | DataLoader[Batch]":
     """
     Arguments:
@@ -230,6 +248,8 @@ def make_data_loader(
         batch_size: Batch size. None means no batching.
         step: Step in minutes for the timestamps.
         limit: return only this number of samples.
+        dataset_file: is a csv file that has the column pv_id and timestamp.
+            These are used to generate the dataset.
     """
     pvx_datapipe: PvXDataPipe
     if shuffle:
@@ -251,6 +271,7 @@ def make_data_loader(
             start_ts=start_ts,
             end_ts=end_ts,
             step=step,
+            dataset_file=dataset_file,
         )
 
     # This has to be as early as possible to be efficient!
