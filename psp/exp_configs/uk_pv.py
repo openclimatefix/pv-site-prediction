@@ -182,6 +182,11 @@ def _get_orientation(d):
     orientation_values = d["orientation"].values
     return orientation_values
 
+def _default_get_tilt(_):
+    return 35.0
+
+def _default_get_orientation(_):
+    return 180.0
 
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
@@ -221,12 +226,12 @@ class ExpConfig(ExpConfigBase):
                     ],
                 ),
             },
-            satellite_data_sources={
-                "EUMETSAT": SatelliteDataSource(
-                    SATELLITE_DATA_PATHS,
-                    x_is_ascending=False,
-                ),
-            },
+            # satellite_data_sources={
+            #     "EUMETSAT": SatelliteDataSource(
+            #         SATELLITE_DATA_PATHS,
+            #         x_is_ascending=False,
+            #     ),
+            # },
         )
 
     def _get_model_config(self) -> PvSiteModelConfig:
@@ -236,11 +241,11 @@ class ExpConfig(ExpConfigBase):
         kwargs = self.get_data_source_kwargs()
 
         if kwargs["pv_data_source"]._hardcode_tilt_orientation is True:
-            tilt = 35
-            orientation = 180
+            tilt_getter = _default_get_tilt
+            orientation_getter = _default_get_orientation
         else:
-            tilt = _get_tilt
-            orientation = _get_orientation
+            tilt_getter = _get_tilt
+            orientation_getter = _get_orientation
 
         return RecentHistoryModel(
             config=self._get_model_config(),
@@ -265,8 +270,8 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
-            tilt_getter=tilt,
-            orientation_getter=orientation,
+            tilt_getter=tilt_getter,
+            orientation_getter=orientation_getter,
             pv_dropout=0.1,
         )
 
@@ -278,7 +283,7 @@ class ExpConfig(ExpConfigBase):
             test_start_date=dt.datetime(2020, 1, 1),
             test_end_date=dt.datetime(2021, 11, 8),
             train_days=356 * 2,
-            num_trainings=1,
+            # num_trainings=1,
             # Min date because of NWP not available at the beginning of the PV data.
-            min_train_date=dt.datetime(2020, 1, 10),
+            # min_train_date=dt.datetime(2020, 1, 10),
         )

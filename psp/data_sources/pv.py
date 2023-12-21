@@ -97,6 +97,7 @@ class NetcdfPvDataSource(PvDataSource):
         rename: dict[str, str] | None = None,
         ignore_pv_ids: list[str] | None = None,
         lag_minutes: float = 0.0,
+        hardcode_tilt_orientation: bool = False,
     ):
         """
         Arguments:
@@ -110,6 +111,7 @@ class NetcdfPvDataSource(PvDataSource):
                 in practice. Concretely, this means that when we call `as_available_at`,
                 `lag_minutes` minutes will subtracted from the passed timestamp. When training, this
                 should be set to the expected delay before the PV data is available, in production.
+            hardcode_tilt_orientation: If True, we hardcode the tilt and orientation of the PVs.
         """
         if rename is None:
             rename = {}
@@ -126,6 +128,7 @@ class NetcdfPvDataSource(PvDataSource):
         self._rename = rename
         self._ignore_pv_ids = ignore_pv_ids
         self._lag_minutes = lag_minutes
+        self._hardcode_tilt_orientation = hardcode_tilt_orientation
 
         self._prepare_data(raw_data)
 
