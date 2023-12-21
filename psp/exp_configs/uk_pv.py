@@ -256,7 +256,7 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
-            tilt_getter= _get_tilt,
+            tilt_getter=_get_tilt,
             orientation_getter=_get_orientation,
             pv_dropout=0.1,
         )
