@@ -204,7 +204,7 @@ class RecentHistoryModel(PvSiteModel):
         self.set_data_sources(
             pv_data_source=pv_data_source,
             nwp_data_sources=nwp_data_sources,
-            sat_data_sources=satellite_data_sources,
+            satellite_data_sources=satellite_data_sources,
         )
 
         # We bump this when we make backward-incompatible changes in the code, to support old
@@ -218,7 +218,7 @@ class RecentHistoryModel(PvSiteModel):
         *,
         pv_data_source: PvDataSource,
         nwp_data_sources: dict[str, NwpDataSource] | None = None,
-        sat_data_sources: dict[str, SatelliteDataSource] | None = None,
+        satellite_data_sources: dict[str, SatelliteDataSource] | None = None,
     ):
         """Set the data sources.
 
@@ -226,7 +226,7 @@ class RecentHistoryModel(PvSiteModel):
         """
         self._pv_data_source = pv_data_source
         self._nwp_data_sources = nwp_data_sources
-        self._satellite_data_sources = sat_data_sources
+        self._satellite_data_sources = satellite_data_sources
 
         # This ensures the nwp fixture passed for the test is a dictionary
         if isinstance(self._nwp_data_sources, dict) or self._nwp_data_sources is None:
@@ -238,7 +238,7 @@ class RecentHistoryModel(PvSiteModel):
         if (self._satellite_data_sources is not None) and (
             not isinstance(self._satellite_data_sources, dict)
         ):
-            self._satellite_data_sources = dict(sat_data_source=self._satellite_data_sources)
+            self._satellite_data_sources = dict(satellite_data_source=self._satellite_data_sources)
 
         # set this attribute so it works for older models
         if not hasattr(self, "_satellite_patch_size"):
