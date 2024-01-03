@@ -95,7 +95,7 @@ def _eval_model(model: PvSiteModel, dataloader: "DataLoader[Sample]") -> None:
     show_default=True,
 )
 @click.option(
-    "--no_infer",
+    "--no-infer",
     is_flag=True,
     help="If set to True, evaluates the error on the train/valid sets. Default is True.",
     default=False,

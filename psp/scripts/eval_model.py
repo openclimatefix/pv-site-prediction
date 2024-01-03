@@ -94,11 +94,10 @@ _log = logging.getLogger(__name__)
     "The csv must have pv_id and timestamp columns.",
 )
 @click.option(
-    "--use-metadata",
+    "--no-live-pv",
     is_flag=True,
     default=False,
-    help="Use no Live PV during inference and only use metadata, "
-    "to simulate no live PV in production.",
+    help="Use no Live PV during inference to simulate no live PV in production.",
 )
 def main(
     exp_root,
@@ -115,7 +114,7 @@ def main(
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
     test_dataset: Optional[str] = None,
-    use_metadata: bool = False,
+    no_live_pv: bool = False,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -198,9 +197,9 @@ def main(
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader
 
-    _log.info(f"use_metadata: {use_metadata}")
+    _log.info(f"No Live PV at Inference: {no_live_pv}")
 
-    if use_metadata:
+    if no_live_pv:
         get_feature_function = model.get_features_without_pv
     else:
         get_feature_function = model.get_features
