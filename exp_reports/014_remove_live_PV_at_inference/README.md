@@ -57,7 +57,3 @@ Training using a PV dropout of 0.1, 0.2 and 0.3 have been explored to see if the
 *Figure 2: Change in error relative to where pv dropout is equal to 0.1, training with 4096 samples.*
 
 There is a very small change in error. Changing the dropout to 0.2 (around 800 samples) has a slight increase in the error for the case without live pv and slight decrease in error for the case with live pv. With a pv droupout of 0.3 both cases see a decrease in error.
-
-# Effects of using household model on larger sites
-
-
