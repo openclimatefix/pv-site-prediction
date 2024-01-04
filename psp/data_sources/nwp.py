@@ -133,6 +133,9 @@ class NwpDataSource:
         if self._variables is not None:
             data = data.sel(variable=self._variables)
 
+        # Sort data in time
+        data = data.sortby(_TIME)
+
         return data
 
     def list_variables(self) -> list[str]:
