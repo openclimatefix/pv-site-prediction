@@ -28,6 +28,18 @@ class MultiPvSiteModel(PvSiteModel):
         return model.get_features(x, is_training=is_training)
 
     def get_features_without_pv(self, x: X, is_training: bool = False) -> Features:
+        """
+        This function generates a set of features from the input data `x`, excluding those derived from photovoltaic (PV) power data.
+        It first calls the `get_features` method to generate all features, then sets the value of PV-derived features to NaN and the 
+        value of NaN labelling features to 1.
+    
+        Args:
+            x (X): The input data to generate features from.
+            is_training (bool, optional): A flag indicating whether the function is being called during training. Defaults to False.
+    
+        Returns:
+            features: A dictionary of features, with PV-derived features set to NaN and NaN labelling features set to 1.
+        """
         features = self.get_features(x, is_training=is_training)
         # List of features derived from 'pv'
         pv_derived_features = ["recent_power", "h_max", "h_median", "h_mean"]
