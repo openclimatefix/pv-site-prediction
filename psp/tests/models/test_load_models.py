@@ -25,12 +25,12 @@ def test_old_models_sanity_check():
     assert sorted(models) == sorted(EXPECTED_OUTPUT)
 
 
-def _test_model(model_path, expected, pv_data_source, nwp_data_sources, sat_data_source=None):
+def _test_model(model_path, expected, pv_data_source, nwp_data_sources, satellite_data_source=None):
     model = load_model(model_path)
     model.set_data_sources(
         pv_data_source=pv_data_source,
         nwp_data_sources=nwp_data_sources,
-        sat_data_sources=sat_data_source,
+        satellite_data_sources=satellite_data_source,
     )
 
     pv_id = pv_data_source.list_pv_ids()[0]
