@@ -1,5 +1,7 @@
 import datetime as dt
 
+import numpy as np
+
 from psp.models.base import PvSiteModel
 from psp.typings import Features, X, Y
 
@@ -24,6 +26,38 @@ class MultiPvSiteModel(PvSiteModel):
     def get_features(self, x: X, is_training: bool = False) -> Features:
         model = self._get_model_for_ts(x.ts)
         return model.get_features(x, is_training=is_training)
+
+    def get_features_without_pv(self, x: X, is_training: bool = False) -> Features:
+        """
+        Generate a set of features from the input data `x`, excluding those derived from
+        photovoltaic (PV) power data.
+
+        Args:
+        ----
+            x (X): The input data to generate features from.
+            is_training (bool, optional): A flag indicating whether the function is being called
+            during training. Defaults to False.
+
+        Returns:
+        -------
+            features: A dictionary of features, with PV-derived features set to NaN and NaN
+            labelling features set to 1.
+        """
+        features = self.get_features(x, is_training=is_training)
+        # List of features derived from 'pv'
+        pv_derived_features = ["recent_power", "h_max", "h_median", "h_mean"]
+        nan_pv_derived_features = ["recent_power_nan", "h_max_nan", "h_median_nan", "h_mean_nan"]
+        for feature in pv_derived_features:
+            if feature in features:
+                # Set the value to NaN
+                features[feature] = np.full_like(features[feature], np.nan)
+
+        for feature in nan_pv_derived_features:
+            if feature in features:
+                # Set the value to 1
+                features[feature] = np.full_like(features[feature], 1)
+
+        return features
 
     def _get_model_for_ts(self, ts: dt.datetime) -> PvSiteModel:
         # Use the most recent model whose train date is *before* `x.ts`. This was the most recent

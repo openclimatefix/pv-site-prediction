@@ -93,6 +93,12 @@ _log = logging.getLogger(__name__)
     help="The csv file for the test dataset to use. Defaults to None. "
     "The csv must have pv_id and timestamp columns.",
 )
+@click.option(
+    "--no-live-pv",
+    is_flag=True,
+    default=False,
+    help="Use no Live PV during inference to simulate no live PV in production.",
+)
 def main(
     exp_root,
     exp_name,
@@ -108,6 +114,7 @@ def main(
     pv_ids_one_string: str,
     step_minutes: Optional[int] = None,
     test_dataset: Optional[str] = None,
+    no_live_pv: bool = False,
 ):
     logging.basicConfig(level=getattr(logging, log_level.upper()))
 
@@ -190,6 +197,13 @@ def main(
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader
 
+    _log.info(f"No Live PV at Inference: {no_live_pv}")
+
+    if no_live_pv:
+        get_feature_function = model.get_features_without_pv
+    else:
+        get_feature_function = model.get_features
+
     data_loader = make_data_loader(
         data_source=pv_data_source,
         horizons=model_config.horizons,
@@ -198,13 +212,16 @@ def main(
         end_ts=test_end,
         batch_size=None,
         random_state=random_state,
-        get_features=model.get_features,
+        get_features=get_feature_function,
         num_workers=num_workers,
         shuffle=(not sequential) and (test_dataset is None),
         step=step,
         limit=limit,
         dataset_file=test_dataset,
     )
+
+    _log.info("Created data loader")
+    print(data_loader)
 
     # Gather all errors for every samples. We'll make a DataFrame with it.
     error_rows = []
