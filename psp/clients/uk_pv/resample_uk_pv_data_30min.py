@@ -29,7 +29,7 @@ def resample_pv_data(input_dir: str, output_dir: str) -> None:
     print("Resampling PV data...")
     ds = xr.open_dataset(input_dir)
 
-    ds_resampled = ds.resample(timestamp = '30min', base=30, label='right', closed='right').mean()
+    ds_resampled = ds.resample(timestamp="30min", base=30, label="right", closed="right").mean()
 
     ds_resampled.to_netcdf(output_dir)
     print("Resampled data saved to", output_dir)
