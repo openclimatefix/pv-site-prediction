@@ -102,12 +102,20 @@ class NwpDataSource:
             self._cache_dir.mkdir(exist_ok=True)
 
         self._filter_on_step = filter_on_step
+    
+    def preprocess_ecmwf(xr_data):
+        if "UKV" == xr_data.data_vars[0]:
+            xr_data = xr_data.rename({"UKV": "ECMWF_UK"})
+        return xr_data
+    
 
     def _open(self, paths: list[str]) -> xr.Dataset:
         _log.debug(f"Opening data {paths}")
+
         return xr.open_mfdataset(
             paths,
             engine="zarr",
+            preprocess=preprocess_ecmwf
         )
 
     def _prepare_data(self, data: xr.Dataset) -> xr.Dataset:
@@ -140,6 +148,8 @@ class NwpDataSource:
 
     def list_variables(self) -> list[str]:
         return list(self._data.coords[_VARIABLE].values)
+    
+
 
     def get(
         self,
