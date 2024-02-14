@@ -104,7 +104,7 @@ class NwpDataSource:
         self._filter_on_step = filter_on_step
     
     def preprocess_ecmwf(self, data: xr.Dataset) -> xr.Dataset:
-        if "UKV" == data.data_vars[0]:
+        if "UKV" in data.data_vars:
             data = data.rename({"UKV": "ECMWF_UK"})
         return data
     

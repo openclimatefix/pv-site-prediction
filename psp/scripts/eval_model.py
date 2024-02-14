@@ -154,7 +154,7 @@ def main(
     pv_data_source = eval_config.get_pv_data_source()
 
     # Those are the dates we trained models for.
-    date_splits = train_config.get_date_splits()
+    date_splits = eval_config.get_date_splits()
     # train_dates = dates_split.train_dates
     train_dates = [x.train_date for x in date_splits.train_date_splits]
 
@@ -193,6 +193,9 @@ def main(
         step = test_date_split.step_minutes
     else:
         step = step_minutes
+
+    _log.info(f"test data split {test_date_split}")
+    _log.info(f"step is {step}")
 
     # Delay this import because it itself imports pytorch which is slow.
     from psp.training import make_data_loader

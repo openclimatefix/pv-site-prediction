@@ -141,6 +141,7 @@ class RecentHistoryModel(PvSiteModel):
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
         satellite_patch_size: float = 0.25,
+        recent_power_minutes: int = 30,
     ):
         """
         Arguments:
@@ -166,6 +167,7 @@ class RecentHistoryModel(PvSiteModel):
         satellite_tolerance: How old should the satellite predictions be before
             we start ignoring them.
         satellite_patch_size: Size of the patch to use for the satellite data. This is in degrees.
+        recent_power_minutes: How many minutes to consider for the recent power feature.
         """
         super().__init__(config)
         # Validate some options.
@@ -200,6 +202,7 @@ class RecentHistoryModel(PvSiteModel):
         self._satellite_dropout = satellite_dropout
         self._satellite_tolerance = satellite_tolerance
         self._satellite_patch_size = satellite_patch_size
+        self._recent_power_minutes = recent_power_minutes
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -332,14 +335,13 @@ class RecentHistoryModel(PvSiteModel):
             x.ts + timedelta(minutes=(f0 + f1) / 2) for f0, f1 in self.config.horizons
         ]
 
-        recent_power_minutes = 30
 
         # Get the irradiance for those timestamps.
         irr2 = get_irradiance(
             lat=lat,
             lon=lon,
             # We add a timestamp for the recent power, that we'll treat separately afterwards.
-            timestamps=horizon_timestamps + [x.ts - timedelta(minutes=recent_power_minutes / 2)],
+            timestamps=horizon_timestamps + [x.ts - timedelta(minutes=self._recent_power_minutes / 2)],
             tilt=tilt,
             orientation=orientation,
         )
@@ -516,7 +518,7 @@ class RecentHistoryModel(PvSiteModel):
 
         # Get the recent power.
         recent_power = float(
-            data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)).mean()
+            data.sel(ts=slice(x.ts - timedelta(minutes=self._recent_power_minutes), x.ts)).mean()
         )
         recent_power_nan = np.isnan(recent_power)
 
