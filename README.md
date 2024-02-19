@@ -24,19 +24,19 @@ This repo contains code to train and evaluate a model to produce the forecasted 
 
 ## Training and evaluating a model
 
-    poetry run python psp/scripts/train_model.py
-    --exp-config-name test_config1
-    -n test
+    poetry run python psp/scripts/train_model.py \
+        --exp-config-name test_config1 \
+        -n test
 
-    poetry run python psp/scripts/eval_model.py
-    -n test
+    poetry run python psp/scripts/eval_model.py \
+        -n test
 
-    # This will have generated a model and test results in`exp_results/test`.
+    # This will have generated a model and test results in `exp_results/test`.
 
-    # You can then look at the results in the`expriment_analysis.ipynb` and
+    # You can then look at the results in the `expriment_analysis.ipynb` and
     # `sample_analysis.ipynb` notebooks by setting EXP_NAMES=["test"] in the first cells.
 
-    # Call the scripts with`--help` to see more options, in particular to run on more than one CPU.
+    # Call the scripts with `--help` to see more options, in particular to run on more than one CPU.
 
     # The script run_exp.sh can be used to train and then evaluate a model, for example
     ./run_exp.sh exp_config_to_use name_for_exp
