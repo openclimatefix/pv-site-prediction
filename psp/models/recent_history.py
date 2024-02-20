@@ -141,6 +141,7 @@ class RecentHistoryModel(PvSiteModel):
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
         satellite_patch_size: float = 0.25,
+        n_recent_power_values: int = 0,
     ):
         """
         Arguments:
@@ -200,6 +201,7 @@ class RecentHistoryModel(PvSiteModel):
         self._satellite_dropout = satellite_dropout
         self._satellite_tolerance = satellite_tolerance
         self._satellite_patch_size = satellite_patch_size
+        self._n_recent_power_values = n_recent_power_values
 
         self.set_data_sources(
             pv_data_source=pv_data_source,
@@ -432,7 +434,6 @@ class RecentHistoryModel(PvSiteModel):
 
         # add another section here fore getting the satellite data
         if self._satellite_data_sources is not None:
-
             # add the forecast horizon to the features. This is because the satellite data is
             # only available for the current time step, but not as a forecast, compared to NWP
             # which are available at all timesteps
@@ -457,7 +458,6 @@ class RecentHistoryModel(PvSiteModel):
                 ):
                     satellite_data = None
                 else:
-
                     if self._satellite_patch_size > 0:
                         satellite_data = source.get(
                             now=x.ts,
@@ -526,6 +526,33 @@ class RecentHistoryModel(PvSiteModel):
 
         scalar_features["recent_power"] = 0.0 if recent_power_nan else recent_power
         scalar_features["recent_power_nan"] = recent_power_nan * 1.0
+
+        # recent power values
+        recent_power_values = data.sel(
+            ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)
+        ).values
+
+        # make sure recent power values is the right length
+        if not hasattr(self, "_n_recent_power_values"):
+            self._n_recent_power_values = 0
+        if len(recent_power_values) < self._n_recent_power_values:
+            recent_power_values = np.pad(
+                recent_power_values,
+                (0, self._n_recent_power_values - len(recent_power_values)),
+                "constant",
+                constant_values=np.nan,
+            )
+        elif len(recent_power_values) > self._n_recent_power_values:
+            recent_power_values = recent_power_values[
+                len(recent_power_values) - self._n_recent_power_values :
+            ]
+
+        if self._normalize_features:
+            recent_power_values = safe_div(recent_power_values, poa_global_now * capacity)
+
+        for i, value in enumerate(recent_power_values):
+            scalar_features[f"recent_power_values_{i}"] = value
+            scalar_features[f"recent_power_values_{i}_isnan"] = np.isnan(value) * 1.0
 
         if self._version >= 2:
             scalar_features["poa_global_now_is_zero"] = poa_global_now == 0.0
