@@ -141,7 +141,7 @@ class RecentHistoryModel(PvSiteModel):
         satellite_dropout: float = 0.1,
         satellite_tolerance: Optional[float] = None,
         satellite_patch_size: float = 0.25,
-        n_recent_power_values: int = 3,
+        n_recent_power_values: int = 0,
     ):
         """
         Arguments:
@@ -528,9 +528,10 @@ class RecentHistoryModel(PvSiteModel):
         scalar_features["recent_power_nan"] = recent_power_nan * 1.0
 
         # recent power values
-        recent_power_values = float(
-            data.sel(ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts))
+        recent_power_values = data.sel(
+            ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)
         )
+
         # make sure recent power values is the right length
         if recent_power_values < self._n_recent_power_values:
             recent_power_values = np.pad(
