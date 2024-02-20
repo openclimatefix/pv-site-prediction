@@ -530,7 +530,7 @@ class RecentHistoryModel(PvSiteModel):
         # recent power values
         recent_power_values = data.sel(
             ts=slice(x.ts - timedelta(minutes=recent_power_minutes), x.ts)
-        )
+        ).values
 
         # make sure recent power values is the right length
         if recent_power_values < self._n_recent_power_values:
