@@ -543,7 +543,9 @@ class RecentHistoryModel(PvSiteModel):
                 constant_values=np.nan,
             )
         elif len(recent_power_values) > self._n_recent_power_values:
-            recent_power_values = recent_power_values[-self._n_recent_power_values :]
+            recent_power_values = recent_power_values[
+                len(recent_power_values) - self._n_recent_power_values :
+            ]
 
         if self._normalize_features:
             recent_power_values = safe_div(recent_power_values, poa_global_now * capacity)
