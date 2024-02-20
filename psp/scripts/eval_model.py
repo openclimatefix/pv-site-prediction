@@ -270,6 +270,14 @@ def main(
 
     df = pd.DataFrame.from_records(error_rows)
 
+    # print out the mae per horizon
+    mae_per_horizon = {}
+    for horizon in model_config.horizons:
+
+        mae = df[df["horizon"] == horizon[0]]["error"].abs().mean()
+        mae_per_horizon[horizon[0]] = mae
+        print(f"MAE for horizon {horizon[0]}: {mae:.2f}")
+
     exp_name = exp_name or dt.datetime.now().isoformat()
 
     output_dir = exp_root / (new_exp_name or exp_name)

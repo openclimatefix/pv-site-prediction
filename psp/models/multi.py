@@ -47,12 +47,16 @@ class MultiPvSiteModel(PvSiteModel):
         # List of features derived from 'pv'
         pv_derived_features = ["recent_power", "h_max", "h_median", "h_mean"]
         nan_pv_derived_features = ["recent_power_nan", "h_max_nan", "h_median_nan", "h_mean_nan"]
-        for feature in pv_derived_features:
+        recent_power_values_features = [f for f in features if f.startswith("recent_power_values")]
+        recent_power_values_nans = [
+            f for f in features if (f.startswith("recent_power_values")) and ("isnan" in f)
+        ]
+        for feature in pv_derived_features + recent_power_values_features:
             if feature in features:
                 # Set the value to NaN
                 features[feature] = np.full_like(features[feature], np.nan)
 
-        for feature in nan_pv_derived_features:
+        for feature in nan_pv_derived_features + recent_power_values_nans:
             if feature in features:
                 # Set the value to 1
                 features[feature] = np.full_like(features[feature], 1)
