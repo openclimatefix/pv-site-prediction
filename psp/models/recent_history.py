@@ -533,6 +533,8 @@ class RecentHistoryModel(PvSiteModel):
         ).values
 
         # make sure recent power values is the right length
+        if not hasattr(self, "_n_recent_power_values"):
+            self._n_recent_power_values = 0
         if recent_power_values < self._n_recent_power_values:
             recent_power_values = np.pad(
                 recent_power_values,
