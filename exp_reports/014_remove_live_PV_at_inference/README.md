@@ -1,6 +1,6 @@
 # Generic vs Bespoke Models With and Without Live PV
 
-**Experiment Summary**
+## Experiment Summary
 
 - Comparison between a "generic model" and a "bespoke model" for forecasting.
 - Generic model trained on data from over 1000 sites.
@@ -11,13 +11,10 @@
 - More than 10% of PV set to NaN during training had no significant improvements.
 
 This experiment has quantified the difference between using a "generic model" versus a "bespoke model" when forecasting for a specific set of sites. A test set of 50 household sites in the UK (with capacities less than 4kW) has been created to do this. A bespoke model is trained using just these 50 sites where as the generic model has been trained off data from over 1000 sites (with the test set sites removed).
-
-
+<!--  -->
 | A. Test Set Sites | B. Generic Set Sites |
 |--------------|-----------------|
 | ![Test Set Map](test_set_map.png) | ![Generic Set Map](generic_set_map.png) |
-
-
 
 For the case of using a generic model to forecast the test set a different "eval-config" can be set when running inference to use the test set sites data.
 
@@ -33,7 +30,7 @@ To simulate conditions without live PV data during evaluation, the --no-live-pv 
 poetry run python psp/scripts/eval_model.py -n uk_pv --no-live-pv
 ```
 
-Evaluation was performed on 20,000 samples between the dates of 2021-01-01 to 2021-11-08 with multiple NWP sources used for inputs. 4096 samples were used for training. 
+Evaluation was performed on 20,000 samples between the dates of 2021-01-01 to 2021-11-08 with multiple NWP sources used for inputs. 4096 samples were used for training.
 
 ![results](gen_vs_bes_model.png)
 *Figure 1: Comparison of error (MAE/Capacity) between generic and bespoke models with and without live PV data.*
@@ -56,8 +53,7 @@ For sites or situations where there is limited pv data a combination of generic 
 
 With enough PV samples a bespoke model seems to have slighty better performance to that of that of the generic model. This test was first ran training off just 500 samples which showed the generic model to be slightly better.
 
-
-# Effects of increasing PV dropout for metadata only models
+## Effects of increasing PV dropout for metadata only models
 
 A pv dropout of 0.1 has been used for the experiment above. This is equivlent to 10% of the samples which is ~4000 so around 400 samples have the live pv data set to NaN during training.
 
