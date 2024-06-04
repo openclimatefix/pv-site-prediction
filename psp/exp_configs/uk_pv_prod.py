@@ -167,6 +167,13 @@ def _get_capacity(d):
         value = float(d.coords["capacity"].values)
     return value
 
+def _get_tilt(d):
+    tilt_values = d["tilt"].values
+    return tilt_values
+
+def _get_orientation(d):
+    orientation_values = d["orientation"].values
+    return orientation_values
 
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
@@ -223,6 +230,8 @@ class ExpConfig(ExpConfigBase):
             random_state=random_state,
             normalize_features=True,
             capacity_getter=_get_capacity,
+            tilt_getter=_get_tilt,
+            orientation_getter=_get_orientation,
             pv_dropout=0.1,
         )
 
