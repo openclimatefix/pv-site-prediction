@@ -16,14 +16,9 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_DATA_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/uk_pv/5min_v3.nc"
-NWP_DATA_PATHS = [
-    (
-        "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP"
-        f"/UK_Met_Office/UKV/zarr/UKV_{year}_NWP.zarr"
-    )
-    for year in range(2018, 2022)
-]
+PV_DATA_PATH = "/home/zak/projects/site_improvements_tilt_ori/pv_site_data/5min_v3.nc"
+
+NWP_DATA_PATHS = "/mnt/disks/gcp_data/nwp/ukv/UKV_intermediate_version_7.1.zarr"
 
 # A list of SS_ID that don't contain enough data.
 # I just didn't want to calculate them everytime.
@@ -167,6 +162,13 @@ def _get_capacity(d):
         value = float(d.coords["capacity"].values)
     return value
 
+def _get_tilt(d):
+    tilt_values = d["tilt"].values
+    return tilt_values
+
+def _get_orientation(d):
+    orientation_values = d["orientation"].values
+    return orientation_values
 
 class ExpConfig(ExpConfigBase):
     def get_pv_data_source(self):
@@ -221,6 +223,8 @@ class ExpConfig(ExpConfigBase):
             ],
             normalize_features=True,
             capacity_getter=_get_capacity,
+            tilt_getter=_get_tilt,
+            orientation_getter=_get_orientation,
             pv_dropout=0.1,
         )
 
