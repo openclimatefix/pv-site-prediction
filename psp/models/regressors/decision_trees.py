@@ -147,7 +147,7 @@ class SklearnRegressor(Regressor):
                 ys = ys / (poa * capacity)
             else:
                 # Hack to make sure we have `nan` when poa=0 even if we don't normalize.
-                ys = ys / (poa * capacity) * (poa * capacity)
+                ys = ys / capacity #/ (poa * capacity) * (poa * capacity)
 
         # Flatten the targets just like we "flattened" the features.
         ys = ys.reshape(-1)
@@ -172,7 +172,7 @@ class SklearnRegressor(Regressor):
             return pred * features["_capacity"] * features["_poa_global"]
         else:
             # Return 0. when poa_global is 0., otherwise the value.
-            return pred * ((features["poa_global"] > 0) * 1.0)
+            return pred * features["_capacity"] #((features["poa_global"] > 0) * 1.0)
 
     def explain(self, features: Features) -> tuple[Any, list[str]]:
         """Return the `shap` values for our sample, alonside the names of the features.
