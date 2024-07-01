@@ -84,10 +84,10 @@ class ExpConfig(ExpConfigBase):
             **self.get_data_source_kwargs(),
             regressor=SklearnRegressor(
                 num_train_samples=4096,
-                normalize_targets=True,
+                normalize_targets=False,
             ),
             random_state=random_state,
-            normalize_features=True,
+            normalize_features=False,
             capacity_getter=_get_capacity,
             use_capacity_as_feature=False,
             num_days_history=12,
@@ -103,7 +103,7 @@ class ExpConfig(ExpConfigBase):
     def get_date_splits(self):
         return auto_date_split(
             test_start_date=dt.datetime(2022, 12, 1),
-            test_end_date=dt.datetime(2022, 12, 31),
+            test_end_date=dt.datetime(2023, 12, 31),
             num_trainings=1,
             train_days=365 * 3,
             # Min date because of NWP not available at the beginning of the PV data.
