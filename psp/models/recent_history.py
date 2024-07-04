@@ -321,7 +321,7 @@ class RecentHistoryModel(PvSiteModel):
             )
             norm_data = safe_div(data, irr1["poa_global"].to_numpy() * capacity, fallback=np.nan)
         else:
-            norm_data = data
+            norm_data = data / capacity
 
         history = compute_history_per_horizon(
             norm_data,

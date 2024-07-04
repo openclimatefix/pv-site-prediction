@@ -16,7 +16,7 @@ from psp.models.recent_history import RecentHistoryModel
 from psp.models.regressors.decision_trees import SklearnRegressor
 from psp.typings import Horizons
 
-PV_TARGET_DATA_PATH = "/mnt/storage_ssd_4tb/india_wind_data_format_for_site_model_v5.nc"
+PV_TARGET_DATA_PATH = "/mnt/storage_ssd_4tb/india_wind_data_format_for_site_model_v6_updated_latlong.nc"
 # GFS_NWP_PATH = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/clients/island/5y_nwp_3_to_48.zarr"
 # EXC_PATH = [
 #     (
@@ -108,5 +108,5 @@ class ExpConfig(ExpConfigBase):
             train_days=365 * 3,
             # Min date because of NWP not available at the beginning of the PV data.
             min_train_date=dt.datetime(2019, 1, 1),
-            step_minutes=60,
+            step_minutes=15,
         )
