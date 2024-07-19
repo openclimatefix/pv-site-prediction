@@ -86,6 +86,9 @@ def _infer_params(
     # Only consider the "power" column.
     data = data[C.power]
 
+    # Ensure type consistency for the cost function.
+    data = data.astype(float)  # Ensure data is a Series of floats if needed
+    
     # Normalize the data.
     if not learn_normalisation:
         data = data / data.max()
