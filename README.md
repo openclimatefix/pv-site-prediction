@@ -1,4 +1,5 @@
 # Photovoltaic (PV) Site Prediction Model
+[![ease of contribution: hard](https://img.shields.io/badge/ease%20of%20contribution:%20hard-bb2629)](https://github.com/openclimatefix/ocf-meta-repo?tab=readme-ov-file#overview-of-ocfs-nowcasting-repositories)
 
 This repo contains code to train and evaluate a model to produce the forecasted energy production from solar panels (PV). It does this by providing a framework to forecast ahead, using pv data from sites, weather data (NWPs as multidimensional geospatial zarrs) and sateliite imagery (from the EUMETSAT Geostationary satellite).
 
