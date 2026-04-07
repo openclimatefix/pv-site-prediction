@@ -27,6 +27,10 @@ def safe_div(num: T | float, den: T | float, fallback: float = 0.0) -> T | float
             return fallback
         return num / den
 
+    if isinstance(num, xr.DataArray) or isinstance(den, xr.DataArray):
+        mask = (den == 0) | (~np.isfinite(den))
+        return xr.where(mask, fallback, num / den)
+
     return np.divide(  # type: ignore
         num, den, out=np.full_like(num, fallback), where=(den != 0) & np.isfinite(den)
     )
